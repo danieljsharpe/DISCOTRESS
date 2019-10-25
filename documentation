@@ -1,0 +1,69 @@
+##### DOCUMENTATION OF INPUT KEYWORDS AND ARGUMENTS FOR enhanced_kmc KINETIC MONTE CARLO SUITE #####
+
+these keywords appear in the input file named "input.kmc"
+
+mandatory input files containing the network information: stat_prob.dat, ts_conns.dat, ts_weights.dat
+
+### MAIN KEYWORDS ###
+
+NNODES <int>
+  mandatory, number of nodes in the transition network
+
+NEDGES <int>
+  mandatory, number of (bidirectional) edges in the transition network
+
+TRAJ <str>
+  mandatory if not ENHANCED KPS, method for propagating individual kMC trajectories
+  OPTIONS
+    BKL - Bortz-Kalos-Lebowitz (aka n-fold way) rejection-free algorithm
+    REJ - rejection algorithm
+    LEAPFROG - kMC employing leapfrog moves
+
+ENHANCED <str>
+  mandatory, employ an enhanced sampling strategy for accelerating the observation of rare events
+  OPTIONS
+    WE - weighted ensemble sampling
+    KPS - kinetic path sampling
+    FFS - forward flux sampling
+    ASKMC - accelerated superbasin kMC
+    NEUS - non-equilibrium umbrella sampling
+    NONE - no enhanced sampling strategy employed
+
+MINAFILE <str> <int>
+  mandatory, name of the file containing the node ID's (indexed from 1) belonging to the A (final) set and no. of nodes in A
+
+MINBFILE <str> <int>
+  mandatory, name of the file containing the node ID's (indexed from 1) belonging to the B (initial) set and no. of nodes in B
+
+
+### OPTIONAL KEYWORDS RELATING TO ENHANCED SAMPLING ###
+
+BINFILE <str> <int>
+  mandatory if ENHANCED WE or ENHANCED KPS and not ADAPTIVEBINS
+    name of the file containing the definitions of communities (single-column, indexed from zero, number of entries equal
+      to the number of nodes in the network) and no. of communities. Is overridden by ADAPTIVEBINS
+
+ADAPTIVEBINS
+  mandatory if ENHANCED WE or ENHANCED KPS and not BINFILE, default False
+    set the partitioning of the state space leveraged in WE-kMC and in kPS to be defined on-the-fly
+
+BINTARGFILE <str>
+  mandatory if ENHANCED WE and not ADAPTIVEBINS, name of the file containing the target number of trajectories in each bin
+    (single-column, number of entries equal to the number of communities in the network)
+
+BININITFILE <str>
+  optional, if ENHANCED WE and not ADAPTIVEBINS, name of the file containing the initial trajectory probability distribution
+    over nodes
+
+TAU <float>
+  mandatory if ENHANCED WE or ENHANCED KPS
+    If WE, tau is the time between resampling trajectories
+    If KPS, tau is the lag time at which the transition probability matrices are estimated
+
+KPSKMCSTEPS <int>
+  optional, if ENHANCED KPS, the number of standard BKL kMC steps to be performed after a kPS escape from
+    a trapping basin
+
+NELIM <int>
+  mandatory if ENHANCED KPS, the maximum number of nodes that can be eliminated from the current trapping basin. If
+    NELIM exceeds the number of nodes in the largest community, then all states of any trapping basin are always eliminated.

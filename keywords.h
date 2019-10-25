@@ -17,23 +17,25 @@ using namespace std;
 
 struct Keywords {
 
-    /* choice of kinetic Monte Carlo method to propagate trajectories:
-       1. "GILLESPIE" Gillespie / stochastic simulation algorithm (SSA)
-       2. "TAULEAPING" tau-leaping algorithm
-       3. "BKL" Bortz-Kalos-Lebowitz rejection-free algorithm */
+    // main keywords (see documentation)
+    int n_nodes=0, n_edges=0;
+    /* choice of kinetic Monte Carlo method to propagate individual trajectories */
     int kmc_method=-1;
-    /* choice of enhanced kinetic Monte Carlo method to maintain trajectories:
-       0. "NONE" unbiased KMC
-       1. "WE" Weighted ensemble KMC
-       2. "FFS" Forward-flux sampling KMC */
-    int enh_method=-1;
+    /* choice of enhanced sampling kinetic Monte Carlo method to accelerate the observation of rare events */
+    int enh_method=-1; // default is to run standard kMC (no enhanced sampling)
+    const char *minafile="", *minbfile=""; // names of the files containing the IDs of the A and B nodes, respectively
+    int nA=0, nB=0;          // number of nodes in A and B sets, respectively
 
-    // optional arguments for WE-KMC
-    double tau=0.;           // "TAU" time interval between checking bins
-    int nwalkers=0;          // "NWALKERS" number of walkers maintained on the network
-    const char *binfile="";  // "BINFILE" (arg 1.) name of file where bins are defined
-    int startbin=-1;         // "BINFILE" (arg 2., opt) index of starting bin for initial trajectory
-    
+    // optional arguments pertaining to enhanced sampling methods
+    double tau=0.;           // "TAU" time interval between checking bins (WE-kMC)
+                             //       lag time at which transition matrix is evaluated (kPS)
+    int nbins=-1;            // number of bins (WE-kMC) or trapping basins (kPS) on the network
+    const char *binfile="";  // "BINFILE" name of file where bins are defined (WE-kMC, kPS)
+    const char *bintargfile=""; // "BINTARGFILE" name of file where target number of trajectories in each bin is defined (WE-kMC)
+    const char *bininitfile=""; // "BININITFILE" name of file where initial prob distrib of trajs is defined (WE-kMC)
+    bool adaptivebins=false; // "ADAPTIVEBINS" bins (WE-kMC) or trapping basins (kPS) are determined on-the-fly
+    int kpskmcsteps=0;       // "KPSKMCSTEPS" number of BKL kMC steps after a trapping basin escape (kPS)
+    int nelim=-1;            // "NELIM" maximum number of states to be eliminated from any trapping basin (kPS)
 };
 
 Keywords read_keywords(const char *);

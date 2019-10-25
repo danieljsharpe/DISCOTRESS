@@ -1,29 +1,32 @@
 /*
-File containing methods for Kinetic Monte Carlo simulation to propagate trajectories, and enhanced sampling methods
+File containing kinetic Monte Carlo simulation algorithms to propagate individual trajectories
 */
 
 #include "kmc_methods.h"
 
+using namespace std;
+
+Walker::Walker() {}
+Walker::~Walker() {}
+
 KMC_Enhanced_Methods::KMC_Enhanced_Methods() {}
 KMC_Enhanced_Methods::~KMC_Enhanced_Methods() {}
 
-WE_KMC::WE_KMC() {}
-WE_KMC::~WE_KMC() {}
+void KMC_Enhanced_Methods::find_bin_onthefly() {
 
-FFS_KMC::FFS_KMC() {}
-FFS_KMC::~FFS_KMC() {}
+}
 
 KMC_Standard_Methods::KMC_Standard_Methods() {}
 KMC_Standard_Methods::~KMC_Standard_Methods() {}
 
-void KMC_Standard_Methods::Gillespie() {
+void KMC_Standard_Methods::bkl(Walker &walker) {
 
 }
 
-void KMC_Standard_Methods::Tau_Leaping() {
+void KMC_Standard_Methods::leapfrog(Walker &walker) {
 
 }
 
-void KMC_Standard_Methods::BKL() {
+void KMC_Standard_Methods::rejection_kmc(Walker &walker) {
 
 }
