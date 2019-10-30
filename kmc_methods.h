@@ -5,9 +5,9 @@ Classes and functions for handling enhanced kinetic Monte Carlo simulations and 
 #ifndef __KMC_METHODS_H_INCLUDED__
 #define __KMC_METHODS_H_INCLUDED__
 
+#include "ktn.h"
 #include <vector>
 #include <array>
-#include <set>
 
 using namespace std;
 
@@ -57,12 +57,27 @@ class KPS : KMC_Enhanced_Methods {
 
     // array<array<double>> H; // hopping matrix
     // array<double> h; // flicker vector
+    vector<int> basin_ids; // used to indicate the set to which each node belongs for the current kPS iteration
+        // (eliminated=1, transient noneliminated boundary=2, transient noneliminated nonboundary=3,
+        //  absorbing boundary=4, absorbing nonboundary=0)
     double tau; // lag time at which transition matrix is evaluated
+    double N_max; // maximum number of nodes of a trapping basin to be eliminated
+    double N_c; // number of nodes connected to the eliminated states of the current trapping basin
+    double N; // number of eliminated nodes for the currently active trapping basin
+    Node *alpha, *epsilon; // final and initial microstates of current escape trajectory
 
     public:
 
-    KPS();
+    KPS(Network&,int,double);
     ~KPS();
+    void setup_basin_sets(Network&);
+    double iterative_reverse_randomisation();
+    Node *sample_absorbing_node(Network&);
+    void graph_transformation(Network&);
+    static double gamma_distribn(int,double);
+    static int binomial_distribn(int,double);
+    static int negbinomial_distribn(int,double);
+    static double exp_distribn(double);
 };
 
 /* Forward flux sampling kMC */
@@ -103,12 +118,10 @@ class KMC_Standard_Methods {
 
     KMC_Standard_Methods();
     ~KMC_Standard_Methods();
-    static void bkl(Walker &walker); // rejection-free algorithm of Bortz, Kalos and Lebowitz (aka n-fold way algorithm)
-    static void leapfrog(Walker &walker); // leapfrog algorithm of Wales
-    static void rejection_kmc(Walker &walker); // kMC algorithm where some moves are rejected
-    vector<int> setup_move_probs(); // calculate the lists of move probabilities for each node
-
-    set<int> minA, minB; // A and B endpoint nodes (A<-B)
+    static void bkl(Walker&); // rejection-free algorithm of Bortz, Kalos and Lebowitz (aka n-fold way algorithm)
+    static void leapfrog(Walker&); // leapfrog algorithm of Wales
+    static void rejection_kmc(Walker&); // kMC algorithm where some moves are rejected
+    vector<int> setup_move_probs(Network&); // calculate the lists of move probabilities for each node
 };
 
 #endif

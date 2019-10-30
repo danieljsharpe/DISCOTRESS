@@ -3,7 +3,7 @@ C++ code providing a suite for kinetic Monte Carlo simulations, including variou
 applicable to any generic kinetic transition network
 
 Compile with:
-g++ -std=c++11 kmc_suite.cpp kmc_methods.cpp we_kmc.cpp kps.cpp ffs_kmc.cpp as_kmc.cpp neus_kmc.cpp keywords.cpp -o kmc_suite
+g++ -std=c++11 kmc_suite.cpp kmc_methods.cpp we_kmc.cpp kps.cpp ffs_kmc.cpp as_kmc.cpp neus_kmc.cpp keywords.cpp ktn.cpp -o kmc_suite
 
 Daniel J. Sharpe
 May 2019
@@ -23,15 +23,14 @@ class KMC_Suite {
 
     private:
 
-    void setup_network(const vector<pair<int,int>>&, const vector<double>&, const vector<double>&, \
-                       int nA, int nB, const vector<int>& = {});
-    
     // function pointer to KMC algorithm for propagating the trajectory
 
     public:
 
     KMC_Suite();
     ~KMC_Suite();
+
+    Network *ktn;
 };
 
 KMC_Suite::KMC_Suite () {
@@ -39,6 +38,26 @@ KMC_Suite::KMC_Suite () {
     const char *inpfname = "input.kmc"; // file containing input keywords
     cout << ">>>>> reading keywords..." << endl;
     Keywords my_kws = read_keywords(inpfname);
+    cout << ">>>>> setting up transition network..." << endl;
+    const char *conns_fname="ts_conns.dat", *wts_fname="ts_weights.dat", \
+               *stat_probs_fname = "stat_probs.dat";
+    vector<pair<int,int>> ts_conns = Read_files::read_two_col<int>(conns_fname);
+    vector<double> ts_wts = Read_files::read_one_col<double>(wts_fname);
+    vector<double> stat_probs = Read_files::read_one_col<double>(stat_probs_fname);
+    vector<int> communities;
+    if (strlen(my_kws.binfile)>0) communities = Read_files::read_one_col<int>(my_kws.binfile);
+    vector<int> nodesA = Read_files::read_one_col<int>(my_kws.minafile);
+    vector<int> nodesB = Read_files::read_one_col<int>(my_kws.minbfile);
+    if (!((nodesA.size()==my_kws.nA) || (nodesB.size()==my_kws.nB))) throw exception();
+    cout << "Finished reading input files" << endl;
+    cout << "Setting up the transition network data structure" << endl;
+    Network ktn_obj(my_kws.n_nodes,my_kws.n_edges);
+    if (strlen(my_kws.binfile)>0) {
+        Network::setup_network(ktn_obj,ts_conns,ts_wts,stat_probs,nodesA,nodesB,communities);
+    } else {
+        Network::setup_network(ktn_obj,ts_conns,ts_wts,stat_probs,nodesA,nodesB);
+    }
+    ktn = &ktn_obj;
     cout << ">>>>> setting up simulation..." << endl;
     // set up enhanced sampling class, if any chosen
     if (my_kws.enh_method==1) {        // WE simulation
@@ -46,6 +65,7 @@ KMC_Suite::KMC_Suite () {
         // we_kmc_obj = WE_KMC()
         // we_kmc_obj.walkers.reserve(my_kws.nwalkers);
     } else if (my_kws.enh_method==2) { // kPS simulation
+        KPS kps_obj(*ktn,my_kws.nelim,my_kws.tau);
     } else if (my_kws.enh_method==3) { // FFS simulation
     } else if (my_kws.enh_method==4) { // AS-kMC simulation
     } else if (my_kws.enh_method==5) { // NEUS-kMC simulation
@@ -56,33 +76,9 @@ KMC_Suite::KMC_Suite () {
     } else if (my_kws.kmc_method==2) { // rejection algorithm
     } else if (my_kws.kmc_method==3) { // leapfrog algorithm
     }
-    cout << ">>>>> setting up transition network..." << endl;
-    const char *conns_fname="ts_conns.dat", *wts_fname="ts_weights.dat", \
-               *stat_probs_fname = "stat_probs.dat";
-    vector<pair<int,int>> ts_conns = Read_files::read_two_col<int>(conns_fname);
-    vector<double> ts_wts = Read_files::read_one_col<double>(wts_fname);
-    vector<double> stat_probs = Read_files::read_one_col<double>(stat_probs_fname);
-    vector<int> communities;
-    if (strlen(my_kws.binfile)>0) communities = Read_files::read_one_col<int>(my_kws.binfile);
-    // check these vectors are correct length (compare with my_kws.n_nodes and my_kws.n_edges)
-    // ...
-    vector<int> nodesA = Read_files::read_one_col<int>(my_kws.minafile);
-    vector<int> nodesB = Read_files::read_one_col<int>(my_kws.minbfile);
-    cout << "Finished reading input files" << endl;
-    if (strlen(my_kws.binfile)>0) {
-        setup_network(ts_conns,ts_wts,stat_probs,my_kws.nA,my_kws.nB,communities);
-    } else {
-        setup_network(ts_conns,ts_wts,stat_probs,my_kws.nA,my_kws.nB); }
-    // set A and B sets of nodes in network structure
 }
 
 KMC_Suite::~KMC_Suite() {
-
-}
-
-/* Set up the data for the kinetic Monte Carlo simulation */
-void KMC_Suite::setup_network(const vector<pair<int,int>> &ts_conns, const vector<double> &ts_wts, \
-    const vector<double> &stat_prob, int nA, int nB, const vector<int> &comms) {
 
 }
 

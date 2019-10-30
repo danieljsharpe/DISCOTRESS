@@ -30,3 +30,7 @@ void KMC_Standard_Methods::leapfrog(Walker &walker) {
 void KMC_Standard_Methods::rejection_kmc(Walker &walker) {
 
 }
+
+vector<int> KMC_Standard_Methods::setup_move_probs(Network &ktn) {
+
+}
