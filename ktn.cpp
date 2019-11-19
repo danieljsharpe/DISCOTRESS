@@ -9,15 +9,15 @@ using namespace std;
 
 Network::Network(int nnodes, int nedges) {
     nodes.resize(nnodes);
-    edges.resize(2*nedges);
-    n_nodes=0; n_edges=0;
+    edges.resize((2*nedges)+nnodes);
+    n_nodes=nnodes; n_edges=nedges;
 }
 
 Network::~Network() {}
 
 Network::Network(const Network &ktn) {}
 
-/* Update the Nodes and Edges of the Network data structure to contain transition probabibilities
+/* update the Nodes and Edges of the Network data structure to contain transition probabibilities
    calculated from the linearised transition probabibility matrix */
 void Network::get_tmtx_lin(double tau) {
     for (auto &node: nodes) {
@@ -41,7 +41,7 @@ void Network::del_node(int i) {
         edgeptr = edgeptr->next_from;
     }
     nodes[i].deleted = true;
-    n_nodes--;
+    tot_nodes--;
 }
 
 // edge j goes TO node i
@@ -52,7 +52,7 @@ void Network::add_to_edge(int i, int j) {
     else {
         nodes[i].top_to = &edges[j];
         nodes[i].top_to->next_to = nullptr; }
-    n_edges++;
+    tot_edges++;
 }
 
 // edge j goes FROM node i
@@ -63,7 +63,7 @@ void Network::add_from_edge(int i, int j) {
     else {
         nodes[i].top_from = &edges[j];
         nodes[i].top_from->next_from = nullptr; }
-    n_edges++;
+    tot_edges++;
 }
 
 // delete the top TO edge for node i
@@ -74,7 +74,7 @@ void Network::del_to_edge(int i) {
         } else {
             nodes[i].top_to = nullptr;
         }
-        n_edges--;
+        tot_edges--;
     } else {
         throw Ktn_exception();
     }
@@ -88,7 +88,7 @@ void Network::del_from_edge(int i) {
         } else {
             nodes[i].top_from = nullptr;
         }
-        n_edges--;
+        tot_edges--;
     } else {
         throw Ktn_exception();
     }
@@ -191,6 +191,7 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
     double tot_pi = -numeric_limits<double>::infinity();
     for (int i=0;i<ktn.n_nodes;i++) {
         ktn.nodes[i].node_id = i+1;
+        ktn.nodes[i].comm_id = comms[i];
         ktn.nodes[i].pi = stat_probs[i];
         tot_pi = log(exp(tot_pi) + exp(stat_probs[i]));
     }
@@ -198,7 +199,7 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
     if (abs(tot_pi-1.)>1.E-10) {
         cout << "Error: total equilibrium probabilities of minima is: " << tot_pi << " =/= 1." << endl;
         throw Network::Ktn_exception(); }
-    for (int i=0;i<2*ktn.n_edges;i++) {
+    for (int i=0;i<ktn.n_edges;i++) {
         ktn.edges[2*i].ts_id = i+1;
         ktn.edges[(2*i)+1].ts_id = i+1;
         ktn.edges[2*i].edge_pos = 2*i;
@@ -207,7 +208,8 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
             ktn.edges[2*i].deadts = true;
             ktn.edges[(2*i)+1].deadts = true;
             ktn.n_dead++;
-            ktn.n_edges = ktn.n_edges-2;
+//            ktn.n_edges = ktn.n_edges-2;
+            cout << "  dead TS" << endl;
             continue;
         } else {
             ktn.edges[2*i].deadts = false;
@@ -234,13 +236,13 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
     for (int i=0;i<ktn.n_nodes;i++) {
         calc_k_esc(ktn.nodes[i]);
     }
-    for (int i=0;i<ktn.nodesA.size();i++) {
-        ktn.nodes[nodesinA[i]].aorb = -1;
-        ktn.nodesA.insert(ktn.nodes[nodesinA[i]]);
+    for (int i=0;i<nodesinA.size();i++) {
+        ktn.nodes[nodesinA[i]-1].aorb = -1;
+        ktn.nodesA.insert(ktn.nodes[nodesinA[i]-1]);
     }
-    for (int i=0;i<ktn.nodesB.size();i++) {
-        ktn.nodes[nodesinB[i]].aorb = 1;
-        ktn.nodesB.insert(ktn.nodes[nodesinB[i]]);
+    for (int i=0;i<nodesinB.size();i++) {
+        ktn.nodes[nodesinB[i]-1].aorb = 1;
+        ktn.nodesB.insert(ktn.nodes[nodesinB[i]-1]);
     }
 
     cout << ">>>>> Finished reading in kinetic transition network" << endl;

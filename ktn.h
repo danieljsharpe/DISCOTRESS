@@ -79,13 +79,15 @@ struct Network {
         const vector<double>&,const vector<int>&, const vector<int>&,const vector<int>& = {});
 
     vector<Node> nodes;
-    vector<Edge> edges;
+    vector<Edge> edges; // note that this vector contains two entries for forward and reverse transitions for
+                        // each pair of nodes, plus entries for the self-transitions of each node
 
     struct Ktn_exception {
         const char * what () const throw () { return "KTN Exception"; }
     };
 
-    int n_nodes, n_edges; // total number of nodes and bidrectional edges
+    int n_nodes, n_edges; // number of nodes and bidirectional edges (not including self-loops)
+    int tot_nodes=0, tot_edges=0;
     int n_dead=0; // number of dead/deleted edges
     int ncomms; // total number of communities
     set<Node> nodesA, nodesB; // A and B endpoint nodes (A<-B)

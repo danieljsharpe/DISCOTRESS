@@ -13,6 +13,7 @@ Keywords read_keywords(const char *kw_file) {
     Keywords my_kws;
     string line, token;
     char delim[] = {" "};
+    char *dummy;
     ifstream kw_f(kw_file);
     while (getline(kw_f,line)) {
         vector<string> vecstr;
@@ -47,26 +48,32 @@ Keywords read_keywords(const char *kw_file) {
         } else if (vecstr[0]=="NEDGES") {
             my_kws.n_edges=stoi(vecstr[1]);
         } else if (vecstr[0]=="MINAFILE") {
-            my_kws.minafile=vecstr[1].c_str();
+            my_kws.minafile=vecstr[1];
             my_kws.nA=stoi(vecstr[2]);
         } else if (vecstr[0]=="MINBFILE") {
-            my_kws.minbfile=vecstr[1].c_str();
+            my_kws.minbfile=vecstr[1];
             my_kws.nB=stoi(vecstr[2]);
         } else if (vecstr[0]=="TAU") {
             my_kws.tau=stod(vecstr[1]);
         } else if (vecstr[0]=="BINFILE") {
-            my_kws.binfile=vecstr[1].c_str();
+            my_kws.binfile = new char[vecstr[1].size()+1];
+            copy(vecstr[1].begin(),vecstr[1].end(),my_kws.binfile);
+            my_kws.binfile[vecstr[1].size()]='\0'; // trailing character
             my_kws.nbins=stoi(vecstr[2]);
         } else if (vecstr[0]=="BINTARGFILE") {
-            my_kws.bintargfile=vecstr[1].c_str();
+            my_kws.bintargfile = new char[vecstr[1].size()+1];
+            copy(vecstr[1].begin(),vecstr[1].end(),my_kws.bintargfile);
         } else if (vecstr[0]=="BININITFILE") {
-            my_kws.bininitfile=vecstr[1].c_str();
+            my_kws.bininitfile = new char[vecstr[1].size()+1];
+            copy(vecstr[1].begin(),vecstr[1].end(),my_kws.bininitfile);
         } else if (vecstr[0]=="ADAPTIVEBINS") {
             my_kws.adaptivebins=true;
         } else if (vecstr[0]=="KPSKMCSTEPS") {
             my_kws.kpskmcsteps=stoi(vecstr[1]);
         } else if (vecstr[0]=="NELIM") {
             my_kws.nelim=stoi(vecstr[1]);
+        } else if (vecstr[0]=="DEBUG") {
+            my_kws.debug=true;
         } else {
             cout << "Fatal error: Unrecognised keyword: " << vecstr[0] << endl;
             exit(EXIT_FAILURE);
@@ -81,7 +88,7 @@ Keywords read_keywords(const char *kw_file) {
     if (my_kws.kmc_method<=0 && my_kws.enh_method!=2) {
         cout << "Fatal error: must choose a kMC trajectory method except with kPS" << endl; exit(EXIT_FAILURE); }
     if (my_kws.enh_method==-1) {
-        cout << "Fatal error: Enhanced KMC method not chosen correctly" << endl; exit(EXIT_FAILURE); }
+        cout << "Fatal error: Enhanced kMC method not chosen correctly" << endl; exit(EXIT_FAILURE); }
     if (my_kws.enh_method==1) { // WE simulation
         if (!(my_kws.tau>0.) || (!(strlen(my_kws.binfile)>0) && !my_kws.adaptivebins) || \
             (!(strlen(my_kws.bintargfile)>0) && !my_kws.adaptivebins) ) {

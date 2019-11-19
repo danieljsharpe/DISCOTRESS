@@ -11,6 +11,7 @@ May 2019
 
 #include "kmc_methods.h"
 #include "keywords.h"
+#include "debug_tests.h"
 #include <omp.h>
 #include <vector>
 #include <iostream>
@@ -30,7 +31,8 @@ class KMC_Suite {
     KMC_Suite();
     ~KMC_Suite();
 
-    Network *ktn;
+    Network *ktn; // the network to be simulated
+    // object to handle enhanced sampling
 };
 
 KMC_Suite::KMC_Suite () {
@@ -40,17 +42,16 @@ KMC_Suite::KMC_Suite () {
     Keywords my_kws = read_keywords(inpfname);
     cout << ">>>>> setting up transition network..." << endl;
     const char *conns_fname="ts_conns.dat", *wts_fname="ts_weights.dat", \
-               *stat_probs_fname = "stat_probs.dat";
+               *stat_probs_fname = "stat_prob.dat";
     vector<pair<int,int>> ts_conns = Read_files::read_two_col<int>(conns_fname);
     vector<double> ts_wts = Read_files::read_one_col<double>(wts_fname);
     vector<double> stat_probs = Read_files::read_one_col<double>(stat_probs_fname);
     vector<int> communities;
     if (strlen(my_kws.binfile)>0) communities = Read_files::read_one_col<int>(my_kws.binfile);
-    vector<int> nodesA = Read_files::read_one_col<int>(my_kws.minafile);
-    vector<int> nodesB = Read_files::read_one_col<int>(my_kws.minbfile);
+    vector<int> nodesA = Read_files::read_one_col<int>(my_kws.minafile.c_str());
+    vector<int> nodesB = Read_files::read_one_col<int>(my_kws.minbfile.c_str());
     if (!((nodesA.size()==my_kws.nA) || (nodesB.size()==my_kws.nB))) throw exception();
-    cout << "Finished reading input files" << endl;
-    cout << "Setting up the transition network data structure" << endl;
+    cout << ">>>>> setting up the transition network data structure" << endl;
     Network ktn_obj(my_kws.n_nodes,my_kws.n_edges);
     if (strlen(my_kws.binfile)>0) {
         Network::setup_network(ktn_obj,ts_conns,ts_wts,stat_probs,nodesA,nodesB,communities);
@@ -76,6 +77,8 @@ KMC_Suite::KMC_Suite () {
     } else if (my_kws.kmc_method==2) { // rejection algorithm
     } else if (my_kws.kmc_method==3) { // leapfrog algorithm
     }
+
+    if (my_kws.debug) run_debug_tests(ktn_obj);
 }
 
 KMC_Suite::~KMC_Suite() {

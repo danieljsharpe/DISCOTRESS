@@ -67,3 +67,8 @@ KPSKMCSTEPS <int>
 NELIM <int>
   mandatory if ENHANCED KPS, the maximum number of nodes that can be eliminated from the current trapping basin. If
     NELIM exceeds the number of nodes in the largest community, then all states of any trapping basin are always eliminated.
+
+### OTHER OPTIONAL KEYWORDS ###
+
+DEBUG
+  enable extra printing and tests to aid debugging
