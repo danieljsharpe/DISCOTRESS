@@ -31,6 +31,11 @@ void KMC_Standard_Methods::rejection_kmc(Walker &walker) {
 
 }
 
+double KMC_Standard_Methods::rand_unif() {
+
+    return 0.5;
+}
+
 vector<int> KMC_Standard_Methods::setup_move_probs(Network &ktn) {
 
 }

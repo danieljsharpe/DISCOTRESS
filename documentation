@@ -35,6 +35,13 @@ MINAFILE <str> <int>
 MINBFILE <str> <int>
   mandatory, name of the file containing the node ID's (indexed from 1) belonging to the B (initial) set and no. of nodes in B
 
+NABPATHS <int>
+  mandatory, the simulation is terminated when this number of A-B paths have been successfully sampled
+
+MAXIT <int>
+  mandatory, the maximum number of iterations of the relevant algorithm to run before the simulation is terminated (if the
+  target number of A-B paths to simulate is not reached). The interpreation of this option depends on the chosen enhanced
+  sampling method
 
 ### OPTIONAL KEYWORDS RELATING TO ENHANCED SAMPLING ###
 
@@ -62,7 +69,7 @@ TAU <float>
 
 KPSKMCSTEPS <int>
   optional, if ENHANCED KPS, the number of standard BKL kMC steps to be performed after a kPS escape from
-    a trapping basin
+    a trapping basin. Default 0 (pure kPS, no kMC steps)
 
 NELIM <int>
   mandatory if ENHANCED KPS, the maximum number of nodes that can be eliminated from the current trapping basin. If

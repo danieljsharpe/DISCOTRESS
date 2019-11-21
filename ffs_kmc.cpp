@@ -8,3 +8,7 @@ using namespace std;
 
 FFS_KMC::FFS_KMC() {}
 FFS_KMC::~FFS_KMC() {}
+
+void FFS_KMC::run_enhanced_kmc(Network &ktn) {
+
+}

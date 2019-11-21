@@ -8,3 +8,7 @@ using namespace std;
 
 NEUS_KMC::NEUS_KMC() {}
 NEUS_KMC::~NEUS_KMC() {}
+
+void NEUS_KMC::run_enhanced_kmc(Network &ktn) {
+
+}

@@ -25,17 +25,18 @@ struct Keywords {
         if (bininitfile) delete[] bininitfile;
     }
 
-    // main keywords (see documentation)
+    /* main keywords (see documentation). Here, -1 represents a value that must be set if the parameter is mandatory given
+       the combination of chosen keywords. Values of 0 are default values that are valid in any case */
     int n_nodes=0, n_edges=0;
     /* choice of kinetic Monte Carlo method to propagate individual trajectories */
     int kmc_method=-1;
     /* choice of enhanced sampling kinetic Monte Carlo method to accelerate the observation of rare events */
     int enh_method=-1; // note that there is no default, to run kMC with no enhanced sampling this must be set explicitly
     string minafile, minbfile; // names of the files containing the IDs of the A and B nodes, respectively
-    int nA=0, nB=0;          // number of nodes in A and B sets, respectively
+    int nA=-1, nB=-1;          // number of nodes in A and B sets, respectively
 
     // optional arguments pertaining to enhanced sampling methods
-    double tau=0.;           // "TAU" time interval between checking bins (WE-kMC)
+    double tau=-1.;          // "TAU" time interval between checking bins (WE-kMC)
                              //       lag time at which transition matrix is evaluated (kPS)
     int nbins=-1;            // number of bins (WE-kMC) or trapping basins (kPS) on the network
     char *binfile=nullptr;   // "BINFILE" name of file where bins are defined (WE-kMC, kPS)
@@ -44,9 +45,14 @@ struct Keywords {
     bool adaptivebins=false; // "ADAPTIVEBINS" bins (WE-kMC) or trapping basins (kPS) are determined on-the-fly
     int kpskmcsteps=0;       // "KPSKMCSTEPS" number of BKL kMC steps after a trapping basin escape (kPS)
     int nelim=-1;            // "NELIM" maximum number of states to be eliminated from any trapping basin (kPS)
+    int nabpaths=-1;         // "NABPATHS" target number of complete A-B paths to simulate
+    int maxit=-1;            // "MAXIT" maximum number of iterations of the relevant standard or enhanced kMC algorithm
 
     // other keywords
     bool debug=false;
+
+    // implicitly set switches
+    bool initcond=false;     // cf. "BININITFILE", indicates if an initial probability distribution has been specified
 };
 
 Keywords read_keywords(const char *);

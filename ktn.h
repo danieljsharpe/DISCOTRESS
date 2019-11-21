@@ -9,6 +9,8 @@ Custom data structure for representing and reading in a ktn
 #include <exception>
 #include <vector>
 
+#include <iostream>
+
 using namespace std;
 
 class KMC_Suite;
@@ -80,7 +82,7 @@ struct Network {
 
     vector<Node> nodes;
     vector<Edge> edges; // note that this vector contains two entries for forward and reverse transitions for
-                        // each pair of nodes, plus entries for the self-transitions of each node
+                        // each pair of nodes
 
     struct Ktn_exception {
         const char * what () const throw () { return "KTN Exception"; }
@@ -99,6 +101,7 @@ struct Network {
         nodesA=other_network.nodesA; nodesB=other_network.nodesB;
         return *this;
     }
+
 };
 
 #endif

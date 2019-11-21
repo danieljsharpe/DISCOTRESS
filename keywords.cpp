@@ -47,6 +47,10 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.n_nodes=stoi(vecstr[1]);
         } else if (vecstr[0]=="NEDGES") {
             my_kws.n_edges=stoi(vecstr[1]);
+        } else if (vecstr[0]=="NABPATHS") {
+            my_kws.nabpaths=stoi(vecstr[1]);
+        } else if (vecstr[0]=="MAXIT") {
+            my_kws.maxit=stoi(vecstr[1]);
         } else if (vecstr[0]=="MINAFILE") {
             my_kws.minafile=vecstr[1];
             my_kws.nA=stoi(vecstr[2]);
@@ -66,6 +70,7 @@ Keywords read_keywords(const char *kw_file) {
         } else if (vecstr[0]=="BININITFILE") {
             my_kws.bininitfile = new char[vecstr[1].size()+1];
             copy(vecstr[1].begin(),vecstr[1].end(),my_kws.bininitfile);
+            my_kws.initcond=true;
         } else if (vecstr[0]=="ADAPTIVEBINS") {
             my_kws.adaptivebins=true;
         } else if (vecstr[0]=="KPSKMCSTEPS") {
@@ -75,27 +80,31 @@ Keywords read_keywords(const char *kw_file) {
         } else if (vecstr[0]=="DEBUG") {
             my_kws.debug=true;
         } else {
-            cout << "Fatal error: Unrecognised keyword: " << vecstr[0] << endl;
+            cout << "keywords> error: unrecognised keyword: " << vecstr[0] << endl;
             exit(EXIT_FAILURE);
         }
     }
     kw_f.close();
-    cout << ">>>>> finished reading keywords" << endl;
+    cout << "keywords> finished reading keywords" << endl;
 
     // check necessary keywords and compatability
     if (my_kws.n_nodes<=0 || my_kws.n_edges<=0 || my_kws.nA<=0 || my_kws.nB<=0) {
-        cout << "Fatal error: transition network parameters not set correctly" << endl; exit(EXIT_FAILURE); }
+        cout << "keywords> error: transition network parameters not set correctly" << endl; exit(EXIT_FAILURE); }
+    if (my_kws.nabpaths<=0 || my_kws.maxit<=0) {
+        cout << "keywords> error: termination condition not specified correctly" << endl; exit(EXIT_FAILURE); }
+    if (strlen(my_kws.binfile)>0 && my_kws.nbins<=1) {
+        cout << "keywords> error: there must be at least two bins in the specified partitioning" << endl; exit(EXIT_FAILURE); }
     if (my_kws.kmc_method<=0 && my_kws.enh_method!=2) {
-        cout << "Fatal error: must choose a kMC trajectory method except with kPS" << endl; exit(EXIT_FAILURE); }
+        cout << "keywords> error: must choose a kMC trajectory method except with kPS" << endl; exit(EXIT_FAILURE); }
     if (my_kws.enh_method==-1) {
-        cout << "Fatal error: Enhanced kMC method not chosen correctly" << endl; exit(EXIT_FAILURE); }
+        cout << "keywords> error: Enhanced kMC method not chosen correctly" << endl; exit(EXIT_FAILURE); }
     if (my_kws.enh_method==1) { // WE simulation
         if (!(my_kws.tau>0.) || (!(strlen(my_kws.binfile)>0) && !my_kws.adaptivebins) || \
             (!(strlen(my_kws.bintargfile)>0) && !my_kws.adaptivebins) ) {
-            cout << "Fatal error: WE simulation not set up correctly" << endl; exit(EXIT_FAILURE); } }
+            cout << "keywords> error: WE simulation not set up correctly" << endl; exit(EXIT_FAILURE); } }
     if (my_kws.enh_method==2) { // kPS simulation
         if (!(my_kws.tau>0.) || (!(strlen(my_kws.binfile)>0) && !my_kws.adaptivebins) || my_kws.nelim<=0 ) {
-            cout << "Fatal error: kPS simulation not set up correctly" << endl; exit(EXIT_FAILURE); } }
+            cout << "keywords> error: kPS simulation not set up correctly" << endl; exit(EXIT_FAILURE); } }
 
     return my_kws;
 }

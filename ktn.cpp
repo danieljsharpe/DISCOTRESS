@@ -1,6 +1,5 @@
 #include "ktn.h"
 #include <vector>
-#include <math.h>
 #include <cmath>
 #include <iostream>
 #include <limits>
@@ -9,7 +8,7 @@ using namespace std;
 
 Network::Network(int nnodes, int nedges) {
     nodes.resize(nnodes);
-    edges.resize((2*nedges)+nnodes);
+    edges.resize(2*nedges);
     n_nodes=nnodes; n_edges=nedges;
 }
 
@@ -21,9 +20,10 @@ Network::Network(const Network &ktn) {}
    calculated from the linearised transition probabibility matrix */
 void Network::get_tmtx_lin(double tau) {
     for (auto &node: nodes) {
-        node.t = 1.-(node.k_esc*tau); }
+        if (tau>1./exp(node.k_esc)) throw Ktn_exception(); // value of tau does not give stochastic matrix
+        node.t = 1.-(exp(node.k_esc)*tau); }
     for (auto &edge: edges) {
-        edge.t = -exp(edge.k)*tau; }
+        edge.t = exp(edge.k)*tau; }
 }
 
 // delete node i 
@@ -166,19 +166,20 @@ void Network::update_from_edge(int i, int j) {
 void Network::calc_k_esc(Node &node) {
     Edge *edgeptr;
     node.k_esc = -numeric_limits<double>::infinity();
-    edgeptr = node.top_to;
+    edgeptr = node.top_from;
     while (edgeptr!=nullptr) {
         if (!edgeptr->deadts) node.k_esc = log(exp(node.k_esc)+exp(edgeptr->k));
-        edgeptr = edgeptr->next_to;
+        edgeptr = edgeptr->next_from;
     }
 }
 
-/* calculate the net flux along an edge */
+/* calculate the net flux along an edge and its reverse edge */
 void Network::calc_net_flux(Edge &edge) {
     if (edge.rev_edge==nullptr) throw Network::Ktn_exception();
     if (!((edge.to_node->node_id==edge.rev_edge->from_node->node_id) || \
           (edge.from_node->node_id==edge.rev_edge->to_node->node_id))) throw Network::Ktn_exception();
     edge.j = exp(edge.k+edge.from_node->pi)-exp(edge.rev_edge->k+edge.to_node->pi);
+    edge.rev_edge->j = -edge.j;
 }
 
 /* set up the kinetic transition network */
@@ -204,12 +205,10 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         ktn.edges[(2*i)+1].ts_id = i+1;
         ktn.edges[2*i].edge_pos = 2*i;
         ktn.edges[(2*i)+1].edge_pos = (2*i)+1;
-        if (ts_conns[i].first == ts_conns[i].second) {
+        if (ts_conns[i].first == ts_conns[i].second) { // "dead" transition state (dangling node)
             ktn.edges[2*i].deadts = true;
             ktn.edges[(2*i)+1].deadts = true;
             ktn.n_dead++;
-//            ktn.n_edges = ktn.n_edges-2;
-            cout << "  dead TS" << endl;
             continue;
         } else {
             ktn.edges[2*i].deadts = false;
@@ -231,7 +230,6 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         ktn.edges[(2*i)+1].rev_edge = &ktn.edges[2*i];
 
         calc_net_flux(ktn.edges[2*i]);
-        ktn.edges[(2*i)+1].j = -ktn.edges[2*i].j;
     }
     for (int i=0;i<ktn.n_nodes;i++) {
         calc_k_esc(ktn.nodes[i]);
@@ -245,5 +243,5 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         ktn.nodesB.insert(ktn.nodes[nodesinB[i]-1]);
     }
 
-    cout << ">>>>> Finished reading in kinetic transition network" << endl;
+    cout << "ktn> finished reading in kinetic transition network" << endl;
 }
