@@ -14,7 +14,9 @@ Network::Network(int nnodes, int nedges) {
 
 Network::~Network() {}
 
-Network::Network(const Network &ktn) {}
+Network::Network(const Network &ktn) {
+    nodes=ktn.nodes; edges=ktn.edges;
+}
 
 /* update the Nodes and Edges of the Network data structure to contain transition probabibilities
    calculated from the linearised transition probabibility matrix */
@@ -28,7 +30,7 @@ void Network::get_tmtx_lin(double tau) {
 
 // delete node i 
 void Network::del_node(int i) {
-    if (nodes[i].deleted) throw Ktn_exception();
+    if (nodes[i].eliminated) throw Ktn_exception();
     Edge *edgeptr;
     edgeptr = nodes[i].top_to;
     while (edgeptr!=nullptr) {
@@ -40,7 +42,7 @@ void Network::del_node(int i) {
         del_from_edge(i);
         edgeptr = edgeptr->next_from;
     }
-    nodes[i].deleted = true;
+    nodes[i].eliminated = true;
     tot_nodes--;
 }
 
@@ -64,6 +66,7 @@ void Network::add_from_edge(int i, int j) {
         nodes[i].top_from = &edges[j];
         nodes[i].top_from->next_from = nullptr; }
     tot_edges++;
+    nodes[i].udeg++;
 }
 
 // delete the top TO edge for node i
@@ -92,6 +95,7 @@ void Network::del_from_edge(int i) {
     } else {
         throw Ktn_exception();
     }
+    nodes[i].udeg--;
 }
 
 // delete TO edge with ts_id j for node i
@@ -236,11 +240,11 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
     }
     for (int i=0;i<nodesinA.size();i++) {
         ktn.nodes[nodesinA[i]-1].aorb = -1;
-        ktn.nodesA.insert(ktn.nodes[nodesinA[i]-1]);
+        ktn.nodesA.insert(&ktn.nodes[nodesinA[i]-1]);
     }
     for (int i=0;i<nodesinB.size();i++) {
         ktn.nodes[nodesinB[i]-1].aorb = 1;
-        ktn.nodesB.insert(ktn.nodes[nodesinB[i]-1]);
+        ktn.nodesB.insert(&ktn.nodes[nodesinB[i]-1]);
     }
 
     cout << "ktn> finished reading in kinetic transition network" << endl;

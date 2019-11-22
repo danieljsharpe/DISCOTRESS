@@ -6,9 +6,9 @@ File containing functions relating to non-equilibrium umbrella sampling kMC (NEU
 
 using namespace std;
 
-NEUS_KMC::NEUS_KMC() {}
+NEUS_KMC::NEUS_KMC(const Network &ktn) {}
 NEUS_KMC::~NEUS_KMC() {}
 
-void NEUS_KMC::run_enhanced_kmc(Network &ktn) {
+void NEUS_KMC::run_enhanced_kmc(const Network &ktn) {
 
 }

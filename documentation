@@ -40,7 +40,7 @@ NABPATHS <int>
 
 MAXIT <int>
   mandatory, the maximum number of iterations of the relevant algorithm to run before the simulation is terminated (if the
-  target number of A-B paths to simulate is not reached). The interpreation of this option depends on the chosen enhanced
+  target number of A-B paths to simulate is not reached). The interpretation of this option depends on the chosen enhanced
   sampling method
 
 ### OPTIONAL KEYWORDS RELATING TO ENHANCED SAMPLING ###
@@ -48,7 +48,7 @@ MAXIT <int>
 BINFILE <str> <int>
   mandatory if ENHANCED WE or ENHANCED KPS and not ADAPTIVEBINS
     name of the file containing the definitions of communities (single-column, indexed from zero, number of entries equal
-      to the number of nodes in the network) and no. of communities. Is overridden by ADAPTIVEBINS
+    to the number of nodes in the network) and no. of communities. Is overridden by ADAPTIVEBINS
 
 ADAPTIVEBINS
   mandatory if ENHANCED WE or ENHANCED KPS and not BINFILE, default False
@@ -62,7 +62,7 @@ BININITFILE <str>
   optional, if ENHANCED WE and not ADAPTIVEBINS, name of the file containing the initial trajectory probability distribution
     over nodes
 
-TAU <float>
+TAU <double>
   mandatory if ENHANCED WE or ENHANCED KPS
     If WE, tau is the time between resampling trajectories
     If KPS, tau is the lag time at which the transition probability matrices are estimated
@@ -74,6 +74,8 @@ KPSKMCSTEPS <int>
 NELIM <int>
   mandatory if ENHANCED KPS, the maximum number of nodes that can be eliminated from the current trapping basin. If
     NELIM exceeds the number of nodes in the largest community, then all states of any trapping basin are always eliminated.
+    Note that NELIM is equal to the maximum number of transition matrices stored for the active sub-network, and therefore
+    the choice of this keyword (along with the sizes of communities) can strongly affect memory usage.
 
 ### OTHER OPTIONAL KEYWORDS ###
 

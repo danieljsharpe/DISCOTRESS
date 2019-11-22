@@ -24,7 +24,7 @@ struct Walker {
 /* abstract class containing functions to handle enhanced sampling kMC methods */
 class KMC_Enhanced_Methods {
 
-    private:
+    protected:
 
     int n_abpaths;  // algorithm terminates when this number of A-B paths have been successfully sampled
 
@@ -32,7 +32,7 @@ class KMC_Enhanced_Methods {
 
     KMC_Enhanced_Methods();
     ~KMC_Enhanced_Methods();
-    virtual void run_enhanced_kmc(Network&)=0; // pure virtual function
+    virtual void run_enhanced_kmc(const Network&)=0; // pure virtual function
     void find_bin_onthefly();
 };
 
@@ -45,9 +45,9 @@ class WE_KMC : public KMC_Enhanced_Methods {
 
     public:
 
-    WE_KMC(Network&,double,int,bool);
+    WE_KMC(const Network&,double,int,bool);
     ~WE_KMC();
-    void run_enhanced_kmc(Network&);
+    void run_enhanced_kmc(const Network&);
 
     int nbins;
     int nwalkers;
@@ -59,11 +59,13 @@ class KPS : public KMC_Enhanced_Methods {
 
     private:
 
+    Network *ktn_kps; // pointer to the subnetwork of the TN that kPS internally uses and transforms
     // array<array<int>> H; // hopping matrix (sparse format)
     vector<int> h;  // flicker vector
     vector<int> basin_ids; // used to indicate the set to which each node belongs for the current kPS iteration
         // (eliminated=1, transient noneliminated boundary=2, transient noneliminated nonboundary=3,
         //  absorbing boundary=4, absorbing nonboundary=0)
+    vector<Network*> t_mtxs; // transition matrices for the current subnetwork with nodes iteratively removed
     double tau;     // lag time at which transition matrix is evaluated
     int nelim;      // maximum number of nodes of a trapping basin to be eliminated
     int nbins;      // number of bins specified (if not adaptivebins)
@@ -75,21 +77,22 @@ class KPS : public KMC_Enhanced_Methods {
     int kpskmcsteps; // number of kMC steps to run after each kPS trapping basin escape trajectory sampled
     int n_kpsmaxit; // algorithm terminates when maximum number of kPS trapping basin escapes have been simulated
 
-    void setup_basin_sets(Network&);
+    void setup_basin_sets(const Network&);
     double iterative_reverse_randomisation();
-    Node *sample_absorbing_node(Network&);
-    void graph_transformation(Network&);
+    Node *sample_absorbing_node();
+    void graph_transformation(const Network&);
+    void gt_iteration(int);
+    Network *get_subnetwork(const Network&);
 
     public:
 
-    KPS(Network&,int,int,int,double,int,int,bool,bool);
+    KPS(const Network&,int,int,int,double,int,int,bool,bool);
     ~KPS();
-    void run_enhanced_kmc(Network&);
+    void run_enhanced_kmc(const Network&);
     static double gamma_distribn(int,double);
     static int binomial_distribn(int,double);
     static int negbinomial_distribn(int,double);
     static double exp_distribn(double);
-    void quack();
 };
 
 /* Forward flux sampling kMC */
@@ -101,9 +104,9 @@ class FFS_KMC : public KMC_Enhanced_Methods {
 
     public:
 
-    FFS_KMC();
+    FFS_KMC(const Network&);
     ~FFS_KMC();
-    void run_enhanced_kmc(Network&);
+    void run_enhanced_kmc(const Network&);
 };
 
 /* accelerated superbasin kMC */
@@ -111,9 +114,9 @@ class AS_KMC : public KMC_Enhanced_Methods {
 
     public:
 
-    AS_KMC();
+    AS_KMC(const Network&);
     ~AS_KMC();
-    void run_enhanced_kmc(Network&);
+    void run_enhanced_kmc(const Network&);
 };
 
 /* non-equilibrium umbrella sampling kMC */
@@ -121,9 +124,9 @@ class NEUS_KMC : public KMC_Enhanced_Methods {
 
     public:
 
-    NEUS_KMC();
+    NEUS_KMC(const Network&);
     ~NEUS_KMC();
-    void run_enhanced_kmc(Network&);
+    void run_enhanced_kmc(const Network&);
 };
 
 /* class containing functions to propagate KMC trajectories */
@@ -136,7 +139,7 @@ class KMC_Standard_Methods {
     static void bkl(Walker&); // rejection-free algorithm of Bortz, Kalos and Lebowitz (aka n-fold way algorithm)
     static void leapfrog(Walker&); // leapfrog algorithm of Wales
     static void rejection_kmc(Walker&); // kMC algorithm where some moves are rejected
-    vector<int> setup_move_probs(Network&); // calculate the lists of move probabilities for each node
+    vector<int> setup_move_probs(const Network&); // calculate the lists of move probabilities for each node
     static double rand_unif();
 };
 

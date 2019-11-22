@@ -3,7 +3,7 @@ C++ code providing a suite for kinetic Monte Carlo simulations, including variou
 applicable to any generic kinetic transition network
 
 Compile with:
-g++ -std=c++11 kmc_suite.cpp kmc_methods.cpp we_kmc.cpp kps.cpp ffs_kmc.cpp as_kmc.cpp neus_kmc.cpp keywords.cpp ktn.cpp -o kmc_suite
+g++ -std=c++17 kmc_suite.cpp kmc_methods.cpp we_kmc.cpp kps.cpp ffs_kmc.cpp as_kmc.cpp neus_kmc.cpp keywords.cpp ktn.cpp -o kmc_suite
 
 Daniel J. Sharpe
 May 2019
@@ -64,11 +64,13 @@ KMC_Suite::KMC_Suite () {
     cout << "kmc_suite> max. no. of A-B paths: " << my_kws.nabpaths << " \tmax. iterations: " << my_kws.maxit << "\n" << endl;
     // set up enhanced sampling class, if any chosen
     if (my_kws.enh_method==1) {        // WE simulation
-        WE_KMC we_kmc_obj(*ktn,my_kws.tau,my_kws.nbins,my_kws.adaptivebins);
+        WE_KMC *we_kmc_ptr = new WE_KMC(*ktn,my_kws.tau,my_kws.nbins,my_kws.adaptivebins);
+        enh_method = we_kmc_ptr;
     } else if (my_kws.enh_method==2) { // kPS simulation
-        KPS kps_obj(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.nelim,my_kws.tau,my_kws.nbins,my_kws.kpskmcsteps, \
+        ktn->get_tmtx_lin(my_kws.tau);
+        KPS *kps_ptr = new KPS(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.nelim,my_kws.tau,my_kws.nbins,my_kws.kpskmcsteps, \
                     my_kws.adaptivebins,my_kws.initcond);
-        enh_method = &kps_obj;
+        enh_method = kps_ptr;
     } else if (my_kws.enh_method==3) { // FFS simulation
     } else if (my_kws.enh_method==4) { // AS-kMC simulation
     } else if (my_kws.enh_method==5) { // NEUS-kMC simulation
@@ -87,6 +89,7 @@ KMC_Suite::KMC_Suite () {
 
 KMC_Suite::~KMC_Suite() {
     delete ktn;
+    if (enh_method) delete enh_method;
 }
 
 
@@ -94,8 +97,7 @@ int main(int argc, char** argv) {
 
     KMC_Suite kmc_suite_obj;
     if (kmc_suite_obj.debug) run_debug_tests(*kmc_suite_obj.ktn);
-//    kmc_suite_obj.enh_method->run_enhanced_kmc(*kmc_suite_obj.ktn);
-    kmc_suite_obj.enh_method->quack();
+    kmc_suite_obj.enh_method->run_enhanced_kmc(*kmc_suite_obj.ktn);
 
     return 0;
 }

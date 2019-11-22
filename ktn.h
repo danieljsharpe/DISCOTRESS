@@ -42,7 +42,8 @@ struct Node {
     int node_id;
     int comm_id = -1; // community ID (-1 indicates null value)
     int aorb = 0; // indicates set to which node belongs: -1 for A, +1 for B, 0 for I
-    bool deleted = false; // indicates node has been "deleted" from the network (eg in graph transformation)
+    int udeg = 0; // (unweighted) node (out-) degree
+    bool eliminated = false; // node has been eliminated from the network (in graph transformation) (or otherwise deleted)
     double k_esc; // (log) escape rate from node (sum of outgoing transition rates)
     double t; // self-transition probability
     double pi; // (log) occupation probability (usually the stationary/equilibrium probability)
@@ -92,7 +93,7 @@ struct Network {
     int tot_nodes=0, tot_edges=0;
     int n_dead=0; // number of dead/deleted edges
     int ncomms; // total number of communities
-    set<Node> nodesA, nodesB; // A and B endpoint nodes (A<-B)
+    set<Node*> nodesA, nodesB; // A and B endpoint nodes (A<-B)
 
     inline Network& operator=(const Network& other_network) {
         nodes=other_network.nodes; edges=other_network.edges;
