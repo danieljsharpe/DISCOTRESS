@@ -69,7 +69,7 @@ KMC_Suite::KMC_Suite () {
     } else if (my_kws.enh_method==2) { // kPS simulation
         ktn->get_tmtx_lin(my_kws.tau);
         KPS *kps_ptr = new KPS(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.nelim,my_kws.tau,my_kws.nbins,my_kws.kpskmcsteps, \
-                    my_kws.adaptivebins,my_kws.initcond);
+                    my_kws.adaptivebins,my_kws.initcond,my_kws.debug);
         enh_method = kps_ptr;
     } else if (my_kws.enh_method==3) { // FFS simulation
     } else if (my_kws.enh_method==4) { // AS-kMC simulation
@@ -98,6 +98,10 @@ int main(int argc, char** argv) {
     KMC_Suite kmc_suite_obj;
     if (kmc_suite_obj.debug) run_debug_tests(*kmc_suite_obj.ktn);
     kmc_suite_obj.enh_method->run_enhanced_kmc(*kmc_suite_obj.ktn);
+/*
+    Node newnode = kmc_suite_obj.ktn->nodes[0];
+    cout << newnode.node_id << "   " << newnode.udeg << endl;
+*/
 
     return 0;
 }

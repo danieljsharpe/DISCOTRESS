@@ -12,7 +12,7 @@ void run_debug_tests(const Network& ktn) {
 
     // check implementation of transition network data structure
     cout << "\ndebug> ktn info: no. of nodes: " << ktn.n_nodes << " no. of edges: " << ktn.n_edges << endl;
-    int test_node=22, test_edge=30; // indices of node and edge to print info for
+    int test_node=21; // index of node to print info for
     cout << "debug> printing info for node " << test_node << endl;
     cout << "  node id: " << ktn.nodes[test_node-1].node_id << endl;
     cout << "  community id: " << ktn.nodes[test_node-1].comm_id << endl;

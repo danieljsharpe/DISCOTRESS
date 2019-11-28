@@ -6,6 +6,7 @@ Classes and functions for handling enhanced kinetic Monte Carlo simulations and 
 #define __KMC_METHODS_H_INCLUDED__
 
 #include "ktn.h"
+#include <map>
 
 using namespace std;
 
@@ -60,33 +61,40 @@ class KPS : public KMC_Enhanced_Methods {
     private:
 
     Network *ktn_kps; // pointer to the subnetwork of the TN that kPS internally uses and transforms
+    Network *ktn_kps_orig; // pointer to the original subnetwork of the TN
+    Network *ktn_l, *ktn_u; // pointers to arrays used in LU-style decomposition of transition matrix
     // array<array<int>> H; // hopping matrix (sparse format)
     vector<int> h;  // flicker vector
     vector<int> basin_ids; // used to indicate the set to which each node belongs for the current kPS iteration
         // (eliminated=1, transient noneliminated boundary=2, transient noneliminated nonboundary=3,
         //  absorbing boundary=4, absorbing nonboundary=0)
-    vector<Network*> t_mtxs; // transition matrices for the current subnetwork with nodes iteratively removed
+    vector<Node*> eliminated_nodes; // vector of eliminated nodes (in order)
+    map<int,int> nodemap; // map of ID's for full network to subnetwork
     double tau;     // lag time at which transition matrix is evaluated
     int nelim;      // maximum number of nodes of a trapping basin to be eliminated
     int nbins;      // number of bins specified (if not adaptivebins)
     int N_c;        // number of nodes connected to the eliminated states of the current trapping basin
-    int N;          // number of eliminated nodes for the currently active trapping basin
+    int N, N_B;     // number of eliminated nodes / total number of nodes for the currently active trapping basin
+    int N_e;        // number of edges in the subnetwork
     Node *alpha=nullptr, *epsilon=nullptr; // final and initial microstates of current escape trajectory
     bool adaptivebins; // bins are defined adaptively (or else are set prior to the simulation)
     bool initcond;  // an initial condition to sample the starting node has been specified (Y/N)
     int kpskmcsteps; // number of kMC steps to run after each kPS trapping basin escape trajectory sampled
     int n_kpsmaxit; // algorithm terminates when maximum number of kPS trapping basin escapes have been simulated
+    bool debug;
 
     void setup_basin_sets(const Network&);
     double iterative_reverse_randomisation();
     Node *sample_absorbing_node();
     void graph_transformation(const Network&);
     void gt_iteration(int);
+    void undo_gt_iteration(int);
+
     Network *get_subnetwork(const Network&);
 
     public:
 
-    KPS(const Network&,int,int,int,double,int,int,bool,bool);
+    KPS(const Network&,int,int,int,double,int,int,bool,bool,bool);
     ~KPS();
     void run_enhanced_kmc(const Network&);
     static double gamma_distribn(int,double);

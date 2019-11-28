@@ -7,15 +7,25 @@
 using namespace std;
 
 Network::Network(int nnodes, int nedges) {
-    nodes.resize(nnodes);
-    edges.resize(2*nedges);
-    n_nodes=nnodes; n_edges=nedges;
+    nodes.resize(nnodes); n_nodes=nnodes;
+    edges.resize(2*nedges); n_edges=nedges;
 }
 
 Network::~Network() {}
 
 Network::Network(const Network &ktn) {
-    nodes=ktn.nodes; edges=ktn.edges;
+    n_nodes=ktn.n_nodes; n_edges=ktn.n_edges;
+}
+
+Node::Node() {}
+
+Node::~Node() {}
+
+/* copy constructor for Node copies propertie but not pointers to Edge types */
+Node::Node(const Node &node) {
+    node_id=node.node_id; comm_id=node.comm_id; aorb=node.aorb;
+    udeg=node.udeg; eliminated=node.eliminated;
+    k_esc=node.k_esc; t=node.t; pi=node.pi;
 }
 
 /* update the Nodes and Edges of the Network data structure to contain transition probabibilities

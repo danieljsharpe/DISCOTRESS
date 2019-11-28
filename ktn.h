@@ -24,17 +24,22 @@ struct Edge {
     double t; // transition probability
     double j; // net flux
     bool deadts; // indicates TS only linked to one minimum or is otherwise deleted
-    Node *to_node;
-    Node *from_node;
-    Edge *next_to;
-    Edge *next_from;
-    Edge *rev_edge; // reverse edge (all edges are bidirectional)
+    Node *to_node=nullptr;
+    Node *from_node=nullptr;
+    Edge *next_to=nullptr;
+    Edge *next_from=nullptr;
+    Edge *rev_edge=nullptr; // reverse edge (all edges are bidirectional)
 
     inline Edge operator+(const Edge& other_edge) const {
         Edge new_edge{.ts_id=ts_id, .edge_pos=edge_pos, .k=k+other_edge.k, \
             .t=t+other_edge.t, .j=j+other_edge.j, .deadts=deadts, .to_node=to_node, \
             .from_node=from_node, .next_to=next_to, .next_from=next_from, .rev_edge=rev_edge};
         return new_edge;
+    }
+
+    inline Edge& operator=(const Edge& other_edge) {
+        ts_id=other_edge.ts_id;
+        k=other_edge.k; t=other_edge.t; j=other_edge.j; deadts=other_edge.deadts;
     }
 };
 
@@ -47,11 +52,22 @@ struct Node {
     double k_esc; // (log) escape rate from node (sum of outgoing transition rates)
     double t; // self-transition probability
     double pi; // (log) occupation probability (usually the stationary/equilibrium probability)
-    Edge *top_to;
-    Edge *top_from;
+    Edge *top_to=nullptr;
+    Edge *top_from=nullptr;
+
+    Node();
+    ~Node();
+    Node(const Node&);
 
     const inline bool operator<(const Node& other_node) const {
         return (node_id<other_node.node_id);
+    }
+
+    /* in assignment operator for Node, do not copy the pointers to Edge objects */
+    inline Node& operator=(const Node& other_node) {
+        node_id=other_node.node_id; comm_id=other_node.comm_id; aorb=other_node.aorb;
+        udeg=other_node.udeg; eliminated=other_node.eliminated;
+        k_esc=other_node.k_esc; t=other_node.t; pi=other_node.pi;
     }
 };
 
@@ -64,7 +80,7 @@ struct Network {
 
     Network(int,int);
     ~Network();
-    Network(const Network &ktn);
+    Network(const Network&);
 
     void del_node(int);
     void add_to_edge(int,int);
