@@ -87,8 +87,8 @@ class KPS : public KMC_Enhanced_Methods {
     double iterative_reverse_randomisation();
     Node *sample_absorbing_node();
     void graph_transformation(const Network&);
-    void gt_iteration(int);
-    void undo_gt_iteration(int);
+    void gt_iteration(Node*);
+    void undo_gt_iteration(Node*);
 
     Network *get_subnetwork(const Network&);
 

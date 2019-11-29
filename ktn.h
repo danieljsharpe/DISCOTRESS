@@ -20,6 +20,7 @@ struct Node;
 struct Edge {
     int ts_id;
     int edge_pos; // position of the TS in the edges array
+    int h; // no. of kMC moves along the edge (used in kPS)
     double k; // (log) transition rate
     double t; // transition probability
     double j; // net flux
@@ -31,7 +32,7 @@ struct Edge {
     Edge *rev_edge=nullptr; // reverse edge (all edges are bidirectional)
 
     inline Edge operator+(const Edge& other_edge) const {
-        Edge new_edge{.ts_id=ts_id, .edge_pos=edge_pos, .k=k+other_edge.k, \
+        Edge new_edge{.ts_id=ts_id, .edge_pos=edge_pos, .h=h+other_edge.h, .k=k+other_edge.k, \
             .t=t+other_edge.t, .j=j+other_edge.j, .deadts=deadts, .to_node=to_node, \
             .from_node=from_node, .next_to=next_to, .next_from=next_from, .rev_edge=rev_edge};
         return new_edge;
@@ -52,6 +53,8 @@ struct Node {
     double k_esc; // (log) escape rate from node (sum of outgoing transition rates)
     double t; // self-transition probability
     double pi; // (log) occupation probability (usually the stationary/equilibrium probability)
+    int h; // no. of kMC moves along the self-edge (used in kPS)
+    bool flag=false; // additional flag variable
     Edge *top_to=nullptr;
     Edge *top_from=nullptr;
 
@@ -65,9 +68,10 @@ struct Node {
 
     /* in assignment operator for Node, do not copy the pointers to Edge objects */
     inline Node& operator=(const Node& other_node) {
-        node_id=other_node.node_id; comm_id=other_node.comm_id; aorb=other_node.aorb;
-        udeg=other_node.udeg; eliminated=other_node.eliminated;
+        node_id=other_node.node_id; comm_id=other_node.comm_id;
+        aorb=other_node.aorb; eliminated=other_node.eliminated;
         k_esc=other_node.k_esc; t=other_node.t; pi=other_node.pi;
+        udeg=0;
     }
 };
 
@@ -110,6 +114,7 @@ struct Network {
     int n_dead=0; // number of dead/deleted edges
     int ncomms; // total number of communities
     set<Node*> nodesA, nodesB; // A and B endpoint nodes (A<-B)
+    bool branchprobs=false; // transition probabilities of Edges are branching probabilities (Y/N)
 
     inline Network& operator=(const Network& other_network) {
         nodes=other_network.nodes; edges=other_network.edges;
