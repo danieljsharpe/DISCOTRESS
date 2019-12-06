@@ -147,8 +147,8 @@ void KPS::graph_transformation(const Network &ktn) {
     cout << "kps> graph transformation" << endl;
     ktn_kps=get_subnetwork(ktn);
     ktn_kps_orig=get_subnetwork(ktn);
-    Network *ktn_l = new Network(N_B+N_c,0);
-    Network *ktn_u = new Network(N_B+N_c,0);
+    ktn_l = new Network(N_B+N_c,0);
+    ktn_u = new Network(N_B+N_c,0);
     for (int i=0;i<ktn_kps->n_nodes;i++) {
         ktn_l->nodes[i] = ktn_kps->nodes[i];
         ktn_u->nodes[i] = ktn_kps->nodes[i];
@@ -210,7 +210,7 @@ Network *KPS::get_subnetwork(const Network& ktn) {
             ktnptr->edges[k].from_node = &ktnptr->nodes[nodemap[edgeptr_rev->from_node->node_id-1]];
             ktnptr->edges[k].to_node = &ktnptr->nodes[nodemap[edgeptr_rev->to_node->node_id-1]];
             ktnptr->add_from_edge(nodemap[edgeptr_rev->from_node->node_id-1],k);
-            ktnptr->add_to_edge(nodemap[edgeptr->to_node->node_id-1],k);
+            ktnptr->add_to_edge(nodemap[edgeptr_rev->to_node->node_id-1],k);
             ktnptr->edges[k-1].rev_edge = &ktnptr->edges[k];
             ktnptr->edges[k].rev_edge = &ktnptr->edges[k-1];
             k++; edgemask[edgeptr_rev->edge_pos]=true;
@@ -218,7 +218,7 @@ Network *KPS::get_subnetwork(const Network& ktn) {
     }
     cout << "added " << n << " nodes and " << k << " edges to subnetwork" << endl;
     if (n!=N_B+N_c || k!=N_e) { cout << "kps> something went wrong in get_subnetwork()" << endl; exit(EXIT_FAILURE); }
-//    Network *ktnptr = &const_cast<Network&>(ktn); // quack dummy statement
+//    Network *ktnptr = &const_cast<Network&>(ktn); // quack
     return ktnptr;
 }
 
@@ -231,50 +231,90 @@ void KPS::gt_iteration(Node *node_elim) {
     if (node_elim->top_from->to_node->comm_id==epsilon->comm_id) { cout << "  k_rev: " << node_elim->top_from->rev_edge->k << endl;
     } else { cout << "  rev_edge is nullptr? " << (node_elim->top_from->rev_edge==nullptr) << endl; }
     double factor=0.; // equal to (1-T_{nn})
-    if (node_elim->t>0.9999 || node_elim->t<0.0001) { // loop over neighbouring edges to maintain numerical precision
+    if (node_elim->t>0.999) { // loop over neighbouring edges to maintain numerical precision
         Edge *edgeptr = node_elim->top_from;
         while (edgeptr!=nullptr) {
             if (!(edgeptr->deadts || edgeptr->to_node->eliminated)) factor += edgeptr->t;
             edgeptr=edgeptr->next_from;
         }
     } else { factor=1.-node_elim->t; }
-    // queue all non-absorbing and non-eliminated neighbours of the eliminated node, and update edges from the eliminated node
+    // objects to queue all non-eliminated neighbours of the eliminated node, and update relevant edges
     vector<Node*> nodes_nbrs;
-    map<int,bool> nodes_nbrs_conn; // bool values used to indicate if node is directly connected to current node of nodes_nbrs
+    typedef struct {
+        bool dirconn; // flag indicates if node is directly connected to current node being considered
+        double t_fromn; // transition probability from eliminated node to this node
+        double t_ton; // transition probability to eliminated node from this node
+    } nbrnode;
+    map<int,nbrnode> nbrnode_map; // map contains all non-eliminated nodes directly connected to the current eliminated node;
+    // update the weights for all edges from the eliminated node to non-eliminated neighbouring nodes
+    cout << "  updating edges directly involving eliminated node..." << endl;
     Edge *edgeptr = node_elim->top_from;
     while (edgeptr!=nullptr) {
         if (edgeptr->deadts || edgeptr->to_node->eliminated) {
             edgeptr=edgeptr->next_from; continue; }
         edgeptr->to_node->flag=true;
-        if (edgeptr->to_node->comm_id==epsilon->comm_id) {
-            nodes_nbrs.push_back(edgeptr->to_node);
-            nodes_nbrs_conn[edgeptr->to_node->node_id]=false;
-        }
+        if (edgeptr->to_node->comm_id==epsilon->comm_id) { // add non-eliminated neighbour node to the map
+            nodes_nbrs.push_back(edgeptr->to_node); // queue non-eliminated, non-absorbing neighbour node
+            nbrnode_map[edgeptr->to_node->node_id]=(nbrnode){false,edgeptr->t,edgeptr->rev_edge->t};
+        } else { // absorbing neighbour nodes have no edge to the eliminated node
+            nbrnode_map[edgeptr->to_node->node_id]=(nbrnode){false,edgeptr->t,0.}; }
         // update L and U networks here...
         edgeptr->t += (edgeptr->t)*(node_elim->t)*factor;
         edgeptr=edgeptr->next_from;
     }
+/*
+    cout << "  updating edges between pairs of nodes both directly connected to the eliminated node..." << endl;
     // update the weights for all pairs of nodes directly connected to the eliminated node
+    int old_n_edges = ktn_kps->n_edges; // number of edges in the network before we start adding edges in the GT algorithm
     for (vector<Node*>::iterator it_nodevec=nodes_nbrs.begin();it_nodevec!=nodes_nbrs.end();++it_nodevec) {
-        
-        edgeptr = (*it_nodevec)->top_from;
+        edgeptr = (*it_nodevec)->top_from; // loop over neighbouring nodes of this non-eliminated, non-absorbing node
         while (edgeptr!=nullptr) {
-            if (edgeptr->deadts || edgeptr->to_node->eliminated || !edgeptr->to_node->flag) {
+            // skip nodes not directly connected to eliminated node, eliminated nodes, or nodes for which a new edge has already been added
+            if (edgeptr->deadts || edgeptr->to_node->eliminated || !edgeptr->to_node->flag || edgeptr->edge_pos>old_n_edges) {
                 edgeptr=edgeptr->next_from; continue; }
-            nodes_nbrs_conn[edgeptr->to_node->node_id]=true; // this pair of eliminated nodes are directly connected
+            nbrnode_map[edgeptr->to_node->node_id].dirconn=true; // this pair of eliminated nodes are directly connected
             // update L and U networks here...
+            edgeptr->t += (nbrnode_map[edgeptr->from_node->node_id].t_ton)*(nbrnode_map[edgeptr->to_node->node_id].t_fromn)*factor;
             edgeptr=edgeptr->next_from;
         }
-        for (map<int,bool>::iterator it_map=nodes_nbrs_conn.begin();it_map!=nodes_nbrs_conn.end();++it_map) {
-            if (it_map->second) { it_map->second=false; continue; }
+        for (map<int,nbrnode>::iterator it_map=nbrnode_map.begin();it_map!=nbrnode_map.end();++it_map) {
+            // either nodes are directly connected and accounted for, or we will 
+            if ((it_map->second).dirconn) { (it_map->second).dirconn=false; continue; } // reset flag
             // update L and U networks here...
-            // need to add an edge between these two nodes...
+            // these two nodes are directly connected to the eliminated node but not to one another, add an edge in the transformed network
+            (ktn_kps->edges).push_back(Edge());
+            (ktn_kps->edges).back().t = (nbrnode_map[edgeptr->from_node->node_id].t_ton)* \
+                (nbrnode_map[edgeptr->to_node->node_id].t_fromn)*factor;
+            size_t pos = (ktn_kps->edges).size()-1;
+            (ktn_kps->edges).back().edge_pos = pos;
+
+            Network::add_edge_network(ktn_kps,&ktn_kps->nodes[nodemap[edgeptr->from_node->node_id-1]], \
+                &ktn_kps->nodes[nodemap[edgeptr->to_node->node_id-1]],pos);
+
+//            (ktn_kps->edges).back().from_node = &ktn_kps->nodes[nodemap[edgeptr->from_node->node_id-1]];
+//            (ktn_kps->edges).back().to_node = &ktn_kps->nodes[nodemap[edgeptr->to_node->node_id-1]];
+//            ktn_kps->add_from_edge(nodemap[edgeptr->from_node->node_id-1],pos);
+//            ktn_kps->add_to_edge(nodemap[edgeptr->to_node->node_id-1],pos);
+
+            ktn_kps->n_edges++; // increment number of edges in the network
+            if (edgeptr->to_node->comm_id!=epsilon->comm_id) continue; // absorbing nodes have no outgoing edges
+            const Edge *edgeptr_rev = edgeptr->rev_edge;
+            (ktn_kps->edges).push_back(Edge());
+            (ktn_kps->edges).back().t = (nbrnode_map[edgeptr_rev->from_node->node_id].t_ton)* \
+                (nbrnode_map[edgeptr_rev->to_node->node_id].t_fromn)*factor;
+            (ktn_kps->edges).back().edge_pos = pos+1;
+            Network::add_edge_network(ktn_kps,&ktn_kps->nodes[nodemap[edgeptr_rev->from_node->node_id-1]], \
+                &ktn_kps->nodes[nodemap[edgeptr_rev->to_node->node_id-1]],pos+1);
+            ktn_kps->n_edges++;
+            ktn_kps->edges[pos+1].rev_edge = &ktn_kps->edges[pos];
+            ktn_kps->edges[pos].rev_edge = &ktn_kps->edges[pos+1];
         }
     }
     // reset the flags
     for (vector<Node*>::iterator it_nodevec=nodes_nbrs.begin();it_nodevec!=nodes_nbrs.end();++it_nodevec) {
         (*it_nodevec)->flag=false; }
-    node_elim->eliminated=true;
+*/
+    node_elim->eliminated=true; // this flag negates the need to zero the weights to the eliminated node
 }
 
 /* undo a single iteration of the graph transformation. Argument is a pointer to the node to be un-eliminated from the network */

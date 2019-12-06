@@ -196,6 +196,15 @@ void Network::calc_net_flux(Edge &edge) {
     edge.rev_edge->j = -edge.j;
 }
 
+/* update the Network object pointed to by the ktn argument to include an additional edge (with index k in the edges array)
+   connecting from_node and to_node */
+void Network::add_edge_network(Network *ktn, Node *from_node, Node *to_node, int k) {
+    (ktn->edges[k]).from_node = from_node;
+    (ktn->edges[k]).to_node = to_node;
+    ktn->add_from_edge(from_node->node_id-1,k);
+    ktn->add_to_edge(to_node->node_id-1,k);
+}
+
 /* set up the kinetic transition network */
 void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns, \
         const vector<double> &ts_wts, const vector<double> &stat_probs, const vector<int> &nodesinA, \

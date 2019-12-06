@@ -32,7 +32,7 @@ class KMC_Enhanced_Methods {
     public:
 
     KMC_Enhanced_Methods();
-    ~KMC_Enhanced_Methods();
+    virtual ~KMC_Enhanced_Methods();
     virtual void run_enhanced_kmc(const Network&)=0; // pure virtual function
     void find_bin_onthefly();
 };
@@ -60,9 +60,9 @@ class KPS : public KMC_Enhanced_Methods {
 
     private:
 
-    Network *ktn_kps; // pointer to the subnetwork of the TN that kPS internally uses and transforms
-    Network *ktn_kps_orig; // pointer to the original subnetwork of the TN
-    Network *ktn_l, *ktn_u; // pointers to arrays used in LU-style decomposition of transition matrix
+    Network *ktn_kps=nullptr; // pointer to the subnetwork of the TN that kPS internally uses and transforms
+    Network *ktn_kps_orig=nullptr; // pointer to the original subnetwork of the TN
+    Network *ktn_l=nullptr, *ktn_u=nullptr; // pointers to arrays used in LU-style decomposition of transition matrix
     // array<array<int>> H; // hopping matrix (sparse format)
     vector<int> h;  // flicker vector
     vector<int> basin_ids; // used to indicate the set to which each node belongs for the current kPS iteration

@@ -30,7 +30,7 @@ class KMC_Suite {
     ~KMC_Suite();
 
     Network *ktn; // the network to be simulated
-    KMC_Enhanced_Methods *enh_method; // object to handle enhanced sampling
+    KMC_Enhanced_Methods *enh_method=nullptr; // object to handle enhanced sampling
     void *kmc_func; // function pointer to KMC algorithm for propagating the trajectory
     bool debug=false;
 };
@@ -103,5 +103,6 @@ int main(int argc, char** argv) {
     cout << newnode.node_id << "   " << newnode.udeg << endl;
 */
 
+    cout << "kmc_suite> finished program, exiting" << endl;
     return 0;
 }

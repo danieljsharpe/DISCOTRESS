@@ -92,18 +92,18 @@ Keywords read_keywords(const char *kw_file) {
         cout << "keywords> error: transition network parameters not set correctly" << endl; exit(EXIT_FAILURE); }
     if (my_kws.nabpaths<=0 || my_kws.maxit<=0) {
         cout << "keywords> error: termination condition not specified correctly" << endl; exit(EXIT_FAILURE); }
-    if (strlen(my_kws.binfile)>0 && my_kws.nbins<=1) {
+    if (my_kws.binfile!=nullptr && my_kws.nbins<=1) {
         cout << "keywords> error: there must be at least two bins in the specified partitioning" << endl; exit(EXIT_FAILURE); }
     if (my_kws.kmc_method<=0 && my_kws.enh_method!=2) {
         cout << "keywords> error: must choose a kMC trajectory method except with kPS" << endl; exit(EXIT_FAILURE); }
     if (my_kws.enh_method==-1) {
         cout << "keywords> error: Enhanced kMC method not chosen correctly" << endl; exit(EXIT_FAILURE); }
     if (my_kws.enh_method==1) { // WE simulation
-        if (!(my_kws.tau>0.) || (!(strlen(my_kws.binfile)>0) && !my_kws.adaptivebins) || \
-            (!(strlen(my_kws.bintargfile)>0) && !my_kws.adaptivebins) ) {
+        if (!(my_kws.tau>0.) || (my_kws.binfile!=nullptr && !my_kws.adaptivebins) || \
+            (my_kws.bintargfile!=nullptr && !my_kws.adaptivebins) ) {
             cout << "keywords> error: WE simulation not set up correctly" << endl; exit(EXIT_FAILURE); } }
     if (my_kws.enh_method==2) { // kPS simulation
-        if (!(my_kws.tau>0.) || (!(strlen(my_kws.binfile)>0) && !my_kws.adaptivebins) || my_kws.nelim<=0 ) {
+        if (!(my_kws.tau>0.) || (my_kws.binfile==nullptr && !my_kws.adaptivebins) || my_kws.nelim<=0 ) {
             cout << "keywords> error: kPS simulation not set up correctly" << endl; exit(EXIT_FAILURE); } }
 
     return my_kws;
