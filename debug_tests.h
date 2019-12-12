@@ -12,7 +12,21 @@ void run_debug_tests(const Network& ktn) {
 
     // check implementation of transition network data structure
     cout << "\ndebug> ktn info: no. of nodes: " << ktn.n_nodes << " no. of edges: " << ktn.n_edges << endl;
+    if (ktn.n_nodes<20) {
+    cout << "debug> network is small, printing all transition probabilities" << endl;
+    for (int i=0;i<ktn.n_nodes;i++) {
+        cout << "node: " << i+1 << endl;
+        cout << "  to: " << i+1 << "  t: " << ktn.nodes[i].t << endl;
+        Edge *edgeptr = ktn.nodes[i].top_from;
+        while (edgeptr!=nullptr) {
+            if (!edgeptr->deadts) cout << "  to: " << edgeptr->to_node->node_id << "  t: " << edgeptr->t << endl;
+            edgeptr = edgeptr->next_from;
+        }
+    }
+    }
     int test_node=21; // index of node to print info for
+    if (test_node>ktn.n_nodes) {
+        cout << "debug> skipping tests, node with index " << test_node << " does not exist" << endl; return; }
     cout << "debug> printing info for node " << test_node << endl;
     cout << "  node id: " << ktn.nodes[test_node-1].node_id << endl;
     cout << "  community id: " << ktn.nodes[test_node-1].comm_id << endl;

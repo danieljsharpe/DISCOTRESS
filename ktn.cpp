@@ -21,7 +21,7 @@ Node::Node() {}
 
 Node::~Node() {}
 
-/* copy constructor for Node copies propertie but not pointers to Edge types */
+/* copy constructor for Node copies properties but not pointers to Edge types */
 Node::Node(const Node &node) {
     node_id=node.node_id; comm_id=node.comm_id; aorb=node.aorb;
     udeg=node.udeg; eliminated=node.eliminated;
@@ -198,11 +198,11 @@ void Network::calc_net_flux(Edge &edge) {
 
 /* update the Network object pointed to by the ktn argument to include an additional edge (with index k in the edges array)
    connecting from_node and to_node */
-void Network::add_edge_network(Network *ktn, Node *from_node, Node *to_node, int k) {
-    (ktn->edges[k]).from_node = from_node;
-    (ktn->edges[k]).to_node = to_node;
-    ktn->add_from_edge(from_node->node_id-1,k);
-    ktn->add_to_edge(to_node->node_id-1,k);
+void Network::add_edge_network(Network *ktn, Node &from_node, Node &to_node, int k) {
+    (ktn->edges[k]).from_node = &from_node;
+    (ktn->edges[k]).to_node = &to_node;
+    ktn->add_from_edge(from_node.node_id-1,k);
+    ktn->add_to_edge(to_node.node_id-1,k);
 }
 
 /* set up the kinetic transition network */
@@ -221,7 +221,7 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
     }
     tot_pi = exp(tot_pi);
     if (abs(tot_pi-1.)>1.E-10) {
-        cout << "Error: total equilibrium probabilities of minima is: " << tot_pi << " =/= 1." << endl;
+        cout << "ktn> Error: total equilibrium probabilities of minima is: " << tot_pi << " =/= 1." << endl;
         throw Network::Ktn_exception(); }
     for (int i=0;i<ktn.n_edges;i++) {
         ktn.edges[2*i].ts_id = i+1;
@@ -258,10 +258,12 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         calc_k_esc(ktn.nodes[i]);
     }
     for (int i=0;i<nodesinA.size();i++) {
+        if (nodesinA[i]>ktn.n_nodes) throw Ktn_exception();
         ktn.nodes[nodesinA[i]-1].aorb = -1;
         ktn.nodesA.insert(&ktn.nodes[nodesinA[i]-1]);
     }
     for (int i=0;i<nodesinB.size();i++) {
+        if (nodesinB[i]>ktn.n_nodes) throw Ktn_exception();
         ktn.nodes[nodesinB[i]-1].aorb = 1;
         ktn.nodesB.insert(&ktn.nodes[nodesinB[i]-1]);
     }
