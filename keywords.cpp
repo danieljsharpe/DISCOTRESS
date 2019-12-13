@@ -79,6 +79,8 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.nelim=stoi(vecstr[1]);
         } else if (vecstr[0]=="DEBUG") {
             my_kws.debug=true;
+        } else if (vecstr[0]=="SEED") {
+            my_kws.seed=stoi(vecstr[1]);
         } else {
             cout << "keywords> error: unrecognised keyword: " << vecstr[0] << endl;
             exit(EXIT_FAILURE);

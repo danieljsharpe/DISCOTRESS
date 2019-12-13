@@ -6,19 +6,20 @@ File containing functions relating to kinetic path sampling
 #include <queue>
 #include <limits>
 #include <cmath>
+#include <random>
 #include <iostream>
 
 using namespace std;
 
 KPS::KPS(const Network& ktn, int n_abpaths, int n_kpsmaxit, int nelim, double tau, int nbins, int kpskmcsteps, \
-         bool adaptivebins, bool initcond, bool debug) {
+         bool adaptivebins, bool initcond, int seed, bool debug) {
 
     cout << "kps> running kPS with parameters:\n  lag time: " << tau << " \tmax. no. of eliminated nodes: " \
          << nelim << "\n  no. of bins: " << nbins << " \tno. of kMC steps after kPS iteration: " << kpskmcsteps \
          << "\n  adaptive binning (y/n): " << adaptivebins << endl;
     this->nelim=nelim; this->nbins=nbins; this->tau=tau; this->kpskmcsteps=kpskmcsteps;
     this->adaptivebins=adaptivebins; this->initcond=initcond;
-    this->n_abpaths=n_abpaths; this->n_kpsmaxit=n_kpsmaxit; this->debug=debug;
+    this->n_abpaths=n_abpaths; this->n_kpsmaxit=n_kpsmaxit; this->seed=seed; this->debug=debug;
     basin_ids.resize(ktn.n_nodes);
 }
 
@@ -65,7 +66,7 @@ void KPS::setup_basin_sets(const Network &ktn) {
                 cum_prob += exp((*it_set)->pi-pi_B);
                 eps_probs.push_back(make_pair((*it_set),cum_prob));
                 it_set++; }
-            double rand_no = KMC_Standard_Methods::rand_unif();
+            double rand_no = KMC_Standard_Methods::rand_unif_met(seed);
             vector<pair<Node*,double>>::iterator it_vec = eps_probs.begin();
             while (it_vec!=eps_probs.end()) {
                 if ((*it_vec).second>=rand_no) epsilon=(*it_vec).first;
@@ -124,10 +125,18 @@ double KPS::iterative_reverse_randomisation() {
 
     cout << "kps> iterative reverse randomisation" << endl;
     cout << "N is: " << N << endl;
+    cout << "gamma rand no: " << KPS::gamma_distribn(3,3,seed) << endl;
+    cout << "gamma rand no 2: " << KPS::gamma_distribn(3,3,seed) << endl;
+    cout << "binom rand no: " << KPS::binomial_distribn(12,0.5,seed) << endl;
+    cout << "binom rand no 2: " << KPS::binomial_distribn(12,0.5,seed) << endl;
+    cout << "neg binom rand no: " << KPS::negbinomial_distribn(8,0.5,seed) << endl;
+    cout << "neg binom rand no 2: " << KPS::negbinomial_distribn(8,0.5,seed) << endl;
+    cout << "exp rand no: " << KPS::exp_distribn(3.,seed) << endl;
+    cout << "exp rand no 2: " << KPS::exp_distribn(3.,seed) << endl;
     for (int i=N;i>0;i--) {
 //        cout << "Node: " << eliminated_nodes[i-1]->node_id << " k: " << eliminated_nodes[i-1]->top_from->k << endl;
     }
-    double t_esc = KPS::gamma_distribn(0,0.); // time for escape trajectory
+    double t_esc = KPS::gamma_distribn(0,0.,seed); // time for escape trajectory
     return t_esc;
 }
 
@@ -140,6 +149,8 @@ Node *KPS::sample_absorbing_node() {
     int curr_comm_id = epsilon->comm_id;
     Node *next_node, *curr_node;
     curr_node = epsilon;
+    cout << "unif rand no: " << KMC_Standard_Methods::rand_unif_met(seed) << endl;
+    cout << "unif rand no 2: " << KMC_Standard_Methods::rand_unif_met(seed) << endl;
     do {
     if (basin_ids[epsilon->node_id=1]==1) { // eliminated node
     Edge *edgeptr = epsilon->top_from;
@@ -269,23 +280,25 @@ void KPS::gt_iteration(Node *node_elim) {
         }
     } else { factor=1.-node_elim->t; }
     cout << "eliminating node: " << node_elim->node_id << endl;
-    // objects to queue all non-eliminated neighbours of the eliminated node, and update relevant edges
+    // objects to queue all nbrs of the current elimd node, incl all elimd nbrs, and update relevant edges
     vector<Node*> nodes_nbrs;
     typedef struct {
         bool dirconn; // flag indicates if node is directly connected to current node being considered
         double t_fromn; // transition probability from eliminated node to this node
         double t_ton; // transition probability to eliminated node from this node
     } nbrnode;
-    map<int,nbrnode> nbrnode_map; // map contains all non-elimd nodes directly connected to the current elimd node;
-    // update the weights for all edges from the elimd node to non-elimd nbr nodes, and self-loops of nbr nodes
+    map<int,nbrnode> nbrnode_map; // map contains all nodes directly connected to the current elimd node, incl elimd nodes
+    // update the weights for all edges from the elimd node to non-elimd nbr nodes, and self-loops of non-elimd nbr nodes
     Edge *edgeptr = node_elim->top_from;
     while (edgeptr!=nullptr) {
-        if (edgeptr->deadts || edgeptr->to_node->eliminated) {
+        if (edgeptr->deadts) {
             edgeptr=edgeptr->next_from; continue; }
         edgeptr->to_node->flag=true;
-        nodes_nbrs.push_back(edgeptr->to_node); // queue non-eliminated neighbour node
+        nodes_nbrs.push_back(edgeptr->to_node); // queue nbr node
         nbrnode_map[edgeptr->to_node->node_id]=(nbrnode){false,edgeptr->t,edgeptr->rev_edge->t};
         cout << "  to node: " << edgeptr->to_node->node_id << endl;
+        if (edgeptr->to_node->eliminated) { // do not update edges to elimd nodes and self-loops for elimd nodes
+            edgeptr=edgeptr->next_from; continue; }
         // update L and U networks here...
         cout << "    old node t: " << edgeptr->to_node->t << "  incr in node t: " \
              << (edgeptr->t)*(edgeptr->rev_edge->t)/factor << endl;
@@ -297,15 +310,15 @@ void KPS::gt_iteration(Node *node_elim) {
     }
     cout << "  updating edges between pairs of nodes both directly connected to the eliminated node..." << endl;
     // update the weights for all pairs of nodes directly connected to the eliminated node
-    int old_n_edges = ktn_kps->n_edges; // number of edges in the network before we start adding edges in the GT algorithm
+    int old_n_edges = ktn_kps->n_edges; // number of edges in the network before we start adding edges in the GT algo
     for (vector<Node*>::iterator it_nodevec=nodes_nbrs.begin();it_nodevec!=nodes_nbrs.end();++it_nodevec) {
-        edgeptr = (*it_nodevec)->top_from; // loop over neighbouring nodes of this non-eliminated, non-absorbing node
-        while (edgeptr!=nullptr) {
-            // skip nodes not directly connected to elimd node, and also skip elimd nodes
+        edgeptr = (*it_nodevec)->top_from; // loop over edges to neighbouring nodes
+        while (edgeptr!=nullptr) { // find pairs of nodes that are already directly connected to one another
+            // skip nodes not directly connected to elimd node and edges to elimd nodes
             if (edgeptr->deadts || edgeptr->to_node->eliminated || !edgeptr->to_node->flag) {
                 edgeptr=edgeptr->next_from; continue; }
             cout << "  node " << (*it_nodevec)->node_id << " is directly connected to node " << edgeptr->to_node->node_id << endl;
-            nbrnode_map[edgeptr->to_node->node_id].dirconn=true; // this pair of elimd nodes are directly connected
+            nbrnode_map[edgeptr->to_node->node_id].dirconn=true; // this pair of nodes are directly connected
             if (edgeptr->edge_pos>old_n_edges) { // skip nodes for which a new edge has already been added
                 cout << "    edge already added" << endl;
                 edgeptr=edgeptr->next_from; continue; }
@@ -317,8 +330,10 @@ void KPS::gt_iteration(Node *node_elim) {
                 (nbrnode_map[edgeptr->to_node->node_id].t_fromn)/factor;
             edgeptr=edgeptr->next_from;
         }
+        if ((*it_nodevec)->eliminated) continue;
         for (map<int,nbrnode>::iterator it_map=nbrnode_map.begin();it_map!=nbrnode_map.end();++it_map) {
             if (it_map->first==(*it_nodevec)->node_id) continue;
+            if (ktn_kps->nodes[nodemap[it_map->first-1]].eliminated) continue;
             if ((it_map->second).dirconn) { (it_map->second).dirconn=false; continue; } // reset flag
             cout << "  node " << (*it_nodevec)->node_id << " is not directly connected to node " << it_map->first << endl;
             cout << "  t of new edge: " << (it_map->second).t_fromn*nbrnode_map[(*it_nodevec)->node_id].t_ton/factor << endl;
@@ -366,34 +381,40 @@ void KPS::undo_gt_iteration(Node *node_elim) {
 }
 
 /* Gamma distribution with shape parameter a and rate parameter 1./b */
-double KPS::gamma_distribn(int a, double b) {
+double KPS::gamma_distribn(int a, double b, int seed) {
 
-    return 1.;
+    static default_random_engine generator(seed);
+    gamma_distribution<double> gamma_distrib(a,b);
+    return gamma_distrib(generator);
 }
 
 /* Binomial distribution with trial number h and success probability p.
    Returns the number of successes after h Bernoulli trials. */
-int KPS::binomial_distribn(int h, double p) {
+int KPS::binomial_distribn(int h, double p, int seed) {
 
+    static default_random_engine generator(seed);
     if (!((h>=0) || ((p>=0.) && (p<=1.)))) throw exception();
     if (h==0)  { return 0;
     } else if (p==1.) { return h; }
-    // ...
-    return 1;
+    binomial_distribution<int> binom_distrib(h,p);
+    return binom_distrib(generator);
 }
 
 /* Negative binomial distribution with success number r and success probability p.
    Returns the number of failures before the r-th success. */
-int KPS::negbinomial_distribn(int r, double p) {
+int KPS::negbinomial_distribn(int r, double p, int seed) {
 
+    static default_random_engine generator(seed);
     if (!((r>=0) || ((p>0.) && (p<=1.)))) throw exception();
     if ((r==0) || (p==1.)) return 0;
-    // ...
-    return 1;
+    negative_binomial_distribution<int> neg_binom_distrib(r,p);
+    return neg_binom_distrib(generator);
 }
 
 /* Exponential distribution with rate parameter 1./tau */
-double KPS::exp_distribn(double tau) {
+double KPS::exp_distribn(double tau, int seed) {
 
-    return 1.;
+    static default_random_engine generator(seed);
+    exponential_distribution<double> exp_distrib(1./tau);
+    return exp_distrib(generator);
 }

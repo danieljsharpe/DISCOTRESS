@@ -50,6 +50,7 @@ struct Keywords {
 
     // other keywords
     bool debug=false;
+    int seed=17;
 
     // implicitly set switches
     bool initcond=false;     // cf. "BININITFILE", indicates if an initial probability distribution has been specified

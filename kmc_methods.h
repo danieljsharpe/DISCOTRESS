@@ -28,6 +28,7 @@ class KMC_Enhanced_Methods {
     protected:
 
     int n_abpaths;  // algorithm terminates when this number of A-B paths have been successfully sampled
+    int seed; // seed for random number generator
 
     public:
 
@@ -94,13 +95,13 @@ class KPS : public KMC_Enhanced_Methods {
 
     public:
 
-    KPS(const Network&,int,int,int,double,int,int,bool,bool,bool);
+    KPS(const Network&,int,int,int,double,int,int,bool,bool,int,bool);
     ~KPS();
     void run_enhanced_kmc(const Network&);
-    static double gamma_distribn(int,double);
-    static int binomial_distribn(int,double);
-    static int negbinomial_distribn(int,double);
-    static double exp_distribn(double);
+    static double gamma_distribn(int,double,int);
+    static int binomial_distribn(int,double,int);
+    static int negbinomial_distribn(int,double,int);
+    static double exp_distribn(double,int);
 };
 
 /* Forward flux sampling kMC */
@@ -148,7 +149,7 @@ class KMC_Standard_Methods {
     static void leapfrog(Walker&); // leapfrog algorithm of Wales
     static void rejection_kmc(Walker&); // kMC algorithm where some moves are rejected
     vector<int> setup_move_probs(const Network&); // calculate the lists of move probabilities for each node
-    static double rand_unif();
+    static double rand_unif_met(int);
 };
 
 #endif

@@ -79,5 +79,8 @@ NELIM <int>
 
 ### OTHER OPTIONAL KEYWORDS ###
 
+SEED <int>
+  seed for the random number generators
+
 DEBUG
   enable extra printing and tests to aid debugging
