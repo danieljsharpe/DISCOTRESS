@@ -42,6 +42,10 @@ Keywords read_keywords(const char *kw_file) {
                 my_kws.enh_method=4;
             } else if (vecstr[4]=="NEUS") {
                 my_kws.enh_method=5;
+            } else if (vecstr[5]=="MILES") {
+                my_kws.enh_method=6;
+            } else if (vecstr[6]=="TPS") {
+                my_kws.enh_method=7;
             } else { exit(EXIT_FAILURE); }
         } else if (vecstr[0]=="NNODES") {
             my_kws.n_nodes=stoi(vecstr[1]);

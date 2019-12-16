@@ -67,8 +67,7 @@ class KPS : public KMC_Enhanced_Methods {
     // array<array<int>> H; // hopping matrix (sparse format)
     vector<int> h;  // flicker vector
     vector<int> basin_ids; // used to indicate the set to which each node belongs for the current kPS iteration
-        // (eliminated=1, transient noneliminated boundary=2, transient noneliminated nonboundary=3,
-        //  absorbing boundary=4, absorbing nonboundary=0)
+        // (eliminated=1, transient noneliminated=2, absorbing boundary=3, absorbing nonboundary=0)
     vector<Node*> eliminated_nodes; // vector of eliminated nodes (in order)
     map<int,int> nodemap; // map of ID's for full network to subnetwork
     double tau;     // lag time at which transition matrix is evaluated
@@ -77,7 +76,8 @@ class KPS : public KMC_Enhanced_Methods {
     int N_c;        // number of nodes connected to the eliminated states of the current trapping basin
     int N, N_B;     // number of eliminated nodes / total number of nodes for the currently active trapping basin
     int N_e;        // number of edges in the subnetwork
-    Node *alpha=nullptr, *epsilon=nullptr; // final and initial microstates of current escape trajectory
+    const Node *alpha=nullptr, *epsilon=nullptr; // final and initial microstates of current escape trajectory
+        // NB these pointers point to nodes in the original network, passed as the arg to run_enhanced_kmc()
     bool adaptivebins; // bins are defined adaptively (or else are set prior to the simulation)
     bool initcond;  // an initial condition to sample the starting node has been specified (Y/N)
     int kpskmcsteps; // number of kMC steps to run after each kPS trapping basin escape trajectory sampled
@@ -98,6 +98,7 @@ class KPS : public KMC_Enhanced_Methods {
     KPS(const Network&,int,int,int,double,int,int,bool,bool,int,bool);
     ~KPS();
     void run_enhanced_kmc(const Network&);
+    static double calc_gt_factor(Node*);
     static double gamma_distribn(int,double,int);
     static int binomial_distribn(int,double,int);
     static int negbinomial_distribn(int,double,int);
@@ -135,6 +136,26 @@ class NEUS_KMC : public KMC_Enhanced_Methods {
 
     NEUS_KMC(const Network&);
     ~NEUS_KMC();
+    void run_enhanced_kmc(const Network&);
+};
+
+/* milestoning kMC */
+class MILES_KMC : public KMC_Enhanced_Methods {
+
+    public:
+
+    MILES_KMC(const Network&);
+    ~MILES_KMC();
+    void run_enhanced_kmc(const Network&);
+};
+
+/* transition path sampling kMC */
+class TPS_KMC : public KMC_Enhanced_Methods {
+
+    public:
+
+    TPS_KMC(const Network&);
+    ~TPS_KMC();
     void run_enhanced_kmc(const Network&);
 };
 

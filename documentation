@@ -27,6 +27,8 @@ ENHANCED <str>
     FFS - forward flux sampling
     ASKMC - accelerated superbasin kMC
     NEUS - non-equilibrium umbrella sampling
+    MILES - milestoning
+    TPS - transition path sampling
     NONE - no enhanced sampling strategy employed
 
 MINAFILE <str> <int>

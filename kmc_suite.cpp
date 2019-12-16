@@ -3,7 +3,7 @@ C++ code providing a suite for kinetic Monte Carlo simulations, including variou
 applicable to any generic kinetic transition network
 
 Compile with:
-g++ -std=c++17 kmc_suite.cpp kmc_methods.cpp we_kmc.cpp kps.cpp ffs_kmc.cpp as_kmc.cpp neus_kmc.cpp keywords.cpp ktn.cpp -o kmc_suite
+g++ -std=c++17 kmc_suite.cpp kmc_methods.cpp we_kmc.cpp kps.cpp ffs_kmc.cpp as_kmc.cpp neus_kmc.cpp milestoning.cpp tps.cpp keywords.cpp ktn.cpp -o kmc_suite
 
 Daniel J. Sharpe
 May 2019
@@ -74,6 +74,8 @@ KMC_Suite::KMC_Suite () {
     } else if (my_kws.enh_method==3) { // FFS simulation
     } else if (my_kws.enh_method==4) { // AS-kMC simulation
     } else if (my_kws.enh_method==5) { // NEUS-kMC simulation
+    } else if (my_kws.enh_method==6) { // milestoning simulation
+    } else if (my_kws.enh_method==7) { // TPS simulation
     } else {
         enh_method=nullptr;
     }
