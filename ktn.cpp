@@ -1,5 +1,6 @@
 #include "ktn.h"
 #include <vector>
+#include <queue>
 #include <cmath>
 #include <iostream>
 #include <limits>
@@ -35,7 +36,60 @@ void Network::get_tmtx_lin(double tau) {
         if (tau>1./exp(node.k_esc)) throw Ktn_exception(); // value of tau does not give stochastic matrix
         node.t = 1.-(exp(node.k_esc)*tau); }
     for (auto &edge: edges) {
+        if (edge.deadts) continue;
         edge.t = exp(edge.k)*tau; }
+}
+
+/* the transition probabilities are calculated as the branching probabilities */
+void Network::get_tmtx_branch() {
+    for (auto & edge: edges) {
+        if (edge.deadts) continue;
+        edge.t = exp(edge.k-edge.from_node->k_esc); }
+    for (auto &node: nodes) {
+        node.t = 0.; // branching probability matrix contains no self-loops
+        double cum_t=0.; // accumulated branching probability
+        Edge *edgeptr = node.top_from;
+        while (edgeptr!=nullptr) {
+            if (!edgeptr->deadts) { cum_t += edgeptr->t; }
+            edgeptr=edgeptr->next_from;
+        }
+        if (abs(cum_t-1.)>1.E-08) throw Ktn_exception(); // transition probabilities do not give stochastic matrix
+    }
+}
+
+/* calculate the branching probabilities, resort edges into decreasing order of branching probabilities, and set the transition
+   probabilities as the accumulated values. This is for optimisation of the rejection-free kMC algorithm (BKL) */
+void Network::get_cum_branchprobs() {
+    this->get_tmtx_branch();
+    for (auto &node: nodes) {
+        Edge *edgeptr = node.top_from;
+        auto cmp = [](Edge *l, Edge *r) { return l->t > r->t; };
+        priority_queue<Edge*,vector<Edge*>,decltype(cmp)> edge_pq(cmp); // priority queue of edges (based on branching probability)
+        cout << "node: " << node.node_id << endl;
+        while (edgeptr!=nullptr) {
+            cout << "  deleting edge to node " << edgeptr->to_node->node_id << endl;
+            Edge *next_edge = edgeptr->next_from;
+            edge_pq.push(&(*edgeptr));
+            del_from_edge(node.node_id-1);
+            edgeptr->next_from = nullptr;
+            if (node.top_from!=nullptr) cout << "    top_from is now to node: " << node.top_from->to_node->node_id << endl;
+            edgeptr = next_edge;
+        }
+        cout << "  finished removing edges" << endl;
+        while (!edge_pq.empty()) { // edges will be added so that the final linked list is in order of decreasing t
+            this->add_from_edge(node.node_id-1,edge_pq.top()->edge_pos);
+            edge_pq.pop();
+        }
+        edgeptr = node.top_from;
+        double cum_t=0.;
+        while (edgeptr!=nullptr) { // calculate accumulated branching probabilities
+            if (edgeptr->deadts) { edgeptr=edgeptr->next_from; continue; }
+            double prev_cum_t = cum_t;
+            cum_t += edgeptr->t;
+            edgeptr->t += prev_cum_t;
+            edgeptr=edgeptr->next_from;
+        }
+    }
 }
 
 // delete node i 
@@ -215,7 +269,7 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
     double tot_pi = -numeric_limits<double>::infinity();
     for (int i=0;i<ktn.n_nodes;i++) {
         ktn.nodes[i].node_id = i+1;
-        ktn.nodes[i].comm_id = comms[i];
+        if (!comms.empty()) ktn.nodes[i].comm_id = comms[i];
         ktn.nodes[i].pi = stat_probs[i];
         tot_pi = log(exp(tot_pi) + exp(stat_probs[i]));
     }
@@ -268,5 +322,5 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         ktn.nodesB.insert(&ktn.nodes[nodesinB[i]-1]);
     }
 
-    cout << "ktn> finished reading in kinetic transition network" << endl;
+    cout << "ktn> finished setting up transition network data structure" << endl;
 }

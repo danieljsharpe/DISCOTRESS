@@ -49,6 +49,7 @@ struct Keywords {
     int maxit=-1;            // "MAXIT" maximum number of iterations of the relevant standard or enhanced kMC algorithm
 
     // other keywords
+    bool branchprobs=false;  // "BRANCHINGPROBS" transition probabilities are calculated as branching probabilities
     bool debug=false;
     int seed=17;
 

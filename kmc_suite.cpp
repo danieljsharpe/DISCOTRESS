@@ -15,7 +15,6 @@ May 2019
 #include <omp.h>
 #include <vector>
 #include <iostream>
-#include <cstring>
 
 using namespace std;
 
@@ -47,19 +46,17 @@ KMC_Suite::KMC_Suite () {
     vector<double> ts_wts = Read_files::read_one_col<double>(wts_fname);
     vector<double> stat_probs = Read_files::read_one_col<double>(stat_probs_fname);
     vector<int> communities;
-    if (strlen(my_kws.binfile)>0) communities = Read_files::read_one_col<int>(my_kws.binfile);
+    if (my_kws.binfile!=nullptr) communities = Read_files::read_one_col<int>(my_kws.binfile);
     vector<int> nodesA = Read_files::read_one_col<int>(my_kws.minafile.c_str());
     vector<int> nodesB = Read_files::read_one_col<int>(my_kws.minbfile.c_str());
     if (!((nodesA.size()==my_kws.nA) || (nodesB.size()==my_kws.nB))) throw exception();
-
     cout << "kmc_suite> setting up the transition network data structure..." << endl;
     ktn = new Network(my_kws.n_nodes,my_kws.n_edges);
-    if (strlen(my_kws.binfile)>0) {
+    if (my_kws.binfile!=nullptr) {
         Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesA,nodesB,communities);
     } else {
         Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesA,nodesB);
     }
-
     cout << "kmc_suite> setting up simulation..." << endl;
     cout << "kmc_suite> max. no. of A-B paths: " << my_kws.nabpaths << " \tmax. iterations: " << my_kws.maxit << "\n" << endl;
     // set up enhanced sampling class, if any chosen
@@ -67,7 +64,8 @@ KMC_Suite::KMC_Suite () {
         WE_KMC *we_kmc_ptr = new WE_KMC(*ktn,my_kws.tau,my_kws.nbins,my_kws.adaptivebins);
         enh_method = we_kmc_ptr;
     } else if (my_kws.enh_method==2) { // kPS simulation
-        ktn->get_tmtx_lin(my_kws.tau);
+        if (my_kws.branchprobs) { ktn->get_tmtx_branch();
+        } else { ktn->get_tmtx_lin(my_kws.tau); }
         KPS *kps_ptr = new KPS(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.nelim,my_kws.tau,my_kws.nbins,my_kws.kpskmcsteps, \
                     my_kws.adaptivebins,my_kws.initcond,my_kws.seed,my_kws.debug);
         enh_method = kps_ptr;
@@ -83,10 +81,12 @@ KMC_Suite::KMC_Suite () {
     if (my_kws.enh_method==2) {        // kPS algorithm (does not use explicit kMC simulation)
         kmc_func=nullptr;
     } else if (my_kws.kmc_method==1) { // BKL algorithm
+        ktn->get_cum_branchprobs();
     } else if (my_kws.kmc_method==2) { // rejection algorithm
     } else if (my_kws.kmc_method==3) { // leapfrog algorithm
     }
     if (my_kws.debug) debug=true;
+    cout << "kmc_suite> finished setting up simulation" << endl;
 }
 
 KMC_Suite::~KMC_Suite() {

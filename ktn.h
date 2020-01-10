@@ -98,9 +98,11 @@ struct Network {
     static void calc_k_esc(Node&);
     static void calc_net_flux(Edge&);
     void get_tmtx_lin(double); // calculate the linearised transition probability matrix
+    void get_tmtx_branch(); // calculate the branching transition probability matrix
+    void get_cum_branchprobs(); // set transition probabilities to accumulated branching probability values (for convenience in kMC)
     static void add_edge_network(Network*,Node&,Node&,int);
     static void setup_network(Network&,const vector<pair<int,int>>&,const vector<double>&, \
-        const vector<double>&,const vector<int>&, const vector<int>&,const vector<int>& = {});
+        const vector<double>&,const vector<int>&, const vector<int>&, const vector<int>& = {});
 
     vector<Node> nodes;
     vector<Edge> edges; // note that this vector contains two entries for forward and reverse transitions for

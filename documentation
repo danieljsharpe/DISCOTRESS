@@ -48,7 +48,7 @@ MAXIT <int>
 ### OPTIONAL KEYWORDS RELATING TO ENHANCED SAMPLING ###
 
 BINFILE <str> <int>
-  mandatory if ENHANCED WE or ENHANCED KPS and not ADAPTIVEBINS
+  mandatory if ENHANCED WE or if ENHANCED KPS and not ADAPTIVEBINS
     name of the file containing the definitions of communities (single-column, indexed from zero, number of entries equal
     to the number of nodes in the network) and no. of communities. Is overridden by ADAPTIVEBINS
 
@@ -65,7 +65,7 @@ BININITFILE <str>
     over nodes
 
 TAU <double>
-  mandatory if ENHANCED WE or ENHANCED KPS
+  mandatory if ENHANCED WE or if ENHANCED KPS and not BRANCHINGPROBS
     If WE, tau is the time between resampling trajectories
     If KPS, tau is the lag time at which the transition probability matrices are estimated
 
@@ -80,6 +80,9 @@ NELIM <int>
     the choice of this keyword (along with the sizes of communities) can strongly affect memory usage.
 
 ### OTHER OPTIONAL KEYWORDS ###
+
+BRANCHINGPROBS
+  the transition probabilities are calculated as the branching probabilities
 
 SEED <int>
   seed for the random number generators

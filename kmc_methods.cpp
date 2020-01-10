@@ -7,7 +7,6 @@ File containing kinetic Monte Carlo simulation algorithms to propagate individua
 
 using namespace std;
 
-Walker::Walker() {}
 Walker::~Walker() {}
 
 KMC_Enhanced_Methods::KMC_Enhanced_Methods() {}

@@ -15,11 +15,15 @@ struct Walker {
 
     public:
 
-    Walker();
+    explicit Walker()=default;
     ~Walker();
-    int walker_id;
+    int walker_id; // ID of walker in set of trajectories
     int bin_curr, bin_prev; // for WE-kMC
+    int k; // path activity
     bool active; // walker is currently a member of the set of active trajectories being propagated
+    double p; // path probability
+    double t; // path time (stochastically sampled)
+    double s; // entropy flow along path
 };
 
 /* abstract class containing functions to handle enhanced sampling kMC methods */
@@ -64,6 +68,7 @@ class KPS : public KMC_Enhanced_Methods {
     Network *ktn_kps=nullptr; // pointer to the subnetwork of the TN that kPS internally uses and transforms
     Network *ktn_kps_orig=nullptr; // pointer to the original subnetwork of the TN
     Network *ktn_l=nullptr, *ktn_u=nullptr; // pointers to arrays used in LU-style decomposition of transition matrix
+    Walker walker={walker_id:0,bin_curr:0,bin_prev:0,k:0,active:true,p:0.,t:0.,s:0.}; // kPS only uses a single walker due to its memory requirements
     // array<array<int>> H; // hopping matrix (sparse format)
     vector<int> h;  // flicker vector
     vector<int> basin_ids; // used to indicate the set to which each node belongs for the current kPS iteration
@@ -90,6 +95,7 @@ class KPS : public KMC_Enhanced_Methods {
     void graph_transformation(const Network&);
     void gt_iteration(Node*);
     void undo_gt_iteration(Node*);
+    void update_path_quantities(double);
 
     Network *get_subnetwork(const Network&);
 

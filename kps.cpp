@@ -34,13 +34,15 @@ void KPS::run_enhanced_kmc(const Network &ktn) {
         graph_transformation(ktn);
         Node *dummy_alpha = sample_absorbing_node();
         alpha = &ktn.nodes[dummy_alpha->node_id-1];
-        iterative_reverse_randomisation();
+        double t_esc = iterative_reverse_randomisation();
         if (alpha->aorb==-1) n_ab++; // trajectory has reached endpoint absorbing macrostate A
         n_kpsit++;
         delete ktn_kps; delete ktn_kps_orig;
         delete ktn_l; delete ktn_u;
         epsilon=alpha; alpha=nullptr;
+        update_path_quantities(t_esc);
     }
+    cout << "kps> walker time: " << walker.t << " activity: " << walker.k << " entropy flow: " << walker.s << endl;
     cout << "kps> finished kPS simulation" << endl;
 }
 
@@ -124,8 +126,8 @@ double KPS::iterative_reverse_randomisation() {
     cout << "kps> iterative reverse randomisation" << endl;
     cout << "N is: " << N << endl;
     cout << "node alpha: " << alpha->node_id << endl;
-    cout << "gamma rand no: " << KPS::gamma_distribn(3,3,seed) << endl;
-    cout << "gamma rand no 2: " << KPS::gamma_distribn(3,3,seed) << endl;
+    cout << "gamma rand no: " << KPS::gamma_distribn(3,3.,seed) << endl;
+    cout << "gamma rand no 2: " << KPS::gamma_distribn(3,3.,seed) << endl;
     cout << "binom rand no: " << KPS::binomial_distribn(12,0.5,seed) << endl;
     cout << "binom rand no 2: " << KPS::binomial_distribn(12,0.5,seed) << endl;
     cout << "neg binom rand no: " << KPS::negbinomial_distribn(8,0.5,seed) << endl;
@@ -134,8 +136,9 @@ double KPS::iterative_reverse_randomisation() {
     cout << "exp rand no 2: " << KPS::exp_distribn(3.,seed) << endl;
     for (int i=N;i>0;i--) {
 //        cout << "Node: " << eliminated_nodes[i-1]->node_id << " k: " << eliminated_nodes[i-1]->top_from->k << endl;
+        undo_gt_iteration(eliminated_nodes[i-1]);
     }
-    double t_esc = KPS::gamma_distribn(0,0.,seed); // time for escape trajectory
+    double t_esc = KPS::gamma_distribn(3,3.,seed); // time for escape trajectory
     return t_esc;
 }
 
@@ -382,6 +385,7 @@ void KPS::gt_iteration(Node *node_elim) {
 /* undo a single iteration of the graph transformation. Argument is a pointer to the node to be un-eliminated from the network */
 void KPS::undo_gt_iteration(Node *node_elim) {
 
+    cout << "kps> undoing elimination of node " << node_elim->node_id << endl;
 }
 
 /* calculate the factor (1-T_{nn}) needed in the elimination of the n-th node in graph transformation */
@@ -396,6 +400,16 @@ double KPS::calc_gt_factor(Node *node_elim) {
         }
     } else { factor=1.-node_elim->t; }
     return factor;
+}
+
+/* Update path quantities along a trajectory */
+void KPS::update_path_quantities(double t_esc) {
+
+    walker.t += t_esc;
+    walker.k += 1;
+    if (true) { // can also calculate the entropy flow
+
+    }
 }
 
 /* Gamma distribution with shape parameter a and rate parameter 1./b */
