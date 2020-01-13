@@ -30,7 +30,6 @@ class KMC_Suite {
 
     Network *ktn; // the network to be simulated
     KMC_Enhanced_Methods *enh_method=nullptr; // object to handle enhanced sampling
-    void *kmc_func; // function pointer to KMC algorithm for propagating the trajectory
     bool debug=false;
 };
 
@@ -59,9 +58,13 @@ KMC_Suite::KMC_Suite () {
     }
     cout << "kmc_suite> setting up simulation..." << endl;
     cout << "kmc_suite> max. no. of A-B paths: " << my_kws.nabpaths << " \tmax. iterations: " << my_kws.maxit << "\n" << endl;
-    // set up enhanced sampling class, if any chosen
-    if (my_kws.enh_method==1) {        // WE simulation
-        WE_KMC *we_kmc_ptr = new WE_KMC(*ktn,my_kws.tau,my_kws.nbins,my_kws.adaptivebins);
+    // set up enhanced sampling class
+    if (my_kws.enh_method==0) {        // standard kMC simulation, no enhanced sampling
+        STD_KMC *std_kmc_ptr = new STD_KMC(*ktn,my_kws.nabpaths,my_kws.maxit);
+        enh_method = std_kmc_ptr;
+    } else if (my_kws.enh_method==1) { // WE simulation
+        WE_KMC *we_kmc_ptr = new WE_KMC(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.tau,my_kws.nbins,my_kws.adaptivebins, \
+                    my_kws.seed,my_kws.debug);
         enh_method = we_kmc_ptr;
     } else if (my_kws.enh_method==2) { // kPS simulation
         if (my_kws.branchprobs) { ktn->get_tmtx_branch();
@@ -75,15 +78,16 @@ KMC_Suite::KMC_Suite () {
     } else if (my_kws.enh_method==6) { // milestoning simulation
     } else if (my_kws.enh_method==7) { // TPS simulation
     } else {
-        enh_method=nullptr;
+        throw exception(); // an enhanced method object must be set
     }
     // set up method to propagate kMC trajectories
-    if (my_kws.enh_method==2) {        // kPS algorithm (does not use explicit kMC simulation)
-        kmc_func=nullptr;
-    } else if (my_kws.kmc_method==1) { // BKL algorithm
+    if (my_kws.kmc_method==1) {        // BKL algorithm
+        enh_method->set_standard_kmc(&KMC_Standard_Methods::bkl);
         ktn->get_cum_branchprobs();
     } else if (my_kws.kmc_method==2) { // rejection algorithm
+        enh_method->set_standard_kmc(&KMC_Standard_Methods::rejection_kmc);
     } else if (my_kws.kmc_method==3) { // leapfrog algorithm
+        enh_method->set_standard_kmc(&KMC_Standard_Methods::leapfrog);
     }
     if (my_kws.debug) debug=true;
     cout << "kmc_suite> finished setting up simulation" << endl;
@@ -105,6 +109,6 @@ int main(int argc, char** argv) {
     cout << newnode.node_id << "   " << newnode.udeg << endl;
 */
 
-    cout << "kmc_suite> finished program, exiting" << endl;
+    cout << "kmc_suite> finished, exiting program normally" << endl;
     return 0;
 }

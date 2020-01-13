@@ -21,9 +21,10 @@ struct Walker {
     int bin_curr, bin_prev; // for WE-kMC
     int k; // path activity
     bool active; // walker is currently a member of the set of active trajectories being propagated
-    double p; // path probability
+    double p; // (log) path probability
     double t; // path time (stochastically sampled)
     double s; // entropy flow along path
+    const Node *curr_node; // pointer to node currently occupied by the walker
 };
 
 /* abstract class containing functions to handle enhanced sampling kMC methods */
@@ -32,14 +33,28 @@ class KMC_Enhanced_Methods {
     protected:
 
     int n_abpaths;  // algorithm terminates when this number of A-B paths have been successfully sampled
+    int maxit; // another termination condition; the maximum number of iterations of the enhanced kMC method
     int seed; // seed for random number generator
+    bool debug; // debug printing on/off
+    void (*kmc_func)(Walker&); // function pointer to kMC algorithm for propagating the trajectory   
 
     public:
 
     KMC_Enhanced_Methods();
     virtual ~KMC_Enhanced_Methods();
     virtual void run_enhanced_kmc(const Network&)=0; // pure virtual function
+    void set_standard_kmc(void(*)(Walker&)); // function to set the kmc_std_method
     void find_bin_onthefly();
+};
+
+/* Standard kMC, simply propagates the dynamics of a single trajectory using the chosen standard method */
+class STD_KMC : public KMC_Enhanced_Methods {
+
+    public:
+
+    STD_KMC(const Network&,int,int);
+    ~STD_KMC();
+    void run_enhanced_kmc(const Network&);
 };
 
 /* Weighted ensemble kMC */
@@ -48,16 +63,18 @@ class WE_KMC : public KMC_Enhanced_Methods {
     private:
 
     vector<Walker> walkers; // list of active trajectories (walkers) on the network
+    int nbins;
+    int nwalkers;
+    double tau; // time interval between checking bins and resampling trajectories
+    bool adaptivebins;
+
+    void we_resampling();
 
     public:
 
-    WE_KMC(const Network&,double,int,bool);
+    WE_KMC(const Network&,int,int,double,int,bool,int,bool);
     ~WE_KMC();
     void run_enhanced_kmc(const Network&);
-
-    int nbins;
-    int nwalkers;
-    double tau; // time interval between checking bins
 };
 
 /* Kinetic path sampling (kPS) */
@@ -86,8 +103,6 @@ class KPS : public KMC_Enhanced_Methods {
     bool adaptivebins; // bins are defined adaptively (or else are set prior to the simulation)
     bool initcond;  // an initial condition to sample the starting node has been specified (Y/N)
     int kpskmcsteps; // number of kMC steps to run after each kPS trapping basin escape trajectory sampled
-    int n_kpsmaxit; // algorithm terminates when maximum number of kPS trapping basin escapes have been simulated
-    bool debug;
 
     void setup_basin_sets(const Network&);
     double iterative_reverse_randomisation();
@@ -96,7 +111,6 @@ class KPS : public KMC_Enhanced_Methods {
     void gt_iteration(Node*);
     void undo_gt_iteration(Node*);
     void update_path_quantities(double);
-
     Network *get_subnetwork(const Network&);
 
     public:
@@ -173,9 +187,8 @@ class KMC_Standard_Methods {
     KMC_Standard_Methods();
     ~KMC_Standard_Methods();
     static void bkl(Walker&); // rejection-free algorithm of Bortz, Kalos and Lebowitz (aka n-fold way algorithm)
-    static void leapfrog(Walker&); // leapfrog algorithm of Wales
     static void rejection_kmc(Walker&); // kMC algorithm where some moves are rejected
-    vector<int> setup_move_probs(const Network&); // calculate the lists of move probabilities for each node
+    static void leapfrog(Walker&); // leapfrog algorithm of Trygubenko & Wales
     static double rand_unif_met(int);
 };
 

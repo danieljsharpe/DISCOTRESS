@@ -65,17 +65,13 @@ void Network::get_cum_branchprobs() {
         Edge *edgeptr = node.top_from;
         auto cmp = [](Edge *l, Edge *r) { return l->t > r->t; };
         priority_queue<Edge*,vector<Edge*>,decltype(cmp)> edge_pq(cmp); // priority queue of edges (based on branching probability)
-        cout << "node: " << node.node_id << endl;
         while (edgeptr!=nullptr) {
-            cout << "  deleting edge to node " << edgeptr->to_node->node_id << endl;
             Edge *next_edge = edgeptr->next_from;
             edge_pq.push(&(*edgeptr));
             del_from_edge(node.node_id-1);
             edgeptr->next_from = nullptr;
-            if (node.top_from!=nullptr) cout << "    top_from is now to node: " << node.top_from->to_node->node_id << endl;
             edgeptr = next_edge;
         }
-        cout << "  finished removing edges" << endl;
         while (!edge_pq.empty()) { // edges will be added so that the final linked list is in order of decreasing t
             this->add_from_edge(node.node_id-1,edge_pq.top()->edge_pos);
             edge_pq.pop();

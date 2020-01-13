@@ -11,15 +11,16 @@ File containing functions relating to kinetic path sampling
 
 using namespace std;
 
-KPS::KPS(const Network& ktn, int n_abpaths, int n_kpsmaxit, int nelim, double tau, int nbins, int kpskmcsteps, \
+KPS::KPS(const Network& ktn, int n_abpaths, int maxit, int nelim, double tau, int nbins, int kpskmcsteps, \
          bool adaptivebins, bool initcond, int seed, bool debug) {
 
     cout << "kps> running kPS with parameters:\n  lag time: " << tau << " \tmax. no. of eliminated nodes: " \
          << nelim << "\n  no. of bins: " << nbins << " \tno. of kMC steps after kPS iteration: " << kpskmcsteps \
-         << "\n  adaptive binning (y/n): " << adaptivebins << endl;
+         << "\n  adaptive binning (y/n): " << adaptivebins \
+         << "\n  random seed: " << seed << " \tdebug printing: " << debug << endl;
     this->nelim=nelim; this->nbins=nbins; this->tau=tau; this->kpskmcsteps=kpskmcsteps;
     this->adaptivebins=adaptivebins; this->initcond=initcond;
-    this->n_abpaths=n_abpaths; this->n_kpsmaxit=n_kpsmaxit; this->seed=seed; this->debug=debug;
+    this->n_abpaths=n_abpaths; this->maxit=maxit; this->seed=seed; this->debug=debug;
     basin_ids.resize(ktn.n_nodes);
 }
 
@@ -29,7 +30,7 @@ KPS::~KPS() {}
 void KPS::run_enhanced_kmc(const Network &ktn) {
     cout << "kps> beginning kPS simulation" << endl;
     int n_ab=0, n_kpsit=0;
-    while ((n_ab<n_abpaths) and (n_kpsit<n_kpsmaxit)) {
+    while ((n_ab<n_abpaths) and (n_kpsit<maxit)) { // algorithm terminates when max no of kPS trapping basin escapes have been simulated
         setup_basin_sets(ktn);
         graph_transformation(ktn);
         Node *dummy_alpha = sample_absorbing_node();
@@ -72,7 +73,7 @@ void KPS::setup_basin_sets(const Network &ktn) {
             double rand_no = KMC_Standard_Methods::rand_unif_met(seed);
             vector<pair<Node*,double>>::iterator it_vec = eps_probs.begin();
             while (it_vec!=eps_probs.end()) {
-                if ((*it_vec).second>=rand_no) epsilon=(*it_vec).first;
+                if ((*it_vec).second>=rand_no) { epsilon=(*it_vec).first; break; }
                 it_vec++; }
             }
         } else { // choose node in set B in proportion to specified initial condition probs
