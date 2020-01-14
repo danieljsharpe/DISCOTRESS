@@ -77,7 +77,10 @@ class WE_KMC : public KMC_Enhanced_Methods {
     void run_enhanced_kmc(const Network&);
 };
 
-/* Kinetic path sampling (kPS) */
+/* Kinetic path sampling (kPS)
+   Note that kPS only uses a single walker due to its memory requirements.
+   Also note that the number of kMC self-hops/transition hops are stored in the Node and Edge data structures,
+   respectively, of the subnetwork stored via the ktn_kps pointer. */
 class KPS : public KMC_Enhanced_Methods {
 
     private:
@@ -85,9 +88,7 @@ class KPS : public KMC_Enhanced_Methods {
     Network *ktn_kps=nullptr; // pointer to the subnetwork of the TN that kPS internally uses and transforms
     Network *ktn_kps_orig=nullptr; // pointer to the original subnetwork of the TN
     Network *ktn_l=nullptr, *ktn_u=nullptr; // pointers to arrays used in LU-style decomposition of transition matrix
-    Walker walker={walker_id:0,bin_curr:0,bin_prev:0,k:0,active:true,p:0.,t:0.,s:0.}; // kPS only uses a single walker due to its memory requirements
-    // array<array<int>> H; // hopping matrix (sparse format)
-    vector<int> h;  // flicker vector
+    Walker walker={walker_id:0,bin_curr:0,bin_prev:0,k:0,active:true,p:0.,t:0.,s:0.};
     vector<int> basin_ids; // used to indicate the set to which each node belongs for the current kPS iteration
         // (eliminated=1, transient noneliminated=2, absorbing boundary=3, absorbing nonboundary=0)
     vector<Node*> eliminated_nodes; // vector of eliminated nodes (in order)
@@ -119,6 +120,7 @@ class KPS : public KMC_Enhanced_Methods {
     ~KPS();
     void run_enhanced_kmc(const Network&);
     static double calc_gt_factor(Node*);
+    static void reset_kmc_hop_counts(Network&);
     static double gamma_distribn(int,double,int);
     static int binomial_distribn(int,double,int);
     static int negbinomial_distribn(int,double,int);

@@ -30,18 +30,19 @@ KPS::~KPS() {}
 void KPS::run_enhanced_kmc(const Network &ktn) {
     cout << "kps> beginning kPS simulation" << endl;
     int n_ab=0, n_kpsit=0;
-    while ((n_ab<n_abpaths) and (n_kpsit<maxit)) { // algorithm terminates when max no of kPS trapping basin escapes have been simulated
+    while ((n_ab<n_abpaths) and (n_kpsit<maxit)) { // algorithm terminates when max no of kPS basin escapes have been simulated
         setup_basin_sets(ktn);
         graph_transformation(ktn);
         Node *dummy_alpha = sample_absorbing_node();
         alpha = &ktn.nodes[dummy_alpha->node_id-1];
+//        alpha = &ktn.nodes[4]; // quack
         double t_esc = iterative_reverse_randomisation();
         if (alpha->aorb==-1) n_ab++; // trajectory has reached endpoint absorbing macrostate A
         n_kpsit++;
+        update_path_quantities(t_esc);
         delete ktn_kps; delete ktn_kps_orig;
         delete ktn_l; delete ktn_u;
         epsilon=alpha; alpha=nullptr;
-        update_path_quantities(t_esc);
     }
     cout << "kps> walker time: " << walker.t << " activity: " << walker.k << " entropy flow: " << walker.s << endl;
     cout << "kps> finished kPS simulation" << endl;
@@ -137,9 +138,31 @@ double KPS::iterative_reverse_randomisation() {
     cout << "exp rand no 2: " << KPS::exp_distribn(3.,seed) << endl;
     for (int i=N;i>0;i--) {
 //        cout << "Node: " << eliminated_nodes[i-1]->node_id << " k: " << eliminated_nodes[i-1]->top_from->k << endl;
+        
         undo_gt_iteration(eliminated_nodes[i-1]);
+        /* sample transitions from eliminated to noneliminated nodes, not incl the i-th eliminated node, and also
+           update transitions from eliminated nodes to the i-th node, except the self-loop of the i-th node */
+        for (auto &elimd_node: eliminated_nodes) {
+            if (elimd_node==eliminated_nodes[i-1]) continue;
+            Edge *edgeptr=elimd_node->top_from;
+            int hx=0; // number of transitions from eliminated nodes to the i-th node
+            while (edgeptr!=nullptr) {
+                if (!(edgeptr->deadts || edgeptr->to_node->eliminated)) {
+                    int h_prev = edgeptr->h;
+                    edgeptr->h = KPS::binomial_distribn(edgeptr->h,3.,seed); // quack
+                    hx += h_prev-edgeptr->h;
+                }
+                edgeptr=edgeptr->next_from;
+            }
+            // quack find i<-elimd_node edge and assign its value to hx
+        }
+        // sample transitions from the i-th node to noneliminated nodes
+        // ...
+        // sample the number of self-hops for the i-th node
+        // ...
     }
-    double t_esc = KPS::gamma_distribn(3,3.,seed); // time for escape trajectory
+    double t_esc = KPS::gamma_distribn(3,3.,seed); // sample time for escape trajectory
+    cout << "kps> finished iterative reverse randomisation" << endl;
     return t_esc;
 }
 
@@ -149,38 +172,49 @@ Node *KPS::sample_absorbing_node() {
 
     if (debug) { cout << "kps> sample absorbing node, epsilon: " << epsilon->node_id << endl; }
     int curr_comm_id = epsilon->comm_id;
-    Node *next_node, *curr_node;
-    curr_node = &ktn_kps->nodes[nodemap[epsilon->node_id-1]]; // NB epsilon points to a node in the original network
+    Node *next_node, *curr_node, *dummy_node;
+    /* NB epsilon points to a node in the original network. At the start of each iteration of the following loop,
+       curr_node points to a node in the transformed network. It is swapped for a node in the original subnetwork if
+       it is a noneliminated node */
+    curr_node = &ktn_kps->nodes[nodemap[epsilon->node_id-1]];
     do {
-    cout << "curr_node is: " << curr_node->node_id << endl;
-    double rand_no = KMC_Standard_Methods::rand_unif_met(seed);
-    rand_no = 0.999999; // quack
-    double cum_t = 0.; // accumulated transition probability
-    bool nonelimd = false; // flag indicates if the current node is transient noneliminated
-    double factor = 0.;
-    if (basin_ids[curr_node->node_id-1]==1) { // eliminated node
-        curr_node = &ktn_kps->nodes[curr_node->node_id-1]; // curr_node points to a node in the transformed subnetwork
-    } else if (basin_ids[curr_node->node_id-1]==2) { // transient noneliminated node
-        curr_node = &ktn_kps_orig->nodes[curr_node->node_id-1]; // curr_node points to a node in the untransformed subnetwork
-        nonelimd = true;
-    } else {
-        cout << "kps> something went wrong in sample_absorbing_node()" << endl; exit(EXIT_FAILURE); }
-    Edge *edgeptr = curr_node->top_from;
-    if (nonelimd) factor=calc_gt_factor(curr_node);
-    while (edgeptr!=nullptr) {
-        if (edgeptr->deadts || edgeptr->to_node->eliminated) {
-            edgeptr=edgeptr->next_from; continue; }
-        cum_t += edgeptr->t;
-        if (nonelimd) cum_t += (edgeptr->t)*(curr_node->t)/factor;
-        cout << "    to node: " << edgeptr->to_node->node_id << "  edgeptr->t: " << edgeptr->t \
-             << "  extra contribn: " << (edgeptr->t)*(curr_node->t)/factor << "  cum_t: " << cum_t << endl;
-        if (cum_t>rand_no) { next_node = edgeptr->to_node; break; }
-        edgeptr=edgeptr->next_from;
-    }
-    if (next_node==nullptr || cum_t-1>1.E-08) {
-        cout << "kps> GT error detected in sample_absorbing_node()" << endl; exit(EXIT_FAILURE); }
-    // quack increment h or H here, as required
-    curr_node=next_node; next_node=nullptr;
+        cout << "curr_node is: " << curr_node->node_id << endl;
+        double rand_no = KMC_Standard_Methods::rand_unif_met(seed);
+//        rand_no = 0.999999; // quack dummy to ensure that all edges are traversed
+        double cum_t = 0.; // accumulated transition probability
+        bool nonelimd = false; // flag indicates if the current node is transient noneliminated
+        double factor = 0.;
+        if (!curr_node->eliminated) {
+            cout << "  node has not been eliminated" << endl;
+            dummy_node = &(*curr_node);
+            curr_node = &ktn_kps_orig->nodes[curr_node->node_id-1]; // now points to a node in the untransformed subnetwork
+            nonelimd = true;
+        }
+        // sample the next node using the appropriate probability distribution vector
+        Edge *edgeptr = curr_node->top_from;
+        if (nonelimd) factor=calc_gt_factor(curr_node);
+        while (edgeptr!=nullptr) {
+            if (edgeptr->deadts || edgeptr->to_node->eliminated) {
+                edgeptr=edgeptr->next_from; continue; }
+            cum_t += edgeptr->t;
+            if (nonelimd) cum_t += (edgeptr->t)*(curr_node->t)/factor;
+            cout << "    to node: " << edgeptr->to_node->node_id << "  edgeptr->t: " << edgeptr->t \
+                 << "  extra contribn: " << (edgeptr->t)*(curr_node->t)/factor << "  cum_t: " << cum_t << endl;
+            if (cum_t>rand_no) { next_node = edgeptr->to_node; break; }
+            edgeptr=edgeptr->next_from;
+        }
+        if (next_node==nullptr || cum_t-1.>1.E-08) {
+            if (next_node==nullptr) cout << "  next_node is nullptr, oops" << endl;
+            cout << "kps> GT error detected in sample_absorbing_node()" << endl; exit(EXIT_FAILURE); }
+        // increment the number of kMC hops and set the new node
+        if (nonelimd) {
+            dummy_node->h++;
+            curr_node = &ktn_kps->nodes[nodemap[next_node->node_id-1]];
+        } else {
+            edgeptr->h++;
+            curr_node=next_node;
+        }
+        next_node=nullptr;
     } while (curr_node->comm_id==curr_comm_id);
     cout << "after categorical sampling procedure the current node is: " << curr_node->node_id << endl;
     return curr_node;
@@ -208,7 +242,6 @@ void KPS::graph_transformation(const Network &ktn) {
         if (it_nodevec->comm_id!=epsilon->comm_id) continue;
         gt_pq.push(&(*it_nodevec));
     }
-    h = vector<int>(gt_pq.size(),0); // reset flicker vector
     while (!gt_pq.empty() && N<nelim) {
         Node *node_elim=gt_pq.top();
 //        cout << "N: " << N << " Node: " << node_elim->node_id << " priority: " << node_elim->udeg \
@@ -276,6 +309,7 @@ Network *KPS::get_subnetwork(const Network& ktn) {
         }
     }
     cout << "added " << n << " nodes and " << m << " edges to subnetwork" << endl;
+    reset_kmc_hop_counts(*ktnptr);
     if (n!=N_B+N_c || m!=N_e) { cout << "kps> something went wrong in get_subnetwork()" << endl; exit(EXIT_FAILURE); }
 //    Network *ktnptr = &const_cast<Network&>(ktn); // quack
     return ktnptr;
@@ -403,13 +437,26 @@ double KPS::calc_gt_factor(Node *node_elim) {
     return factor;
 }
 
-/* Update path quantities along a trajectory */
+/* reset the counts for the number of kMC hops, which appear in the Node and Edge data structures, for
+   the Network object passed as a pointer */
+void KPS::reset_kmc_hop_counts(Network &ktn) {
+    for (auto &node: ktn.nodes) node.h=0;
+    for (auto &edge: ktn.edges) edge.h=0;
+}
+
+/* Update path quantities along a trajectory, where the (unordered) path is specified by the kMC hop counts
+   ("h") in the Node and Edge members of the subnetwork pointed to by ktn_kps */
 void KPS::update_path_quantities(double t_esc) {
 
+    if (debug) cout << "kps> updating path quantities" << endl;
+    if (ktn_kps==nullptr) throw exception();
     walker.t += t_esc;
-    walker.k += 1;
-    if (true) { // can also calculate the entropy flow
-
+    for (const auto &node: ktn_kps->nodes) walker.k += node.h;
+    for (const auto &edge: ktn_kps->edges) {
+        walker.k += edge.h;
+        if (ktn_kps->branchprobs) { // can also calculate the contribution to the entropy flow
+            walker.s += (edge.h)*(edge.rev_edge->k-edge.k);
+        }
     }
 }
 
