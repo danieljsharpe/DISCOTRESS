@@ -17,6 +17,8 @@ struct Walker {
 
     explicit Walker()=default;
     ~Walker();
+    void dump_walker_info(bool,bool); // write path quantities to file
+
     int walker_id; // ID of walker in set of trajectories
     int bin_curr, bin_prev; // for WE-kMC
     int k; // path activity
@@ -32,11 +34,20 @@ class KMC_Enhanced_Methods {
 
     protected:
 
-    int n_abpaths;  // algorithm terminates when this number of A-B paths have been successfully sampled
-    int maxit; // another termination condition; the maximum number of iterations of the enhanced kMC method
-    int seed; // seed for random number generator
-    bool debug; // debug printing on/off
-    void (*kmc_func)(Walker&); // function pointer to kMC algorithm for propagating the trajectory   
+    int nbins=-1;               // number of bins specified (if not adaptivebins)
+    int maxn_abpaths;           // algorithm terminates when this number of A-B paths have been successfully sampled
+    int n_ab;                   // number of successfully simulated A<-B transition paths
+    int n_traj;                 // total number of B<-B or A<-B paths simulated
+    vector<bool> visited;       // is true when the corresponding community has been visited along the trajectory
+    vector<int> tp_visits;      // vector of counts from which to calculate transition path probability density for communities
+    vector<int> ab_successes;   // vector of counts of node appearances along A<-B transition paths
+    vector<int> ab_failures;    // vector of counts of node appearances along B<-B unreactive paths
+    vector<double> tp_densities; // probability that a community is visited along an A<-B transition path
+    vector<double> committors;  // forward (A<-B) committor probabilities for communities
+    int maxit;                  // another termination condition; the maximum number of iterations of the enhanced kMC method
+    int seed;                   // seed for random number generator
+    bool debug;                 // debug printing on/off
+    void (*kmc_func)(Walker&);  // function pointer to kMC algorithm for propagating the trajectory   
 
     public:
 
@@ -45,6 +56,8 @@ class KMC_Enhanced_Methods {
     virtual void run_enhanced_kmc(const Network&)=0; // pure virtual function
     void set_standard_kmc(void(*)(Walker&)); // function to set the kmc_std_method
     void find_bin_onthefly();
+    void update_tp_stats(bool,bool); // update the transition path statistics, depends on if the path is a transn path or is unreactive
+    void calc_tp_stats(); // calculate the transition path statistics from the observed counts
 };
 
 /* Standard kMC, simply propagates the dynamics of a single trajectory using the chosen standard method */
@@ -63,7 +76,6 @@ class WE_KMC : public KMC_Enhanced_Methods {
     private:
 
     vector<Walker> walkers; // list of active trajectories (walkers) on the network
-    int nbins;
     int nwalkers;
     double tau; // time interval between checking bins and resampling trajectories
     bool adaptivebins;
@@ -95,7 +107,6 @@ class KPS : public KMC_Enhanced_Methods {
     map<int,int> nodemap; // map of ID's for full network to subnetwork
     double tau;     // lag time at which transition matrix is evaluated
     int nelim;      // maximum number of nodes of a trapping basin to be eliminated
-    int nbins;      // number of bins specified (if not adaptivebins)
     int N_c;        // number of nodes connected to the eliminated states of the current trapping basin
     int N, N_B;     // number of eliminated nodes / total number of nodes for the currently active trapping basin
     int N_e;        // number of edges in the subnetwork
@@ -192,6 +203,8 @@ class KMC_Standard_Methods {
     static void rejection_kmc(Walker&); // kMC algorithm where some moves are rejected
     static void leapfrog(Walker&); // leapfrog algorithm of Trygubenko & Wales
     static double rand_unif_met(int);
+    static vector<double> calc_committors(const Network&,int); // calculate committor functions from counts in Node structures of Network obj
+    static vector<double> calc_tp_density(const Network&,int); // calculate transn path density from counts in Node structures of Network obj
 };
 
 #endif
