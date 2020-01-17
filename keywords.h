@@ -37,7 +37,7 @@ struct Keywords {
 
     // optional arguments pertaining to enhanced sampling methods
     double tau=-1.;          // "TAU" time interval between checking bins (WE-kMC)
-                             //       lag time at which transition matrix is evaluated (kPS)
+                             //       lag time at which transition probability matrix is evaluated (kPS)
     int nbins=-1;            // number of bins (WE-kMC) or trapping basins (kPS) on the network
     char *binfile=nullptr;   // "BINFILE" name of file where bins are defined (WE-kMC, kPS)
     char *bintargfile=nullptr; // "BINTARGFILE" name of file where target number of trajectories in each bin is defined (WE-kMC)
@@ -49,6 +49,7 @@ struct Keywords {
     int maxit=-1;            // "MAXIT" maximum number of iterations of the relevant standard or enhanced kMC algorithm
 
     // other keywords
+    bool transnprobs=false;  // "TRANSNPROBS" edge weights are read in as transition probabilities (not as weights)
     bool branchprobs=false;  // "BRANCHINGPROBS" transition probabilities are calculated as branching probabilities
     bool debug=false;
     int seed=17;

@@ -96,13 +96,14 @@ struct Network {
     void update_to_edge(int,int);
     void update_from_edge(int,int);
     static void calc_k_esc(Node&);
+    static void calc_t_selfloop(Node&);
     static void calc_net_flux(Edge&);
     void get_tmtx_lin(double); // calculate the linearised transition probability matrix
     void get_tmtx_branch(); // calculate the branching transition probability matrix
     void get_cum_branchprobs(); // set transition probabilities to accumulated branching probability values (for convenience in kMC)
     static void add_edge_network(Network*,Node&,Node&,int);
     static void setup_network(Network&,const vector<pair<int,int>>&,const vector<double>&, \
-        const vector<double>&,const vector<int>&, const vector<int>&, const vector<int>& = {});
+        const vector<double>&,const vector<int>&, const vector<int>&, bool, double, const vector<int>& = {});
 
     vector<Node> nodes;
     vector<Edge> edges; // note that this vector contains two entries for forward and reverse transitions for
@@ -118,6 +119,7 @@ struct Network {
     int ncomms; // total number of communities
     set<Node*> nodesA, nodesB; // A and B endpoint nodes (A<-B)
     bool branchprobs=false; // transition probabilities of Edges are branching probabilities (Y/N)
+    double tau=0.; // lag time at which transition probabilities are calculated
 
     inline Network& operator=(const Network& other_network) {
         nodes=other_network.nodes; edges=other_network.edges;

@@ -70,7 +70,7 @@ BININITFILE <str>
 TAU <double>
   mandatory if ENHANCED WE or if ENHANCED KPS and not BRANCHINGPROBS
     If WE, tau is the time between resampling trajectories
-    If KPS, tau is the lag time at which the transition probability matrices are estimated
+    If KPS, tau is the lag time at which the linear transition probability matrices are estimated (or provided, if TRANSNPROBS)
 
 KPSKMCSTEPS <int>
   optional, if ENHANCED KPS, the number of standard BKL kMC steps to be performed after a kPS escape from
@@ -86,6 +86,10 @@ NELIM <int>
 
 BRANCHINGPROBS
   the transition probabilities are calculated as the branching probabilities
+
+TRANSNPROBS
+  the weights to read in are transition probabilities, not rates (compatible with kPS only). The self-loop transition probabilities
+  are nodes are inferred to be the remainders
 
 SEED <int>
   seed for the random number generators

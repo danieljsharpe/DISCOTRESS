@@ -52,9 +52,9 @@ KMC_Suite::KMC_Suite () {
     cout << "kmc_suite> setting up the transition network data structure..." << endl;
     ktn = new Network(my_kws.n_nodes,my_kws.n_edges);
     if (my_kws.binfile!=nullptr) {
-        Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesA,nodesB,communities);
+        Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesA,nodesB,my_kws.transnprobs,my_kws.tau,communities);
     } else {
-        Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesA,nodesB);
+        Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesA,nodesB,my_kws.transnprobs,my_kws.tau);
     }
     cout << "kmc_suite> setting up simulation..." << endl;
     cout << "kmc_suite> max. no. of A-B paths: " << my_kws.nabpaths << " \tmax. iterations: " << my_kws.maxit << "\n" << endl;
@@ -68,7 +68,7 @@ KMC_Suite::KMC_Suite () {
         enh_method = we_kmc_ptr;
     } else if (my_kws.enh_method==2) { // kPS simulation
         if (my_kws.branchprobs) { ktn->get_tmtx_branch();
-        } else { ktn->get_tmtx_lin(my_kws.tau); }
+        } else if (!my_kws.transnprobs) { ktn->get_tmtx_lin(my_kws.tau); }
         KPS *kps_ptr = new KPS(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.nelim,my_kws.tau,my_kws.nbins,my_kws.kpskmcsteps, \
                     my_kws.adaptivebins,my_kws.initcond,my_kws.seed,my_kws.debug);
         enh_method = kps_ptr;

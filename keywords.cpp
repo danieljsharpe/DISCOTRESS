@@ -81,6 +81,8 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.kpskmcsteps=stoi(vecstr[1]);
         } else if (vecstr[0]=="NELIM") {
             my_kws.nelim=stoi(vecstr[1]);
+        } else if (vecstr[0]=="TRANSNPROBS") {
+            my_kws.transnprobs=true;
         } else if (vecstr[0]=="BRANCHINGPROBS") {
             my_kws.branchprobs=true;
         } else if (vecstr[0]=="DEBUG") {
@@ -106,6 +108,8 @@ Keywords read_keywords(const char *kw_file) {
         cout << "keywords> error: must choose a kMC trajectory method except with kPS" << endl; exit(EXIT_FAILURE); }
     if (my_kws.enh_method==-1) {
         cout << "keywords> error: Enhanced kMC method not chosen correctly" << endl; exit(EXIT_FAILURE); }
+    if (my_kws.transnprobs && my_kws.enh_method!=2) {
+        cout << "keywords> error: edge weights must be read in as transition rates if not using kPS" << endl; exit(EXIT_FAILURE); }
     if (my_kws.enh_method==1) { // WE simulation
         if (!(my_kws.tau>0.) || (my_kws.binfile!=nullptr && !my_kws.adaptivebins) || \
             (my_kws.bintargfile!=nullptr && !my_kws.adaptivebins) ) {

@@ -32,16 +32,19 @@ Node::Node(const Node &node) {
 /* update the Nodes and Edges of the Network data structure to contain transition probabibilities
    calculated from the linearised transition probabibility matrix */
 void Network::get_tmtx_lin(double tau) {
+    cout << "ktn> calculating linearised transition probability matrix at lag time: " << tau << endl;
     for (auto &node: nodes) {
         if (tau>1./exp(node.k_esc)) throw Ktn_exception(); // value of tau does not give stochastic matrix
         node.t = 1.-(exp(node.k_esc)*tau); }
     for (auto &edge: edges) {
         if (edge.deadts) continue;
         edge.t = exp(edge.k)*tau; }
+    this->tau=tau;
 }
 
 /* the transition probabilities are calculated as the branching probabilities */
 void Network::get_tmtx_branch() {
+    cout << "ktn> calculating branching probability matrix" << endl;
     for (auto & edge: edges) {
         if (edge.deadts) continue;
         edge.t = exp(edge.k-edge.from_node->k_esc); }
@@ -226,13 +229,24 @@ void Network::update_from_edge(int i, int j) {
     add_from_edge(i,j);
 }
 
-/* calculate the escape rate for node i */
+/* calculate the escape rate for node */
 void Network::calc_k_esc(Node &node) {
     Edge *edgeptr;
     node.k_esc = -numeric_limits<double>::infinity();
     edgeptr = node.top_from;
     while (edgeptr!=nullptr) {
         if (!edgeptr->deadts) node.k_esc = log(exp(node.k_esc)+exp(edgeptr->k));
+        edgeptr = edgeptr->next_from;
+    }
+}
+
+/* calculate the self-loop transition probability for node */
+void Network::calc_t_selfloop(Node &node) {
+    Edge *edgeptr;
+    node.t=1.;
+    edgeptr = node.top_from;
+    while (edgeptr!=nullptr) {
+        if (!edgeptr->deadts) node.t -= edgeptr->t;
         edgeptr = edgeptr->next_from;
     }
 }
@@ -258,10 +272,13 @@ void Network::add_edge_network(Network *ktn, Node &from_node, Node &to_node, int
 /* set up the kinetic transition network */
 void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns, \
         const vector<double> &ts_wts, const vector<double> &stat_probs, const vector<int> &nodesinA, \
-        const vector<int> &nodesinB, const vector<int> &comms) {
+        const vector<int> &nodesinB, bool transnprobs, double tau, const vector<int> &comms) {
 
     if (!((ts_conns.size()==ktn.n_edges) || (ts_wts.size()==2*ktn.n_edges) || \
          (stat_probs.size()==ktn.n_nodes))) throw Network::Ktn_exception();
+    if (transnprobs) {
+        cout << "ktn> interpreteing edge weights as transition probabilities at a lag time: " << tau << endl;
+        ktn.tau=tau; }
     double tot_pi = -numeric_limits<double>::infinity();
     for (int i=0;i<ktn.n_nodes;i++) {
         ktn.nodes[i].node_id = i+1;
@@ -287,8 +304,14 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
             ktn.edges[2*i].deadts = false;
             ktn.edges[(2*i)+1].deadts = false;
         }
-        ktn.edges[2*i].k = ts_wts[2*i];
-        ktn.edges[(2*i)+1].k = ts_wts[(2*i)+1];
+        if (!transnprobs) { // ts_wts are transition rates
+            ktn.edges[2*i].k = ts_wts[2*i];
+            ktn.edges[(2*i)+1].k = ts_wts[(2*i)+1];
+        } else { // ts_wts are transition probabilities
+            ktn.edges[2*i].k = 0.; ktn.edges[(2*i)+1].k = 0.; // dummy values
+            ktn.edges[2*i].t = ts_wts[2*i];
+            ktn.edges[(2*i)+1].t = ts_wts[(2*i)+1];
+        }
         ktn.edges[2*i].from_node = &ktn.nodes[ts_conns[i].first-1];
         ktn.edges[2*i].to_node = &ktn.nodes[ts_conns[i].second-1];
         ktn.edges[(2*i)+1].from_node = &ktn.nodes[ts_conns[i].second-1];
@@ -302,10 +325,15 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         ktn.edges[2*i].rev_edge = &ktn.edges[(2*i)+1];
         ktn.edges[(2*i)+1].rev_edge = &ktn.edges[2*i];
 
-        calc_net_flux(ktn.edges[2*i]);
+        if (!transnprobs) { calc_net_flux(ktn.edges[2*i]);
+        } else { ktn.edges[2*i].j = 0.; ktn.edges[(2*i)+1].j = 0.; } // dummy values
     }
     for (int i=0;i<ktn.n_nodes;i++) {
-        calc_k_esc(ktn.nodes[i]);
+        if (!transnprobs) { calc_k_esc(ktn.nodes[i]);
+        } else {
+            calc_t_selfloop(ktn.nodes[i]);
+            ktn.nodes[i].k_esc = log(1./tau); // all nodes have same escape rate
+        }
     }
     for (int i=0;i<nodesinA.size();i++) {
         if (nodesinA[i]>ktn.n_nodes) throw Ktn_exception();

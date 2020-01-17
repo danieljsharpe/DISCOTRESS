@@ -136,6 +136,7 @@ class KPS : public KMC_Enhanced_Methods {
     static int binomial_distribn(int,double,int);
     static int negbinomial_distribn(int,double,int);
     static double exp_distribn(double,int);
+    static void test_ktn(const Network&);
 };
 
 /* Forward flux sampling kMC */
