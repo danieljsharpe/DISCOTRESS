@@ -53,16 +53,12 @@ void KPS::run_enhanced_kmc(const Network &ktn) {
     while ((n_ab<maxn_abpaths) and (n_kpsit<maxit)) { // algorithm terminates when max no of kPS basin escapes have been simulated
         setup_basin_sets(ktn);
         graph_transformation(ktn);
-        cout << "\nrunning debug tests on L:" << endl;
-        test_ktn(*ktn_l);
-        cout << "\nrunning debug tests on U:" << endl;
-        test_ktn(*ktn_u);
         Node *dummy_alpha = sample_absorbing_node();
         alpha = &ktn.nodes[dummy_alpha->node_id-1];
         double t_esc = iterative_reverse_randomisation();
         if (alpha->aorb==-1 || alpha->aorb==1) { // traj has reached absorbing macrostate A or has returned to B
             if (alpha->aorb==-1) { // transition path
-                walker.dump_walker_info(false,ktn.branchprobs);
+                walker.dump_walker_info(ktn.branchprobs);
                 // quack reset walker...
             }
             update_tp_stats(alpha->aorb==-1,!adaptivebins); }
@@ -75,7 +71,8 @@ void KPS::run_enhanced_kmc(const Network &ktn) {
     }
     cout << "kps> kPS simulation terminated after " << n_kpsit << " iterations. Simulated " << n_ab << " transition paths" << endl;
     if (!adaptivebins) calc_tp_stats(); // calculate committors and transn path densities for communities
-    cout << "kps> walker time: " << walker.t << " activity: " << walker.k << " entropy flow: " << walker.s << endl;
+    cout << "kps> walker time: " << walker.t << "  activity: " << walker.k \
+         << "  log path prob: " << walker.p << "  entropy flow: " << walker.s << endl;
     cout << "kps> finished kPS simulation" << endl;
 }
 
@@ -84,14 +81,13 @@ void KPS::setup_basin_sets(const Network &ktn) {
 
     cout << "kps> setting up basin sets" << endl;
     N_c=0; N=0; N_B=0; N_e=0;
-    double start_prob; // (log) probability of starting in chosen node b, pi_b/pi_B
+    double pi_B = -numeric_limits<double>::infinity(); // (log) occupation probability of all nodes in initial set B
     if (!epsilon) { // first iteration of A<-B path, need to set starting node
         if (!initcond) { // no initial condition was set, choose node in set B in proportion to stationary probs
             if (ktn.nodesB.size()==1000) { // quack should be ==1
             auto it_set = ktn.nodesB.begin();
             epsilon=*it_set;
             } else {
-            double pi_B = -numeric_limits<double>::infinity();
             set<Node*>::iterator it_set = ktn.nodesB.begin();
             while (it_set!=ktn.nodesB.end()) {
                 pi_B = log(exp(pi_B)+exp((*it_set)->pi));
@@ -144,6 +140,7 @@ void KPS::setup_basin_sets(const Network &ktn) {
     eliminated_nodes.clear(); nodemap.clear();
     eliminated_nodes.reserve(!(N_B>nelim)?N_B:nelim);
     visited[epsilon->comm_id]=true;
+    walker.p=epsilon->pi-pi_B; // factor in path probability corresponding to probability of initial node
     if (debug) {
         cout << "number of eliminated nodes: " << (!(N_B>nelim)?N_B:nelim) << endl;
         cout << "number of nodes in basin: " << N_B << " number of absorbing boundary nodes: " << N_c << endl;
@@ -312,6 +309,10 @@ void KPS::graph_transformation(const Network &ktn) {
         cout << "\nrunning debug tests on transformed network:" << endl;
         test_ktn(*ktn_kps);
     }
+    cout << "\nrunning debug tests on L:" << endl;
+    test_ktn(*ktn_l);
+    cout << "\nrunning debug tests on U:" << endl;
+    test_ktn(*ktn_u);
     if (N!=(!(N_B>nelim)?N_B:nelim)) {
         cout << "kps> fatal error: lost track of number of eliminated nodes" << endl; exit(EXIT_FAILURE); }
     if (debug) cout << "kps> finished graph transformation" << endl;
@@ -389,6 +390,9 @@ void KPS::gt_iteration(Node *node_elim) {
         double t_ton; // transition probability to eliminated node from this node
     } nbrnode;
     map<int,nbrnode> nbrnode_map; // map contains all nodes directly connected to the current elimd node, incl elimd nodes
+    // update the self-loops of the L and U networks
+    ktn_u->nodes[nodemap[node_elim->node_id-1]].t = -factor;
+    ktn_l->nodes[nodemap[node_elim->node_id-1]].t = node_elim->t/factor;
     // update the weights for all edges from the elimd node to non-elimd nbr nodes, and self-loops of non-elimd nbr nodes
     Edge *edgeptr = node_elim->top_from;
     cout << "updating edges from the eliminated node..." << endl;
@@ -399,13 +403,33 @@ void KPS::gt_iteration(Node *node_elim) {
         nodes_nbrs.push_back(edgeptr->to_node); // queue nbr node
         nbrnode_map[edgeptr->to_node->node_id]=(nbrnode){false,edgeptr->t,edgeptr->rev_edge->t};
         cout << "  to node: " << edgeptr->to_node->node_id << endl;
+        // update L and U networks
+/*
+        (ktn_l->edges).push_back(Edge());
+        (ktn_l->edges).back().t = edgeptr->rev_edge->t/factor;
+        size_t pos = (ktn_l->edges).size()-1;
+        (ktn_l->edges).back().edge_pos = pos;
+        (ktn_l->edges).back().from_node = &ktn_l->nodes[nodemap[edgeptr->to_node->node_id-1]];
+        (ktn_l->edges).back().to_node = &ktn_l->nodes[nodemap[node_elim->node_id-1]];
+        ktn_l->add_to_edge(nodemap[node_elim->node_id-1],pos);
+        ktn_l->n_edges++;
+*/
         if (edgeptr->to_node->eliminated) { // do not update edges to elimd nodes and self-loops for elimd nodes
             edgeptr=edgeptr->next_from; continue; }
-        // update L and U networks here...
+
+        (ktn_u->edges).push_back(Edge());
+        (ktn_u->edges).back().t = edgeptr->t;
+        size_t pos = (ktn_u->edges).size()-1;
+        (ktn_u->edges).back().edge_pos = pos;
+        (ktn_u->edges).back().from_node = &ktn_u->nodes[nodemap[node_elim->node_id-1]];
+        (ktn_u->edges).back().to_node = &ktn_u->nodes[nodemap[edgeptr->to_node->node_id-1]];
+        ktn_u->add_from_edge(nodemap[node_elim->node_id-1],pos);
+        ktn_u->n_edges++;
+
+        // update subnetwork
         cout << "    old node t: " << edgeptr->to_node->t << "  incr in node t: " \
              << (edgeptr->t)*(edgeptr->rev_edge->t)/factor << endl;
         edgeptr->to_node->t += (edgeptr->t)*(edgeptr->rev_edge->t)/factor; // update self-loop of non-elimd nbr node
-        // update L and U networks here...
         cout << "    old edge t: " << edgeptr->t << "  incr in t: " << (edgeptr->t)*(node_elim->t)/factor << endl;
         edgeptr->t += (edgeptr->t)*(node_elim->t)/factor; // update edge from elimd node to non-elimd nbr node
         edgeptr=edgeptr->next_from;
@@ -425,7 +449,6 @@ void KPS::gt_iteration(Node *node_elim) {
             if (edgeptr->edge_pos>old_n_edges) { // skip nodes for which a new edge has already been added
                 cout << "    edge already added" << endl;
                 edgeptr=edgeptr->next_from; continue; }
-            // update L and U networks here...
             cout << "    old edge t: " << edgeptr->t << "  incr in t: " \
                  << (nbrnode_map[edgeptr->from_node->node_id].t_ton)*\
                     (nbrnode_map[edgeptr->to_node->node_id].t_fromn)/factor << endl;
@@ -441,7 +464,6 @@ void KPS::gt_iteration(Node *node_elim) {
             if ((it_map->second).dirconn) { (it_map->second).dirconn=false; continue; } // reset flag
             cout << "    node " << (*it_nodevec)->node_id << " is not directly connected to node " << it_map->first << endl;
             cout << "    t of new edge: " << (it_map->second).t_fromn*nbrnode_map[(*it_nodevec)->node_id].t_ton/factor << endl;
-            // update L and U networks here...
             // nodes are directly connected to the elimd node but not to one another, add an edge in the transformed network
             (ktn_kps->edges).push_back(Edge());
             (ktn_kps->edges).back().t = (it_map->second).t_fromn*nbrnode_map[(*it_nodevec)->node_id].t_ton/factor;
@@ -489,6 +511,7 @@ void KPS::undo_gt_iteration(Node *node_elim) {
     cout << "kps> undoing elimination of node " << node_elim->node_id << endl;
     if (!node_elim->eliminated) throw exception(); // node is already noneliminated
     node_elim->eliminated=false;
+    vector <Node*> nodes_nbrs;
 }
 
 /* calculate the factor (1-T_{nn}) needed in the elimination of the n-th node in graph transformation */
@@ -519,13 +542,16 @@ void KPS::update_path_quantities(double t_esc) {
     if (debug) cout << "kps> updating path quantities" << endl;
     if (ktn_kps==nullptr) throw exception();
     walker.t += t_esc;
-    for (const auto &node: ktn_kps->nodes) walker.k += node.h;
+    for (const auto &node: ktn_kps->nodes) {
+        walker.k += node.h;
+        if (!ktn_kps->branchprobs) walker.p += node.h*log(node.t);
+    }
     for (const auto &edge: ktn_kps->edges) {
         if (edge.deadts) continue;
         walker.k += edge.h;
+        walker.p += edge.h*log(edge.t);
         if (ktn_kps->branchprobs) { // can also calculate the contribution to the entropy flow
-            walker.s += (edge.h)*(edge.rev_edge->k-edge.k);
-        }
+            walker.s += (edge.h)*(edge.rev_edge->k-edge.k); }
     }
 }
 

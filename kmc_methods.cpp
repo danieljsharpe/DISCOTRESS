@@ -10,10 +10,8 @@ using namespace std;
 Walker::~Walker() {}
 
 /* write path quantities to file */
-void Walker::dump_walker_info(bool path_prob, bool entropy_flow) {
-    if (path_prob) {
+void Walker::dump_walker_info(bool entropy_flow) {
 
-    }
     if (entropy_flow) {
 
     }

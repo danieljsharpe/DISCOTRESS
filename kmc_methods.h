@@ -17,7 +17,7 @@ struct Walker {
 
     explicit Walker()=default;
     ~Walker();
-    void dump_walker_info(bool,bool); // write path quantities to file
+    void dump_walker_info(bool); // write path quantities to file
 
     int walker_id; // ID of walker in set of trajectories
     int bin_curr, bin_prev; // for WE-kMC

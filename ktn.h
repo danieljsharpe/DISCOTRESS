@@ -24,7 +24,8 @@ struct Edge {
     double k; // (log) transition rate
     double t; // transition probability
     double j; // net flux
-    bool deadts; // indicates TS only linked to one minimum or is otherwise deleted
+    double dt; // change in transition probability (used in kPS)
+    bool deadts=false; // indicates TS only linked to one minimum or is otherwise deleted
     Node *to_node=nullptr;
     Node *from_node=nullptr;
     Edge *next_to=nullptr;
@@ -33,7 +34,7 @@ struct Edge {
 
     inline Edge operator+(const Edge& other_edge) const {
         Edge new_edge{.ts_id=ts_id, .edge_pos=edge_pos, .h=h+other_edge.h, .k=k+other_edge.k, \
-            .t=t+other_edge.t, .j=j+other_edge.j, .deadts=deadts, .to_node=to_node, \
+            .t=t+other_edge.t, .j=j+other_edge.j, .dt=dt+other_edge.dt, .deadts=deadts, .to_node=to_node, \
             .from_node=from_node, .next_to=next_to, .next_from=next_from, .rev_edge=rev_edge};
         return new_edge;
     }
@@ -54,6 +55,7 @@ struct Node {
     double t; // self-transition probability
     double pi; // (log) occupation probability (usually the stationary/equilibrium probability)
     int h; // no. of kMC moves along the self-edge (used in kPS)
+    double dt; // change in transition probability (used n kPS)
     bool flag=false; // additional flag variable
     Edge *top_to=nullptr;
     Edge *top_from=nullptr;
