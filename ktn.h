@@ -21,6 +21,7 @@ struct Edge {
     int ts_id;
     int edge_pos; // position of the TS in the edges array
     int h; // no. of kMC moves along the edge (used in kPS)
+    int label=0; // label indicates node ID of GT iteration at which edge becomes dead (in kPS)
     double k; // (log) transition rate
     double t; // transition probability
     double j; // net flux
@@ -33,7 +34,7 @@ struct Edge {
     Edge *rev_edge=nullptr; // reverse edge (all edges are bidirectional)
 
     inline Edge operator+(const Edge& other_edge) const {
-        Edge new_edge{.ts_id=ts_id, .edge_pos=edge_pos, .h=h+other_edge.h, .k=k+other_edge.k, \
+        Edge new_edge{.ts_id=ts_id, .edge_pos=edge_pos, .h=h+other_edge.h, .label=other_edge.label, .k=k+other_edge.k, \
             .t=t+other_edge.t, .j=j+other_edge.j, .dt=dt+other_edge.dt, .deadts=deadts, .to_node=to_node, \
             .from_node=from_node, .next_to=next_to, .next_from=next_from, .rev_edge=rev_edge};
         return new_edge;
@@ -55,7 +56,7 @@ struct Node {
     double t; // self-transition probability
     double pi; // (log) occupation probability (usually the stationary/equilibrium probability)
     int h; // no. of kMC moves along the self-edge (used in kPS)
-    double dt; // change in transition probability (used n kPS)
+    double dt; // change in transition probability (used in kPS)
     bool flag=false; // additional flag variable
     Edge *top_to=nullptr;
     Edge *top_from=nullptr;
@@ -66,6 +67,10 @@ struct Node {
 
     const inline bool operator<(const Node& other_node) const {
         return (node_id<other_node.node_id);
+    }
+
+    const inline bool operator==(const Node& other_node) const {
+        return (node_id==other_node.node_id);
     }
 
     /* in assignment operator for Node, do not copy the pointers to Edge objects */

@@ -121,7 +121,7 @@ class KPS : public KMC_Enhanced_Methods {
     Node *sample_absorbing_node();
     void graph_transformation(const Network&);
     void gt_iteration(Node*);
-    void undo_gt_iteration(Node*);
+    vector<Node*> undo_gt_iteration(Node*);
     void update_path_quantities(double);
     Network *get_subnetwork(const Network&);
 

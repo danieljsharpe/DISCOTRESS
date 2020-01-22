@@ -39,7 +39,8 @@ void KPS::test_ktn(const Network &ktn) {
         if (!ktn.nodes[i].eliminated) cout << "  to: " << i+1 << "  t: " << ktn.nodes[i].t << endl;
         Edge *edgeptr = ktn.nodes[i].top_from;
         while (edgeptr!=nullptr) {
-            if (!edgeptr->deadts && !edgeptr->to_node->eliminated) cout << "  to: " << edgeptr->to_node->node_id << "  t: " << edgeptr->t << endl;
+            if (!edgeptr->deadts && !edgeptr->to_node->eliminated) cout << "  to: " << edgeptr->to_node->node_id << "  t: " << edgeptr->t \
+                << "  pos: " << edgeptr->edge_pos << endl;
             edgeptr = edgeptr->next_from;
         }
     }
@@ -79,7 +80,7 @@ void KPS::run_enhanced_kmc(const Network &ktn) {
 /* Reset data of previous kPS iteration and find the microstates of the current trapping basin */
 void KPS::setup_basin_sets(const Network &ktn) {
 
-    cout << "kps> setting up basin sets" << endl;
+    if (debug) cout << "kps> setting up basin sets" << endl;
     N_c=0; N=0; N_B=0; N_e=0;
     double pi_B = -numeric_limits<double>::infinity(); // (log) occupation probability of all nodes in initial set B
     if (!epsilon) { // first iteration of A<-B path, need to set starting node
@@ -133,7 +134,7 @@ void KPS::setup_basin_sets(const Network &ktn) {
                 edgeptr=edgeptr->next_from;
             }
         }
-        cout << endl;
+        if (debug) cout << endl;
     } else {
         // ...
     }
@@ -164,9 +165,8 @@ double KPS::iterative_reverse_randomisation() {
         node.h += KPS::negbinomial_distribn(node.h,1.-ktn_kps_orig->nodes[node.node_id-1].t,seed); }
     // main loop of the iterative reverse randomisation procedure
     for (int i=N;i>0;i--) {
-//        cout << "Node: " << eliminated_nodes[i-1]->node_id << " k: " << eliminated_nodes[i-1]->top_from->k << endl;
         Node *curr_node = eliminated_nodes[i-1];
-        undo_gt_iteration(curr_node);
+        vector<Node*> nodes_nbrs = undo_gt_iteration(curr_node);
         /* sample transitions from eliminated to noneliminated nodes, not incl the i-th eliminated node, and also
            update transitions from eliminated nodes to the i-th node, except the self-loop of the i-th node.
            Note that only nodes directly connected to the i-th node are affected. */
@@ -187,6 +187,9 @@ double KPS::iterative_reverse_randomisation() {
         }
         // sample transitions from the i-th node to noneliminated nodes
         // ...
+        // reset flags for neighbouring nodes
+        for (vector<Node*>::iterator it_nodevec=nodes_nbrs.begin();it_nodevec!=nodes_nbrs.end();++it_nodevec) {
+            (*it_nodevec)->flag=false; }
         // sample the number of self-hops for the i-th node
         Edge *edgeptr = curr_node->top_from;
         while (edgeptr!=nullptr) {
@@ -224,7 +227,7 @@ double KPS::iterative_reverse_randomisation() {
    categorical sampling procedure based on T^(0) and T^(N) */
 Node *KPS::sample_absorbing_node() {
 
-    if (debug) { cout << "kps> sample absorbing node, epsilon: " << epsilon->node_id << endl; }
+    if (debug) cout << "kps> sample absorbing node, epsilon: " << epsilon->node_id << endl;
     int curr_comm_id = epsilon->comm_id;
     Node *next_node, *curr_node, *dummy_node;
     /* NB epsilon points to a node in the original network. At the start of each iteration of the following loop,
@@ -232,14 +235,14 @@ Node *KPS::sample_absorbing_node() {
        it is a noneliminated node */
     curr_node = &ktn_kps->nodes[nodemap[epsilon->node_id-1]];
     do {
-        cout << "curr_node is: " << curr_node->node_id << endl;
+        if (debug) cout << "curr_node is: " << curr_node->node_id << endl;
         double rand_no = KMC_Standard_Methods::rand_unif_met(seed);
 //        rand_no = 0.999999; // quack dummy to ensure that all edges are traversed
         double cum_t = 0.; // accumulated transition probability
         bool nonelimd = false; // flag indicates if the current node is transient noneliminated
         double factor = 0.;
         if (!curr_node->eliminated) {
-            cout << "  node has not been eliminated" << endl;
+            if (debug) cout << "  node has not been eliminated" << endl;
             dummy_node = &(*curr_node);
             curr_node = &ktn_kps_orig->nodes[curr_node->node_id-1]; // now points to a node in the untransformed subnetwork
             nonelimd = true;
@@ -252,13 +255,12 @@ Node *KPS::sample_absorbing_node() {
                 edgeptr=edgeptr->next_from; continue; }
             cum_t += edgeptr->t;
             if (nonelimd) cum_t += (edgeptr->t)*(curr_node->t)/factor;
-            cout << "    to node: " << edgeptr->to_node->node_id << "  edgeptr->t: " << edgeptr->t \
+            if (debug) cout << "    to node: " << edgeptr->to_node->node_id << "  edgeptr->t: " << edgeptr->t \
                  << "  extra contribn: " << (edgeptr->t)*(curr_node->t)/factor << "  cum_t: " << cum_t << endl;
             if (cum_t>rand_no) { next_node = edgeptr->to_node; break; }
             edgeptr=edgeptr->next_from;
         }
         if (next_node==nullptr || cum_t-1.>1.E-08) {
-            if (next_node==nullptr) cout << "  next_node is nullptr, oops" << endl;
             cout << "kps> GT error detected in sample_absorbing_node()" << endl; exit(EXIT_FAILURE); }
         // increment the number of kMC hops and set the new node
         if (nonelimd) {
@@ -285,6 +287,7 @@ void KPS::graph_transformation(const Network &ktn) {
     ktn_kps_orig=get_subnetwork(ktn);
     ktn_l = new Network(N_B+N_c,0);
     ktn_u = new Network(N_B+N_c,0);
+    ktn_l->edges.resize(8); ktn_u->edges.resize(5); // quack
     for (int i=0;i<ktn_kps->n_nodes;i++) {
         ktn_l->nodes[i] = ktn_kps->nodes[i];
         ktn_u->nodes[i] = ktn_kps->nodes[i];
@@ -298,21 +301,20 @@ void KPS::graph_transformation(const Network &ktn) {
     }
     while (!gt_pq.empty() && N<nelim) {
         Node *node_elim=gt_pq.top();
-//        cout << "N: " << N << " Node: " << node_elim->node_id << " priority: " << node_elim->udeg \
-               << " k: " << node_elim->top_from->k << endl;
+        if (debug) cout << "N: " << N << " Node: " << node_elim->node_id << " priority: " << node_elim->udeg \
+                        << " k: " << node_elim->top_from->k << endl;
         gt_pq.pop();
         node_elim = &ktn_kps->nodes[N]; // eliminate nodes in order of IDs
         gt_iteration(node_elim);
         basin_ids[node_elim->node_id-1]=1; // flag eliminated node
         eliminated_nodes.push_back(node_elim);
         N++;
-        cout << "\nrunning debug tests on transformed network:" << endl;
-        test_ktn(*ktn_kps);
+        if (debug) { cout << "\nrunning debug tests on transformed network:" << endl; test_ktn(*ktn_kps); }
     }
-    cout << "\nrunning debug tests on L:" << endl;
-    test_ktn(*ktn_l);
-    cout << "\nrunning debug tests on U:" << endl;
-    test_ktn(*ktn_u);
+    if (debug) {
+        cout << "\nrunning debug tests on L:" << endl; test_ktn(*ktn_l);
+        cout << "\nrunning debug tests on U:" << endl; test_ktn(*ktn_u);
+    }
     if (N!=(!(N_B>nelim)?N_B:nelim)) {
         cout << "kps> fatal error: lost track of number of eliminated nodes" << endl; exit(EXIT_FAILURE); }
     if (debug) cout << "kps> finished graph transformation" << endl;
@@ -368,7 +370,7 @@ Network *KPS::get_subnetwork(const Network& ktn) {
             m++; edgemask[edgeptr_rev->edge_pos]=true;
         }
     }
-    cout << "added " << n << " nodes and " << m << " edges to subnetwork" << endl;
+    if (debug) cout << "added " << n << " nodes and " << m << " edges to subnetwork" << endl;
     reset_kmc_hop_counts(*ktnptr);
     if (n!=N_B+N_c || m!=N_e) { cout << "kps> something went wrong in get_subnetwork()" << endl; exit(EXIT_FAILURE); }
 //    Network *ktnptr = &const_cast<Network&>(ktn); // quack
@@ -395,80 +397,96 @@ void KPS::gt_iteration(Node *node_elim) {
     ktn_l->nodes[nodemap[node_elim->node_id-1]].t = node_elim->t/factor;
     // update the weights for all edges from the elimd node to non-elimd nbr nodes, and self-loops of non-elimd nbr nodes
     Edge *edgeptr = node_elim->top_from;
-    cout << "updating edges from the eliminated node..." << endl;
+    if (debug) cout << "updating edges from the eliminated node..." << endl;
     while (edgeptr!=nullptr) {
         if (edgeptr->deadts) {
             edgeptr=edgeptr->next_from; continue; }
         edgeptr->to_node->flag=true;
         nodes_nbrs.push_back(edgeptr->to_node); // queue nbr node
         nbrnode_map[edgeptr->to_node->node_id]=(nbrnode){false,edgeptr->t,edgeptr->rev_edge->t};
-        cout << "  to node: " << edgeptr->to_node->node_id << endl;
+        if (debug) cout << "  to node: " << edgeptr->to_node->node_id << endl;
         // update L and U networks
+        size_t pos;
 /*
-        (ktn_l->edges).push_back(Edge());
+        (ktn_l->edges).emplace_back(Edge());
         (ktn_l->edges).back().t = edgeptr->rev_edge->t/factor;
-        size_t pos = (ktn_l->edges).size()-1;
+        pos = (ktn_l->edges).size()-1;
         (ktn_l->edges).back().edge_pos = pos;
         (ktn_l->edges).back().from_node = &ktn_l->nodes[nodemap[edgeptr->to_node->node_id-1]];
         (ktn_l->edges).back().to_node = &ktn_l->nodes[nodemap[node_elim->node_id-1]];
         ktn_l->add_to_edge(nodemap[node_elim->node_id-1],pos);
         ktn_l->n_edges++;
 */
+        ktn_l->edges[ktn_l->n_edges].t = edgeptr->rev_edge->t/factor;
+        ktn_l->edges[ktn_l->n_edges].edge_pos = ktn_l->n_edges;
+        ktn_l->edges[ktn_l->n_edges].from_node = &ktn_l->nodes[nodemap[edgeptr->to_node->node_id-1]];
+        ktn_l->edges[ktn_l->n_edges].to_node = &ktn_l->nodes[nodemap[node_elim->node_id-1]];
+        ktn_l->add_to_edge(nodemap[node_elim->node_id-1],ktn_l->n_edges);
+        ktn_l->n_edges++;
+
         if (edgeptr->to_node->eliminated) { // do not update edges to elimd nodes and self-loops for elimd nodes
             edgeptr=edgeptr->next_from; continue; }
-
-        (ktn_u->edges).push_back(Edge());
+/*
+        (ktn_u->edges).emplace_back(Edge());
         (ktn_u->edges).back().t = edgeptr->t;
-        size_t pos = (ktn_u->edges).size()-1;
+        pos = (ktn_u->edges).size()-1;
         (ktn_u->edges).back().edge_pos = pos;
         (ktn_u->edges).back().from_node = &ktn_u->nodes[nodemap[node_elim->node_id-1]];
         (ktn_u->edges).back().to_node = &ktn_u->nodes[nodemap[edgeptr->to_node->node_id-1]];
         ktn_u->add_from_edge(nodemap[node_elim->node_id-1],pos);
         ktn_u->n_edges++;
+*/
+        ktn_u->edges[ktn_u->n_edges].t = edgeptr->t;
+        ktn_u->edges[ktn_u->n_edges].edge_pos = ktn_u->n_edges;
+        ktn_u->edges[ktn_u->n_edges].from_node = &ktn_u->nodes[nodemap[node_elim->node_id-1]];
+        ktn_u->edges[ktn_u->n_edges].to_node = &ktn_u->nodes[nodemap[edgeptr->to_node->node_id-1]];
+        ktn_u->add_from_edge(nodemap[node_elim->node_id-1],ktn_u->n_edges);
+        ktn_u->n_edges++;
 
         // update subnetwork
-        cout << "    old node t: " << edgeptr->to_node->t << "  incr in node t: " \
-             << (edgeptr->t)*(edgeptr->rev_edge->t)/factor << endl;
+        if (debug) cout << "    old node t: " << edgeptr->to_node->t << "  incr in node t: " \
+                        << (edgeptr->t)*(edgeptr->rev_edge->t)/factor << endl;
         edgeptr->to_node->t += (edgeptr->t)*(edgeptr->rev_edge->t)/factor; // update self-loop of non-elimd nbr node
-        cout << "    old edge t: " << edgeptr->t << "  incr in t: " << (edgeptr->t)*(node_elim->t)/factor << endl;
+        if (debug) cout << "    old edge t: " << edgeptr->t << "  incr in t: " << (edgeptr->t)*(node_elim->t)/factor << endl;
         edgeptr->t += (edgeptr->t)*(node_elim->t)/factor; // update edge from elimd node to non-elimd nbr node
         edgeptr=edgeptr->next_from;
     }
-    cout << "updating edges between pairs of nodes both directly connected to the eliminated node..." << endl;
+    if (debug) cout << "updating edges between pairs of nodes both directly connected to the eliminated node..." << endl;
     // update the weights for all pairs of nodes directly connected to the eliminated node
     int old_n_edges = ktn_kps->n_edges; // number of edges in the network before we start adding edges in the GT algo
     for (vector<Node*>::iterator it_nodevec=nodes_nbrs.begin();it_nodevec!=nodes_nbrs.end();++it_nodevec) {
-        cout << "checking node: " << (*it_nodevec)->node_id << endl;
+        if (debug) cout << "checking node: " << (*it_nodevec)->node_id << endl;
         edgeptr = (*it_nodevec)->top_from; // loop over edges to neighbouring nodes
         while (edgeptr!=nullptr) { // find pairs of nodes that are already directly connected to one another
             // skip nodes not directly connected to elimd node and edges to elimd nodes
             if (edgeptr->deadts || edgeptr->to_node->eliminated || !edgeptr->to_node->flag) {
                 edgeptr=edgeptr->next_from; continue; }
-            cout << "  node " << (*it_nodevec)->node_id << " is directly connected to node " << edgeptr->to_node->node_id << endl;
+            if (debug) cout << "  node " << (*it_nodevec)->node_id << " is directly connected to node " << edgeptr->to_node->node_id << endl;
             nbrnode_map[edgeptr->to_node->node_id].dirconn=true; // this pair of nodes are directly connected
             if (edgeptr->edge_pos>old_n_edges) { // skip nodes for which a new edge has already been added
-                cout << "    edge already added" << endl;
+                if (debug) cout << "    edge already added" << endl;
                 edgeptr=edgeptr->next_from; continue; }
-            cout << "    old edge t: " << edgeptr->t << "  incr in t: " \
-                 << (nbrnode_map[edgeptr->from_node->node_id].t_ton)*\
-                    (nbrnode_map[edgeptr->to_node->node_id].t_fromn)/factor << endl;
+            if (debug) cout << "    old edge t: " << edgeptr->t << "  incr in t: " \
+                            << (nbrnode_map[edgeptr->from_node->node_id].t_ton)*\
+                               (nbrnode_map[edgeptr->to_node->node_id].t_fromn)/factor << endl;
             edgeptr->t += (nbrnode_map[edgeptr->from_node->node_id].t_ton)*\
                 (nbrnode_map[edgeptr->to_node->node_id].t_fromn)/factor;
             edgeptr=edgeptr->next_from;
         }
-        cout << "  checking for neighbours of eliminated node that are not already connected to this node" << endl;
+        if (debug) cout << "  checking for neighbours of eliminated node that are not already connected to this node" << endl;
         for (map<int,nbrnode>::iterator it_map=nbrnode_map.begin();it_map!=nbrnode_map.end();++it_map) {
-            cout << "    checking nbr node: "<< it_map->first << endl;
+            if (debug) cout << "    checking nbr node: "<< it_map->first << endl;
             if (it_map->first==(*it_nodevec)->node_id) continue; // self-loops of neighbouring nodes already accounted for
             if (ktn_kps->nodes[nodemap[it_map->first-1]].eliminated) continue;
             if ((it_map->second).dirconn) { (it_map->second).dirconn=false; continue; } // reset flag
-            cout << "    node " << (*it_nodevec)->node_id << " is not directly connected to node " << it_map->first << endl;
-            cout << "    t of new edge: " << (it_map->second).t_fromn*nbrnode_map[(*it_nodevec)->node_id].t_ton/factor << endl;
+            if (debug) { cout << "    node " << (*it_nodevec)->node_id << " is not directly connected to node " << it_map->first << endl;
+                cout << "    t of new edge: " << (it_map->second).t_fromn*nbrnode_map[(*it_nodevec)->node_id].t_ton/factor << endl; }
             // nodes are directly connected to the elimd node but not to one another, add an edge in the transformed network
             (ktn_kps->edges).push_back(Edge());
             (ktn_kps->edges).back().t = (it_map->second).t_fromn*nbrnode_map[(*it_nodevec)->node_id].t_ton/factor;
             size_t pos = (ktn_kps->edges).size()-1;
             (ktn_kps->edges).back().edge_pos = pos;
+            (ktn_kps->edges).back().label = node_elim->node_id;
 //            Network::add_edge_network(ktn_kps,&ktn_kps->nodes[nodemap[edgeptr->from_node->node_id-1]], \
                 &ktn_kps->nodes[nodemap[edgeptr->to_node->node_id-1]],pos);
             (ktn_kps->edges).back().from_node = &ktn_kps->nodes[nodemap[(*it_nodevec)->node_id-1]];
@@ -481,10 +499,11 @@ void KPS::gt_iteration(Node *node_elim) {
             if ((*it_nodevec)->eliminated) {
                 (ktn_kps->edges).back().t = 0.; // dummy value
             } else {
-                cout << "    t of new reverse edge: " << (it_map->second).t_ton*nbrnode_map[(*it_nodevec)->node_id].t_fromn/factor << endl;
+                if (debug) cout << "    t of new reverse edge: " << (it_map->second).t_ton*nbrnode_map[(*it_nodevec)->node_id].t_fromn/factor << endl;
                 (ktn_kps->edges).back().t = (it_map->second).t_ton*nbrnode_map[(*it_nodevec)->node_id].t_fromn/factor;
             }
             (ktn_kps->edges).back().edge_pos = pos+1;
+            (ktn_kps->edges).back().label = node_elim->node_id;
             (ktn_kps->edges).back().from_node = &ktn_kps->nodes[nodemap[it_map->first-1]];
             (ktn_kps->edges).back().to_node = &ktn_kps->nodes[nodemap[(*it_nodevec)->node_id-1]];
             ktn_kps->add_from_edge(nodemap[it_map->first-1],pos+1);
@@ -506,12 +525,84 @@ void KPS::gt_iteration(Node *node_elim) {
 }
 
 /* undo a single iteration of the graph transformation. Argument is a pointer to the node to be un-eliminated from the network */
-void KPS::undo_gt_iteration(Node *node_elim) {
+vector<Node*> KPS::undo_gt_iteration(Node *node_elim) {
 
-    cout << "kps> undoing elimination of node " << node_elim->node_id << endl;
+    if (debug) cout << "kps> undoing elimination of node " << node_elim->node_id << endl;
     if (!node_elim->eliminated) throw exception(); // node is already noneliminated
     node_elim->eliminated=false;
-    vector <Node*> nodes_nbrs;
+    // set the self-loop for the restored node
+    node_elim->t = -(ktn_l->nodes[nodemap[node_elim->node_id-1]].t)*(ktn_u->nodes[nodemap[node_elim->node_id-1]].t);
+    // construct list of noneliminated nodes neighbouring the restored node
+    vector<Node*> nodes_nbrs;
+    Edge *edgeptr = node_elim->top_from;
+    while (edgeptr!=nullptr) {
+        if (!edgeptr->deadts) {
+            nodes_nbrs.push_back(edgeptr->to_node);
+            edgeptr->to_node->flag=true;
+        }
+        edgeptr=edgeptr->next_from;
+    }
+    if (debug) {
+        cout << "list of nodes_nbrs:" << endl;
+        for (auto &nodeptr: nodes_nbrs) cout << "  " << nodeptr->node_id;
+        cout << "\n" << endl; }
+    // update the remaining edges for pairs of nodes connected to the restored node 
+    edgeptr = ktn_l->nodes[nodemap[node_elim->node_id-1]].top_to;
+    if (debug) cout << "doing edges FROM neighbouring nodes" << endl;
+    while (edgeptr!=nullptr) {
+        Edge *edgeptr2 = ktn_kps->nodes[nodemap[edgeptr->from_node->node_id-1]].top_from;
+        if (!edgeptr2->from_node->eliminated) {
+            if (debug) cout << " neighbour node " << edgeptr2->from_node->node_id << " is noneliminated, relevant L elem: " << edgeptr->t;
+            edgeptr2->from_node->dt = edgeptr->t;
+        }
+        while (edgeptr2!=nullptr) {
+            if (debug) cout << "  edge from: " << edgeptr2->from_node->node_id << "  to: " << edgeptr2->to_node->node_id << endl;
+            if (edgeptr2->label==node_elim->node_id) edgeptr2->deadts=true;
+            if (edgeptr2->deadts) { edgeptr2=edgeptr2->next_from; continue; }
+            if (edgeptr2->to_node->flag) {
+                if (debug) cout << "    to node is flagged, relevant L elem: " << edgeptr->t << endl;
+                edgeptr2->dt = edgeptr->t;
+//            } else if (edgeptr2->to_node==node_elim) {
+//                cout << "    to node is eliminated node, relevant U elem: " << ktn_u->nodes[nodemap[node_elim->node_id-1]].t << endl;
+//                edgeptr2->dt = ktn_u->nodes[nodemap[node_elim->node_id-1]].t;
+            }
+            edgeptr2 = edgeptr2->next_from;            
+        }
+        edgeptr=edgeptr->next_to;
+    }
+    edgeptr = ktn_u->nodes[nodemap[node_elim->node_id-1]].top_from;
+    if (debug) cout << "doing edges TO neighbouring nodes" << endl;
+    while (edgeptr!=nullptr) {
+        Edge *edgeptr2 = ktn_kps->nodes[nodemap[edgeptr->to_node->node_id-1]].top_to;
+        if (!edgeptr2->to_node->eliminated) {
+            if (debug) cout << " neighbour node: " << edgeptr2->to_node->node_id << " is noneliminated, relevant U elem: " << edgeptr->t;
+            edgeptr2->to_node->dt *= edgeptr->t;
+            edgeptr2->to_node->t -= edgeptr2->to_node->dt;
+            if (debug) cout << " new t of node is: " << edgeptr2->to_node->t << endl;
+        }
+        while (edgeptr2!=nullptr) {
+            if (debug) cout << "  edge from: " << edgeptr2->from_node->node_id << "  to: " << edgeptr2->to_node->node_id << endl;
+            if (edgeptr2->label==node_elim->node_id) edgeptr2->deadts=true;
+            if (edgeptr2->deadts) {edgeptr2=edgeptr2->next_to; continue; }
+            if (edgeptr2->from_node->flag) {
+                if (debug) cout << "    from node is flagged, relevant U elem: " << edgeptr->t << endl;
+                edgeptr2->dt *= edgeptr->t;
+                edgeptr2->t -= edgeptr2->dt;
+                if (debug) cout << "      new t of edge is: " << edgeptr2->t << endl;
+            } else if (edgeptr2->from_node==node_elim) {
+                if (debug) cout << "    from node is eliminated node, relevant L elem: " << ktn_l->nodes[nodemap[node_elim->node_id-1]].t \
+                                << "  relevant U elem: " << edgeptr->t << endl;
+//                edgeptr2->dt *= ktn_l->nodes[nodemap[node_elim->node_id-1]].t;
+//                edgeptr2->t -= edgeptr2->dt;
+                edgeptr2->t -= (ktn_l->nodes[nodemap[node_elim->node_id-1]].t)*(edgeptr->t);
+                if (debug) cout << "      new t of edge is: " << edgeptr2->t << endl;
+            }
+            edgeptr2 = edgeptr2->next_to;
+        }
+        edgeptr=edgeptr->next_from;
+    }
+    if (debug) test_ktn(*ktn_kps);
+    return nodes_nbrs;
 }
 
 /* calculate the factor (1-T_{nn}) needed in the elimination of the n-th node in graph transformation */
