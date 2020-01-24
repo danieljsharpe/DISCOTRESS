@@ -4,17 +4,35 @@ File containing kinetic Monte Carlo simulation algorithms to propagate individua
 
 #include "kmc_methods.h"
 #include <random>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <iomanip>
 
 using namespace std;
 
 Walker::~Walker() {}
 
-/* write path quantities to file */
-void Walker::dump_walker_info(bool entropy_flow) {
+/* write trajectory and path quantities to file */
+void Walker::dump_walker_info(int path_no, bool endofpath) {
+    if (curr_node==nullptr) throw exception();
+    ofstream walker_f;
+    walker_f.open("walker."+to_string(path_no)+".dat",ios_base::app);
+    walker_f.setf(ios::right,ios::adjustfield); walker_f.width(5);
+    walker_f << curr_node->node_id << "  " << curr_node->comm_id;
+    walker_f.precision(16); walker_f.width(12);
+    walker_f << "    " << t << "    " << k  << "    " << p << "    "  << s << endl;
+    if (!endofpath) return;
+    ofstream tpdistrib_f;
+    tpdistrib_f.open("tp_distribns.dat",ios_base::app);
+    tpdistrib_f.precision(16); tpdistrib_f.width(12);
+    tpdistrib_f << path_no << "    " << t << "    " << k << "    " << p << "    " << s << endl;
+}
 
-    if (entropy_flow) {
-
-    }
+/* reset path quantities */
+void Walker::reset_walker_info() {
+    k=0; p=-numeric_limits<double>::infinity(); t=0.; s=0.;
+    curr_node=nullptr;
 }
 
 KMC_Enhanced_Methods::KMC_Enhanced_Methods() {}
@@ -46,8 +64,21 @@ void KMC_Enhanced_Methods::update_tp_stats(bool abpath, bool update) {
 void KMC_Enhanced_Methods::calc_tp_stats() {
     cout << "kmc_enhanced_methods> calculating transition path statistics" << endl;
     for (int i=0;i<nbins;i++) {
-        committors[i] = static_cast<double>(ab_successes[i])/static_cast<double>(ab_successes[i]+ab_failures[i]);
+        committors[i] = static_cast<double>(ab_successes[i])/static_cast<double>(ab_successes[i]+ab_failures[i]+1); // quack
         tp_densities[i] = static_cast<double>(tp_visits[i])/static_cast<double>(n_ab);
+    }
+    write_tp_stats();
+}
+
+/* write transition path statistics to file */
+void KMC_Enhanced_Methods::write_tp_stats() {
+    cout << "kmc_enhanced_methods> writing transition path statistics to file" << endl;
+    ofstream tpstats_f;
+    tpstats_f.open("tp_stats.dat");
+    for (int i=0;i<nbins;i++) {
+        tpstats_f << setw(4) << i << setw(8) << tp_visits[i] << setw(8) << ab_successes[i] << setw(8) << ab_failures[i];
+        tpstats_f << fixed << setprecision(6);
+        tpstats_f << "    " << setw(10) << tp_densities[i] << setw(10) << committors[i] << endl;
     }
 }
 

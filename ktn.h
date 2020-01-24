@@ -20,7 +20,7 @@ struct Node;
 struct Edge {
     int ts_id;
     int edge_pos; // position of the TS in the edges array
-    int h; // no. of kMC moves along the edge (used in kPS)
+    int h=0; // no. of kMC moves along the edge (used in kPS)
     int label=0; // label indicates node ID of GT iteration at which edge becomes dead (in kPS)
     double k; // (log) transition rate
     double t; // transition probability
@@ -55,7 +55,7 @@ struct Node {
     double k_esc; // (log) escape rate from node (sum of outgoing transition rates)
     double t; // self-transition probability
     double pi; // (log) occupation probability (usually the stationary/equilibrium probability)
-    int h; // no. of kMC moves along the self-edge (used in kPS)
+    int h=0; // no. of kMC moves along the self-edge (used in kPS)
     double dt; // change in transition probability (used in kPS)
     bool flag=false; // additional flag variable
     Edge *top_to=nullptr;

@@ -6,7 +6,9 @@ Classes and functions for handling enhanced kinetic Monte Carlo simulations and 
 #define __KMC_METHODS_H_INCLUDED__
 
 #include "ktn.h"
+#include <limits>
 #include <map>
+#include <utility>
 
 using namespace std;
 
@@ -17,7 +19,8 @@ struct Walker {
 
     explicit Walker()=default;
     ~Walker();
-    void dump_walker_info(bool); // write path quantities to file
+    void dump_walker_info(int,bool); // write path quantities to file
+    void reset_walker_info();
 
     int walker_id; // ID of walker in set of trajectories
     int bin_curr, bin_prev; // for WE-kMC
@@ -58,6 +61,7 @@ class KMC_Enhanced_Methods {
     void find_bin_onthefly();
     void update_tp_stats(bool,bool); // update the transition path statistics, depends on if the path is a transn path or is unreactive
     void calc_tp_stats(); // calculate the transition path statistics from the observed counts
+    void write_tp_stats(); // write transition path statistics to file
 };
 
 /* Standard kMC, simply propagates the dynamics of a single trajectory using the chosen standard method */
@@ -100,7 +104,7 @@ class KPS : public KMC_Enhanced_Methods {
     Network *ktn_kps=nullptr; // pointer to the subnetwork of the TN that kPS internally uses and transforms
     Network *ktn_kps_orig=nullptr; // pointer to the original subnetwork of the TN
     Network *ktn_l=nullptr, *ktn_u=nullptr; // pointers to arrays used in LU-style decomposition of transition matrix
-    Walker walker={walker_id:0,bin_curr:0,bin_prev:0,k:0,active:true,p:0.,t:0.,s:0.};
+    Walker walker={walker_id:0,bin_curr:0,bin_prev:0,k:0,active:true,p:-numeric_limits<double>::infinity(),t:0.,s:0.};
     vector<int> basin_ids; // used to indicate the set to which each node belongs for the current kPS iteration
         // (eliminated=1, transient noneliminated=2, absorbing boundary=3, absorbing nonboundary=0)
     vector<Node*> eliminated_nodes; // vector of eliminated nodes (in order)
@@ -121,8 +125,8 @@ class KPS : public KMC_Enhanced_Methods {
     Node *sample_absorbing_node();
     void graph_transformation(const Network&);
     void gt_iteration(Node*);
-    vector<Node*> undo_gt_iteration(Node*);
-    void update_path_quantities(double);
+    vector<pair<Node*,Edge*>> undo_gt_iteration(Node*);
+    void update_path_quantities(double,const Node*);
     Network *get_subnetwork(const Network&);
 
     public:
