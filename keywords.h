@@ -20,6 +20,7 @@ using namespace std;
 struct Keywords {
 
     ~Keywords() {
+        if (initcondfile) delete[] initcondfile;
         if (binfile) delete[] binfile;
         if (bintargfile) delete[] bintargfile;
         if (bininitfile) delete[] bininitfile;
@@ -38,7 +39,9 @@ struct Keywords {
     // optional arguments pertaining to enhanced sampling methods
     double tau=-1.;          // "TAU" time interval between checking bins (WE-kMC)
                              //       lag time at which transition probability matrix is evaluated (kPS)
-    int nbins=-1;            // number of bins (WE-kMC) or trapping basins (kPS) on the network
+    double tintvl=-1.;       // "TINTVL" time interval for writing trajectory data
+    int ncomms=-1;           // number of communities on the network, eg no. of bins (WE-kMC) or trapping basins (kPS)
+    char *initcondfile=nullptr; // "INITCOND" name of file where nonequilibrium initial probs of nodes in B are specified
     char *binfile=nullptr;   // "BINFILE" name of file where bins are defined (WE-kMC, kPS)
     char *bintargfile=nullptr; // "BINTARGFILE" name of file where target number of trajectories in each bin is defined (WE-kMC)
     char *bininitfile=nullptr; // "BININITFILE" name of file where initial prob distrib of trajs is defined (WE-kMC)
@@ -50,12 +53,13 @@ struct Keywords {
 
     // other keywords
     bool transnprobs=false;  // "TRANSNPROBS" edge weights are read in as transition probabilities (not as weights)
-    bool branchprobs=false;  // "BRANCHINGPROBS" transition probabilities are calculated as branching probabilities
+    bool branchprobs=false;  // "BRANCHPROBS" transition probabilities are calculated as branching probabilities
     bool debug=false;
     int seed=17;
 
     // implicitly set switches
-    bool initcond=false;     // cf. "BININITFILE", indicates if an initial probability distribution has been specified
+    bool initcond=false;     // "INITCOND" specifies if a nonequilibrium initial condition for the nodes in set B has been set
+    bool bininitcond=false;  // cf. "BININITFILE", indicates if an initial probability distribution for bins has been specified (in WE)
 };
 
 Keywords read_keywords(const char *);

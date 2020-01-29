@@ -14,19 +14,20 @@ using namespace std;
 Walker::~Walker() {}
 
 /* write trajectory and path quantities to file */
-void Walker::dump_walker_info(int path_no, bool endofpath) {
+void Walker::dump_walker_info(int path_no, bool transnpath) {
     if (curr_node==nullptr) throw exception();
     ofstream walker_f;
     walker_f.open("walker."+to_string(path_no)+".dat",ios_base::app);
-    walker_f.setf(ios::right,ios::adjustfield); walker_f.width(5);
-    walker_f << curr_node->node_id << "  " << curr_node->comm_id;
-    walker_f.precision(16); walker_f.width(12);
-    walker_f << "    " << t << "    " << k  << "    " << p << "    "  << s << endl;
-    if (!endofpath) return;
+    walker_f.setf(ios::right,ios::adjustfield); walker_f.setf(ios::fixed,ios::floatfield); // walker_f.fill('x');
+    walker_f << setw(7) << curr_node->node_id << setw(8) << curr_node->comm_id << setw(15) << k;
+    walker_f.precision(12); // walker_f.width(18);
+    walker_f << setw(30) << t << setw(30) << p << setw(30) << s << endl;
+    if (!transnpath) return;
     ofstream tpdistrib_f;
     tpdistrib_f.open("tp_distribns.dat",ios_base::app);
-    tpdistrib_f.precision(16); tpdistrib_f.width(12);
-    tpdistrib_f << path_no << "    " << t << "    " << k << "    " << p << "    " << s << endl;
+    tpdistrib_f.setf(ios::right,ios::adjustfield); tpdistrib_f.setf(ios::fixed,ios::floatfield);
+    tpdistrib_f.precision(12);
+    tpdistrib_f << setw(15) << path_no << setw(15) << k << setw(30) << t << setw(30) << p << setw(30) << s << endl;
 }
 
 /* reset path quantities */
@@ -38,6 +39,48 @@ void Walker::reset_walker_info() {
 KMC_Enhanced_Methods::KMC_Enhanced_Methods() {}
 
 KMC_Enhanced_Methods::~KMC_Enhanced_Methods() {}
+
+/* sample an initial node (from the B set) and set this node as the starting node of the walker */
+Node *KMC_Enhanced_Methods::get_initial_node(const Network &ktn, Walker &walker) {
+
+    Node *node_b=nullptr; // sampled starting node
+    double pi_B = -numeric_limits<double>::infinity(); // (log) occupation probability of all nodes in initial set B
+    vector<pair<Node*,double>> b_probs(ktn.nodesB.size()); // accumulated probs of selecting starting node
+    set<Node*>::iterator it_set = ktn.nodesB.begin();
+    if (ktn.nodesB.size()==1) { // there is only one node in the starting set
+        node_b=*it_set;
+        pi_B=(*it_set)->pi;
+    } else if (!ktn.initcond) { // no initial condition was set, choose node in set B in proportion to stationary probs
+        while (it_set!=ktn.nodesB.end()) {
+            pi_B = log(exp(pi_B)+exp((*it_set)->pi));
+            it_set++; }
+        it_set = ktn.nodesB.begin();
+        double cum_prob=0.;
+        while (it_set!=ktn.nodesB.end()) {
+            cum_prob += exp((*it_set)->pi-pi_B);
+            b_probs.push_back(make_pair((*it_set),cum_prob));
+            it_set++; }
+    } else { // choose node in set B in proportion to specified initial condition probs
+        pi_B=0.; // for specified initial condition, sum of probabilities should be unity
+        double cum_prob=0.; int i=0;
+        while (it_set!=ktn.nodesB.end()) {
+            cum_prob += exp(ktn.init_probs[i]);
+            b_probs.push_back(make_pair(*it_set,cum_prob)); i++;
+        }
+    }
+    if (node_b==nullptr) { // if there was more than one node in B, sample the initial node
+        double rand_no = KMC_Standard_Methods::rand_unif_met(seed);
+        vector<pair<Node*,double>>::iterator it_vec = b_probs.begin();
+        while (it_vec!=b_probs.end()) {
+            if ((*it_vec).second>=rand_no) { node_b=(*it_vec).first; break; }
+            it_vec++; }
+        if (it_vec==b_probs.end()) node_b=(*it_vec).first;
+    }
+    walker.curr_node=&(*node_b);
+    walker.p=node_b->pi-pi_B; // factor in path probability corresponding to initial occupation of node
+    if (ktn.ncomms>0) visited[node_b->comm_id]=true;
+    return node_b;
+}
 
 /* function to set the KMC_Standard_Method member function to propagate individual trajectories */
 void KMC_Enhanced_Methods::set_standard_kmc(void(*kmcfuncptr)(Walker&)) {
@@ -52,61 +95,85 @@ void KMC_Enhanced_Methods::find_bin_onthefly() {
    calculate transition path statistics for communities */
 void KMC_Enhanced_Methods::update_tp_stats(bool abpath, bool update) {
     n_traj++; if (abpath) n_ab++;
-    if (update) {
+    if (!update) return;
+    int i=0; // community ID
     for (bool comm_visit: visited) {
-        if (comm_visit) continue;
-    }
+        if (comm_visit) {
+            if (abpath) { ab_successes[i]++;
+            } else { ab_failures[i]++; }
+        }
+        i++;
     }
     fill(visited.begin(),visited.end(),false);
 }
 
 /* calculate the transition path statistics for communities from the observed counts during the simulation */
-void KMC_Enhanced_Methods::calc_tp_stats() {
+void KMC_Enhanced_Methods::calc_tp_stats(int ncomms) {
     cout << "kmc_enhanced_methods> calculating transition path statistics" << endl;
-    for (int i=0;i<nbins;i++) {
-        committors[i] = static_cast<double>(ab_successes[i])/static_cast<double>(ab_successes[i]+ab_failures[i]+1); // quack
-        tp_densities[i] = static_cast<double>(tp_visits[i])/static_cast<double>(n_ab);
+    for (int i=0;i<ncomms;i++) {
+        committors[i] = static_cast<double>(ab_successes[i])/static_cast<double>(ab_successes[i]+ab_failures[i]);
+        tp_densities[i] = static_cast<double>(ab_successes[i])/static_cast<double>(n_ab);
     }
-    write_tp_stats();
+    write_tp_stats(ncomms);
 }
 
 /* write transition path statistics to file */
-void KMC_Enhanced_Methods::write_tp_stats() {
+void KMC_Enhanced_Methods::write_tp_stats(int ncomms) {
     cout << "kmc_enhanced_methods> writing transition path statistics to file" << endl;
     ofstream tpstats_f;
     tpstats_f.open("tp_stats.dat");
-    for (int i=0;i<nbins;i++) {
-        tpstats_f << setw(4) << i << setw(8) << tp_visits[i] << setw(8) << ab_successes[i] << setw(8) << ab_failures[i];
+    for (int i=0;i<ncomms;i++) {
+        tpstats_f << setw(7) << i << setw(10) << ab_successes[i] << setw(10) << ab_failures[i];
         tpstats_f << fixed << setprecision(6);
-        tpstats_f << "    " << setw(10) << tp_densities[i] << setw(10) << committors[i] << endl;
+        tpstats_f << setw(20) << tp_densities[i] << setw(14) << committors[i] << endl;
     }
 }
 
-STD_KMC::STD_KMC(const Network& ktn, int maxn_abpaths, int maxit) {
-    this->maxn_abpaths=maxn_abpaths; this->maxit=maxit;
+STD_KMC::STD_KMC(const Network& ktn, int maxn_abpaths, int maxit, double tintvl) {
+    this->maxn_abpaths=maxn_abpaths; this->maxit=maxit; this->tintvl=tintvl;
+    // quack move this somewhere more general
+    if (ktn.ncomms>0) {
+        visited.resize(ktn.ncomms); fill(visited.begin(),visited.end(),false);
+        tp_densities.resize(ktn.ncomms); committors.resize(ktn.ncomms);
+        ab_successes.resize(ktn.ncomms); ab_failures.resize(ktn.ncomms);
+    }
 }
 
 STD_KMC::~STD_KMC() {}
 
 /* main loop to drive a standard kMC simulation (no enhanced sampling) */
 void STD_KMC::run_enhanced_kmc(const Network &ktn) {
-    cout << "std_kmc> beginning standard kMC simulation" << endl;
+    cout << "\nstd_kmc> beginning standard kMC simulation" << endl;
     Walker walker={walker_id:0,bin_curr:0,bin_prev:0,k:0,active:true,p:0.,t:0.,s:0.}; // this method uses only a single walker
-    walker.curr_node = &ktn.nodes[0]; // quack choose properly
-    int n_ab=0, n_kmcit=0;
-    while ((n_ab<maxn_abpaths) && (n_kmcit<maxit)) { // algorithm terminates after max. no. of iterations of the standard kMC algorithm
-        cout << "iteration " << n_kmcit << endl;
+    Node *dummy_node = get_initial_node(ktn,walker);
+    cout << "path: " << 0 << " initial node is: " << walker.curr_node->node_id << endl;
+    walker.dump_walker_info(0,false);
+    n_ab=0; n_traj=0; int n_kmcit=0;
+    double next_tintvl=tintvl; // next time interval for writing trajectory data
+    while ((n_ab<maxn_abpaths) && (n_kmcit<maxit)) { // algo terminates after max no of iterations of the standard kMC algorithm
         (*kmc_func)(walker);
-        if (walker.curr_node->aorb==-1) n_ab++;
+        visited[walker.curr_node->comm_id]=true;
+        if (tintvl==0. || (walker.t>=next_tintvl && tintvl>0.)) { // reached time interval for dumping trajectory data
+            walker.dump_walker_info(n_traj,walker.curr_node->aorb==-1);
+            if (tintvl>0.) {
+                while (walker.t>=next_tintvl) next_tintvl+=tintvl; }
+        }
+        if (walker.curr_node->aorb==-1 || walker.curr_node->aorb==1) { // traj has reached absorbing macrostate A or has returned to B
+            update_tp_stats(walker.curr_node->aorb==-1,ktn.ncomms>0);
+            walker.reset_walker_info();
+            dummy_node = get_initial_node(ktn,walker);
+            walker.dump_walker_info(n_traj,false);
+        }
         n_kmcit++;
     }
-    cout << "std_kmc> walker time: " << walker.t << " activity: " << walker.k << " entropy flow: " << walker.s << " log path prob: " << walker.p << endl;
-    cout << "std_kmc> finished standard kMC simulation" << endl;
+    cout << "std_kmc> standard kMC simulation terminated after " << n_kmcit << " kMC iterations. Simulated " << n_ab << " transition paths" << endl;
+    if (ktn.ncomms>0) calc_tp_stats(ktn.ncomms);
 }
 
 KMC_Standard_Methods::KMC_Standard_Methods() {}
 KMC_Standard_Methods::~KMC_Standard_Methods() {}
 
+/* function to take a single kMC step using the BKL algorithm */
 void KMC_Standard_Methods::bkl(Walker &walker) {
     // propagate trajectory
     double rand_no = KMC_Standard_Methods::rand_unif_met(19); // quack // random number used to select transition
@@ -118,12 +185,11 @@ void KMC_Standard_Methods::bkl(Walker &walker) {
         prev_p = edgeptr->t;
         edgeptr = edgeptr->next_from;
     }
-    cout << "  moving to node: " << edgeptr->to_node->node_id << endl;
     walker.curr_node = edgeptr->to_node; // advance trajectory
     // update path quantities
     walker.k++; // dynamical activity (no. of steps)
     walker.p += log(edgeptr->t-prev_p); // log path probability
-    walker.t += -(1./exp(old_node->k_esc))*log(KMC_Standard_Methods::rand_unif_met(19)); // sample transition time
+    walker.t += -(1./exp(old_node->k_esc))*log(KMC_Standard_Methods::rand_unif_met(19)); // quack // sample transition time
     walker.s += edgeptr->rev_edge->k-edgeptr->k; // entropy flow
 }
 

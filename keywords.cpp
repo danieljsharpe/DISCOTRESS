@@ -63,18 +63,24 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.nB=stoi(vecstr[2]);
         } else if (vecstr[0]=="TAU") {
             my_kws.tau=stod(vecstr[1]);
+        } else if (vecstr[0]=="TINTVL") {
+            my_kws.tintvl=stod(vecstr[1]);
+        } else if (vecstr[0]=="INITCOND") {
+            my_kws.initcondfile = new char[vecstr[1].size()+1];
+            copy(vecstr[1].begin(),vecstr[1].end(),my_kws.initcondfile);
+            my_kws.initcond=true;
         } else if (vecstr[0]=="BINFILE") {
             my_kws.binfile = new char[vecstr[1].size()+1];
             copy(vecstr[1].begin(),vecstr[1].end(),my_kws.binfile);
             my_kws.binfile[vecstr[1].size()]='\0'; // trailing character
-            my_kws.nbins=stoi(vecstr[2]);
+            my_kws.ncomms=stoi(vecstr[2]);
         } else if (vecstr[0]=="BINTARGFILE") {
             my_kws.bintargfile = new char[vecstr[1].size()+1];
             copy(vecstr[1].begin(),vecstr[1].end(),my_kws.bintargfile);
         } else if (vecstr[0]=="BININITFILE") {
             my_kws.bininitfile = new char[vecstr[1].size()+1];
             copy(vecstr[1].begin(),vecstr[1].end(),my_kws.bininitfile);
-            my_kws.initcond=true;
+            my_kws.bininitcond=true;
         } else if (vecstr[0]=="ADAPTIVEBINS") {
             my_kws.adaptivebins=true;
         } else if (vecstr[0]=="KPSKMCSTEPS") {
@@ -83,7 +89,7 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.nelim=stoi(vecstr[1]);
         } else if (vecstr[0]=="TRANSNPROBS") {
             my_kws.transnprobs=true;
-        } else if (vecstr[0]=="BRANCHINGPROBS") {
+        } else if (vecstr[0]=="BRANCHPROBS") {
             my_kws.branchprobs=true;
         } else if (vecstr[0]=="DEBUG") {
             my_kws.debug=true;
@@ -102,7 +108,7 @@ Keywords read_keywords(const char *kw_file) {
         cout << "keywords> error: transition network parameters not set correctly" << endl; exit(EXIT_FAILURE); }
     if (my_kws.nabpaths<=0 || my_kws.maxit<=0) {
         cout << "keywords> error: termination condition not specified correctly" << endl; exit(EXIT_FAILURE); }
-    if (my_kws.binfile!=nullptr && my_kws.nbins<=1) {
+    if (my_kws.binfile!=nullptr && my_kws.ncomms<=1) {
         cout << "keywords> error: there must be at least two bins in the specified partitioning" << endl; exit(EXIT_FAILURE); }
     if (my_kws.kmc_method<=0 && my_kws.enh_method!=2) {
         cout << "keywords> error: must choose a kMC trajectory method except with kPS" << endl; exit(EXIT_FAILURE); }

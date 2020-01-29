@@ -50,10 +50,18 @@ MAXIT <int>
 
 ### OPTIONAL KEYWORDS RELATING TO ENHANCED SAMPLING ###
 
+INITCONDFILE <str>
+  optional. Name of the file containing initial occupation probabilities for nodes in B that are alternative to the
+    stationary probabilities. The number of entries is assumed to be the same as the specified number of nodes in B,
+    and the specified order is assumed to be the same also (cf MINBFILE)
+
 BINFILE <str> <int>
-  mandatory if ENHANCED WE or if ENHANCED KPS and not ADAPTIVEBINS
+  mandatory if ENHANCED WE or ENHANCED KPS and not ADAPTIVEBINS
     name of the file containing the definitions of communities (single-column, indexed from zero, number of entries equal
     to the number of nodes in the network) and no. of communities. Is overridden by ADAPTIVEBINS
+    the communities are used in the calculation of transition path statistics (ie committor functions and
+    transition path probability densities). For enhanced sampling methods, the communities are used to divide the state
+    space (eg the communities define the trapping basins in KPS, or the bins in WE)
 
 ADAPTIVEBINS
   mandatory if ENHANCED WE or ENHANCED KPS and not BINFILE, default False
@@ -68,7 +76,7 @@ BININITFILE <str>
     over nodes
 
 TAU <double>
-  mandatory if ENHANCED WE or if ENHANCED KPS and not BRANCHINGPROBS
+  mandatory if ENHANCED WE or if ENHANCED KPS and not BRANCHPROBS
     If WE, tau is the time between resampling trajectories
     If KPS, tau is the lag time at which the linear transition probability matrices are estimated (or provided, if TRANSNPROBS)
 
@@ -84,12 +92,17 @@ NELIM <int>
 
 ### OTHER OPTIONAL KEYWORDS ###
 
-BRANCHINGPROBS
+BRANCHPROBS
   the transition probabilities are calculated as the branching probabilities
 
 TRANSNPROBS
-  the weights to read in are transition probabilities, not rates (compatible with kPS only). The self-loop transition probabilities
-  are nodes are inferred to be the remainders
+  the weights to read in are transition probabilities, not rates (compatible with ENHANCED KPS only)
+  the self-loop transition probabilities for nodes are inferred to be the remainders
+
+TINTVL <double>
+  ignored if ENHANCED KPS. Time interval for dumping trajectory information
+  negative value (default) indicates that trajectory data is not written
+  zero value specifies that all trajectory information is written
 
 SEED <int>
   seed for the random number generators

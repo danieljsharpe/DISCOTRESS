@@ -45,6 +45,7 @@ void Network::get_tmtx_lin(double tau) {
 /* the transition probabilities are calculated as the branching probabilities */
 void Network::get_tmtx_branch() {
     cout << "ktn> calculating branching probability matrix" << endl;
+    branchprobs=true;
     for (auto & edge: edges) {
         if (edge.deadts) continue;
         edge.t = exp(edge.k-edge.from_node->k_esc); }
@@ -260,6 +261,17 @@ void Network::calc_net_flux(Edge &edge) {
     edge.rev_edge->j = -edge.j;
 }
 
+/* set the vector specifying the initial probabilities of nodes in set B (if different from stationary probabilities) */
+void Network::set_initcond(const vector<double> &init_probs) {
+
+    if (init_probs.size()!=nodesB.size()) throw Network::Ktn_exception();
+    double p_tot=0.;
+    for (const auto &p: init_probs) p_tot+=exp(p);
+    if (abs(p_tot-1.)>1.E-10) throw Network::Ktn_exception();
+    initcond=true;
+    this->init_probs=init_probs;
+}
+
 /* update the Network object pointed to by the ktn argument to include an additional edge (with index k in the edges array)
    connecting from_node and to_node */
 void Network::add_edge_network(Network *ktn, Node &from_node, Node &to_node, int k) {
@@ -272,20 +284,25 @@ void Network::add_edge_network(Network *ktn, Node &from_node, Node &to_node, int
 /* set up the kinetic transition network */
 void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns, \
         const vector<double> &ts_wts, const vector<double> &stat_probs, const vector<int> &nodesinA, \
-        const vector<int> &nodesinB, bool transnprobs, double tau, const vector<int> &comms) {
+        const vector<int> &nodesinB, bool transnprobs, double tau, int ncomms, const vector<int> &comms) {
 
     if (!((ts_conns.size()==ktn.n_edges) || (ts_wts.size()==2*ktn.n_edges) || \
          (stat_probs.size()==ktn.n_nodes))) throw Network::Ktn_exception();
     if (transnprobs) {
         cout << "ktn> interpreteing edge weights as transition probabilities at a lag time: " << tau << endl;
         ktn.tau=tau; }
+    ktn.ncomms=ncomms;
+    cout << "ncomms is: " << ncomms << endl;
     double tot_pi = -numeric_limits<double>::infinity();
     for (int i=0;i<ktn.n_nodes;i++) {
         ktn.nodes[i].node_id = i+1;
-        if (!comms.empty()) ktn.nodes[i].comm_id = comms[i];
+        if (!comms.empty()) {
+            ktn.nodes[i].comm_id = comms[i];
+            if (comms[i]>=ncomms) throw Ktn_exception(); }
         ktn.nodes[i].pi = stat_probs[i];
         tot_pi = log(exp(tot_pi) + exp(stat_probs[i]));
     }
+    cout << "honk" << endl;
     tot_pi = exp(tot_pi);
     if (abs(tot_pi-1.)>1.E-10) {
         cout << "ktn> Error: total equilibrium probabilities of minima is: " << tot_pi << " =/= 1." << endl;

@@ -37,12 +37,11 @@ class KMC_Enhanced_Methods {
 
     protected:
 
-    int nbins=-1;               // number of bins specified (if not adaptivebins)
     int maxn_abpaths;           // algorithm terminates when this number of A-B paths have been successfully sampled
     int n_ab;                   // number of successfully simulated A<-B transition paths
     int n_traj;                 // total number of B<-B or A<-B paths simulated
+    double tintvl;              // time interval for dumping trajectory data
     vector<bool> visited;       // is true when the corresponding community has been visited along the trajectory
-    vector<int> tp_visits;      // vector of counts from which to calculate transition path probability density for communities
     vector<int> ab_successes;   // vector of counts of node appearances along A<-B transition paths
     vector<int> ab_failures;    // vector of counts of node appearances along B<-B unreactive paths
     vector<double> tp_densities; // probability that a community is visited along an A<-B transition path
@@ -57,11 +56,12 @@ class KMC_Enhanced_Methods {
     KMC_Enhanced_Methods();
     virtual ~KMC_Enhanced_Methods();
     virtual void run_enhanced_kmc(const Network&)=0; // pure virtual function
+    Node *get_initial_node(const Network&, Walker&); // sample an initial node
     void set_standard_kmc(void(*)(Walker&)); // function to set the kmc_std_method
     void find_bin_onthefly();
     void update_tp_stats(bool,bool); // update the transition path statistics, depends on if the path is a transn path or is unreactive
-    void calc_tp_stats(); // calculate the transition path statistics from the observed counts
-    void write_tp_stats(); // write transition path statistics to file
+    void calc_tp_stats(int);    // calculate the transition path statistics from the observed counts
+    void write_tp_stats(int);   // write transition path statistics to file
 };
 
 /* Standard kMC, simply propagates the dynamics of a single trajectory using the chosen standard method */
@@ -69,7 +69,7 @@ class STD_KMC : public KMC_Enhanced_Methods {
 
     public:
 
-    STD_KMC(const Network&,int,int);
+    STD_KMC(const Network&,int,int,double);
     ~STD_KMC();
     void run_enhanced_kmc(const Network&);
 };
@@ -88,7 +88,7 @@ class WE_KMC : public KMC_Enhanced_Methods {
 
     public:
 
-    WE_KMC(const Network&,int,int,double,int,bool,int,bool);
+    WE_KMC(const Network&,int,int,double,bool,int,bool);
     ~WE_KMC();
     void run_enhanced_kmc(const Network&);
 };
@@ -117,7 +117,6 @@ class KPS : public KMC_Enhanced_Methods {
     const Node *alpha=nullptr, *epsilon=nullptr; // final and initial microstates of current escape trajectory
         // NB these pointers point to nodes in the original network, passed as the arg to run_enhanced_kmc()
     bool adaptivebins; // bins are defined adaptively (or else are set prior to the simulation)
-    bool initcond;  // an initial condition to sample the starting node has been specified (Y/N)
     int kpskmcsteps; // number of kMC steps to run after each kPS trapping basin escape trajectory sampled
 
     void setup_basin_sets(const Network&);
@@ -131,7 +130,7 @@ class KPS : public KMC_Enhanced_Methods {
 
     public:
 
-    KPS(const Network&,int,int,int,double,int,int,bool,bool,int,bool);
+    KPS(const Network&,int,int,int,double,int,bool,int,bool);
     ~KPS();
     void run_enhanced_kmc(const Network&);
     static double calc_gt_factor(Node*);

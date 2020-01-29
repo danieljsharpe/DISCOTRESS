@@ -10,22 +10,22 @@ File containing functions relating to kinetic path sampling
 
 using namespace std;
 
-KPS::KPS(const Network &ktn, int maxn_abpaths, int maxit, int nelim, double tau, int nbins, int kpskmcsteps, \
-         bool adaptivebins, bool initcond, int seed, bool debug) {
+KPS::KPS(const Network &ktn, int maxn_abpaths, int maxit, int nelim, double tau, int kpskmcsteps, \
+         bool adaptivebins, int seed, bool debug) {
 
     cout << "kps> running kPS with parameters:\n  lag time: " << tau << " \tmax. no. of eliminated nodes: " \
-         << nelim << "\n  no. of bins: " << nbins << " \tno. of kMC steps after kPS iteration: " << kpskmcsteps \
+         << nelim << "\n  no. of basins: " << ktn.ncomms << " \tno. of kMC steps after kPS iteration: " << kpskmcsteps \
          << "\n  adaptive binning (y/n): " << adaptivebins \
          << "\n  random seed: " << seed << " \tdebug printing: " << debug << endl;
-    this->nelim=nelim; this->nbins=nbins; this->tau=tau; this->kpskmcsteps=kpskmcsteps;
-    this->adaptivebins=adaptivebins; this->initcond=initcond;
-    this->maxn_abpaths=maxn_abpaths; this->maxit=maxit; this->seed=seed; this->debug=debug;
+    this->nelim=nelim; this->tau=tau; this->kpskmcsteps=kpskmcsteps;
+    this->adaptivebins=adaptivebins;
     basin_ids.resize(ktn.n_nodes);
     // quack need to move this somewhere more general
-    if (nbins>0) {
-        visited.resize(nbins); fill(visited.begin(),visited.end(),false);
-        tp_visits.resize(nbins); tp_densities.resize(nbins);
-        ab_successes.resize(nbins); ab_failures.resize(nbins); committors.resize(nbins);
+    this->maxn_abpaths=maxn_abpaths; this->maxit=maxit; this->seed=seed; this->debug=debug;
+    if (ktn.ncomms>0) {
+        visited.resize(ktn.ncomms); fill(visited.begin(),visited.end(),false);
+        tp_densities.resize(ktn.ncomms); committors.resize(ktn.ncomms);
+        ab_successes.resize(ktn.ncomms); ab_failures.resize(ktn.ncomms);
     }
 }
 
@@ -35,11 +35,11 @@ void KPS::test_ktn(const Network &ktn) {
     cout << "debug> ktn info: no. of nodes: " << ktn.n_nodes << " no. of edges: " << ktn.n_edges << endl;
     for (int i=0;i<ktn.n_nodes;i++) {
         cout << "node: " << i+1 << endl;
-        if (!ktn.nodes[i].eliminated) cout << "  to: " << i+1 << "  t: " << ktn.nodes[i].t << endl;
+        if (!ktn.nodes[i].eliminated) cout << "  to: " << i+1 << "  t: " << ktn.nodes[i].t << "  h: " << ktn.nodes[i].h << endl;
         Edge *edgeptr = ktn.nodes[i].top_from;
         while (edgeptr!=nullptr) {
             if (!edgeptr->deadts && !edgeptr->to_node->eliminated) cout << "  to: " << edgeptr->to_node->node_id << "  t: " << edgeptr->t \
-                << "  pos: " << edgeptr->edge_pos << endl;
+                << "  h: " << edgeptr->h << endl;
             edgeptr = edgeptr->next_from;
         }
     }
@@ -50,7 +50,7 @@ void KPS::test_ktn(const Network &ktn) {
 void KPS::run_enhanced_kmc(const Network &ktn) {
     cout << "\nkps> beginning kPS simulation" << endl;
     n_ab=0; n_traj=0; int n_kpsit=0;
-    while ((n_ab<maxn_abpaths) and (n_kpsit<maxit)) { // algorithm terminates when max no of kPS basin escapes have been simulated
+    while ((n_ab<maxn_abpaths) && (n_kpsit<maxit)) { // algorithm terminates when max no of kPS basin escapes have been simulated
         setup_basin_sets(ktn);
         graph_transformation(ktn);
         Node *dummy_alpha = sample_absorbing_node();
@@ -68,11 +68,8 @@ void KPS::run_enhanced_kmc(const Network &ktn) {
         delete ktn_kps; delete ktn_kps_orig;
         delete ktn_l; delete ktn_u;
     }
-    cout << "\nkps> kPS simulation terminated after " << n_kpsit << " iterations. Simulated " << n_ab << " transition paths" << endl;
-    if (!adaptivebins) calc_tp_stats(); // calculate committors and transn path densities for communities and write to file
-    cout << "kps> walker time: " << walker.t << "  activity: " << walker.k \
-         << "  log path prob: " << walker.p << "  entropy flow: " << walker.s << endl;
-    cout << "kps> finished kPS simulation" << endl;
+    cout << "\nkps> kPS simulation terminated after " << n_kpsit << " kPS iterations. Simulated " << n_ab << " transition paths" << endl;
+    if (!adaptivebins) calc_tp_stats(ktn.ncomms); // calculate committors and transn path densities for communities and write to file
 }
 
 /* Reset data of previous kPS iteration and find the microstates of the current trapping basin */
@@ -80,34 +77,9 @@ void KPS::setup_basin_sets(const Network &ktn) {
 
     if (debug) cout << "\nkps> setting up basin sets" << endl;
     N_c=0; N=0; N_B=0; N_e=0;
-    double pi_B = -numeric_limits<double>::infinity(); // (log) occupation probability of all nodes in initial set B
-    if (!epsilon) { // first iteration of A<-B path, need to set starting node
-        if (!initcond) { // no initial condition was set, choose node in set B in proportion to stationary probs
-            if (ktn.nodesB.size()==1000) { // quack should be ==1
-            auto it_set = ktn.nodesB.begin();
-            epsilon=*it_set;
-            } else {
-            set<Node*>::iterator it_set = ktn.nodesB.begin();
-            while (it_set!=ktn.nodesB.end()) {
-                pi_B = log(exp(pi_B)+exp((*it_set)->pi));
-                it_set++; }
-            vector<pair<Node*,double>> eps_probs(ktn.nodesB.size()); // accumulated probs of selecting starting node
-            it_set = ktn.nodesB.begin();
-            double cum_prob=0.;
-            while (it_set!=ktn.nodesB.end()) {
-                cum_prob += exp((*it_set)->pi-pi_B);
-                eps_probs.push_back(make_pair((*it_set),cum_prob));
-                it_set++; }
-            double rand_no = KMC_Standard_Methods::rand_unif_met(seed);
-            vector<pair<Node*,double>>::iterator it_vec = eps_probs.begin();
-            while (it_vec!=eps_probs.end()) {
-                if ((*it_vec).second>=rand_no) { epsilon=(*it_vec).first; break; }
-                it_vec++; }
-            }
-        } else { // choose node in set B in proportion to specified initial condition probs
-            // ...
-        }
-    }
+    if (!epsilon) { epsilon = get_initial_node(ktn,walker); // first iteration of A<-B path, need to set starting node
+    } else { walker.curr_node=&(*epsilon); }
+    walker.dump_walker_info(n_traj,false);
     fill(basin_ids.begin(),basin_ids.end(),0); // reset basin IDs (zero flag indicates absorbing nonboundary node)
     if (!adaptivebins) { // basin IDs are based on community IDs
         // find all nodes of the current occupied pre-set community, mark these nodes as transient noneliminated
@@ -138,10 +110,6 @@ void KPS::setup_basin_sets(const Network &ktn) {
     }
     eliminated_nodes.clear(); nodemap.clear();
     eliminated_nodes.reserve(!(N_B>nelim)?N_B:nelim);
-    visited[epsilon->comm_id]=true;
-    walker.curr_node=&(*epsilon);
-    walker.p=epsilon->pi-pi_B; // factor in path probability corresponding to probability of initial node
-    walker.dump_walker_info(n_traj,false);
     if (debug) {
         cout << "number of eliminated nodes: " << (!(N_B>nelim)?N_B:nelim) << endl;
         cout << "number of nodes in basin: " << N_B << " number of absorbing boundary nodes: " << N_c << endl;
@@ -176,28 +144,41 @@ double KPS::iterative_reverse_randomisation() {
            update transitions from eliminated nodes to the i-th node, except the self-loop of the i-th node.
            Note that only nodes directly connected to the i-th node are affected. */
         for (vector<pair<Node*,Edge*>>::iterator it_nodevec=nodes_nbrs.begin();it_nodevec!=nodes_nbrs.end();++it_nodevec) {
-            if (!((*it_nodevec).first)->eliminated || (*it_nodevec).first==curr_node) continue;
-            Edge *edgeptr=((*it_nodevec).first)->top_from;
+            if (basin_ids[((*it_nodevec).first)->node_id-1]!=1 || (*it_nodevec).first==curr_node) continue;
             int hx=0; // number of transitions from eliminated node to the i-th node
+            Edge *edgeptr=((*it_nodevec).first)->top_from;
+            if (debug) cout << "from node: " << edgeptr->from_node->node_id << endl;
+            // update the self-loop for this node
+            if (!edgeptr->from_node->eliminated) {
+                double ratio=edgeptr->from_node->t/(edgeptr->from_node->t+edgeptr->from_node->dt);
+                int h_prev = edgeptr->from_node->h;
+                edgeptr->from_node->h = KPS::binomial_distribn(edgeptr->from_node->h,ratio,seed);
+                hx += h_prev-edgeptr->from_node->h;
+                if (debug) cout << " old node h: " << h_prev << " new node h: " << edgeptr->from_node->h << endl;
+            }
+            // update edges
             while (edgeptr!=nullptr) {
-                if (!(edgeptr->deadts || edgeptr->to_node->eliminated)) {
-                    double ratio=edgeptr->t/(edgeptr->t+edgeptr->dt);
+                if (!((edgeptr->deadts && edgeptr->label!=curr_node->node_id) && edgeptr->to_node->eliminated)) {
+                    double ratio;
+                    if (!edgeptr->deadts) { ratio=edgeptr->t/(edgeptr->t+edgeptr->dt);
+                    } else { ratio=0.; }
                     int h_prev = edgeptr->h;
                     edgeptr->h = KPS::binomial_distribn(edgeptr->h,ratio,seed);
                     hx += h_prev-edgeptr->h;
                     fromn_hops[edgeptr->to_node->node_id] += hx;
-                    if (debug) cout << "from: " << edgeptr->from_node->node_id << "  to: " << edgeptr->to_node->node_id \
+                    if (debug) cout << "  to node : " << edgeptr->to_node->node_id \
                                     << "  R: " << ratio << "  old h: " << h_prev << "  new h: " << edgeptr->h << endl;
                 }
                 edgeptr=edgeptr->next_from;
             }
-            ((*it_nodevec).second)->rev_edge->h = hx;
+            ((*it_nodevec).second)->rev_edge->h = hx; // transitions from eliminated nodes to the i-th node
+            if (debug) cout << "  new h to elimd node: " << hx << endl;
         }
         // update transitions from the i-th node to noneliminated nodes
         for (vector<pair<Node*,Edge*>>::iterator it_nodevec=nodes_nbrs.begin();it_nodevec!=nodes_nbrs.end();++it_nodevec) {
             if (((*it_nodevec).first)->eliminated || (*it_nodevec).first==curr_node) continue;
             ((*it_nodevec).second)->h += fromn_hops[((*it_nodevec).first)->node_id];
-            if (debug) cout << "from: " << curr_node->node_id << "  to: " << ((*it_nodevec).first)->node_id \
+            if (debug) cout << "from elimd node: " << curr_node->node_id << "  to: " << ((*it_nodevec).first)->node_id \
                             << "  new h: " << ((*it_nodevec).second)->h << endl;
         }
         // reset flags for neighbouring nodes
@@ -215,7 +196,7 @@ double KPS::iterative_reverse_randomisation() {
     }
     // count the number of hops and stochastically draw the time for the escape trajectory
     double t_esc=0.; // sampled time for basin escape trajectory
-    if (!ktn_kps->branchprobs) { // transiitons from all nodes are associated with the same waiting time
+    if (!ktn_kps->branchprobs) { // transitions from all nodes are associated with the same waiting time
         int nhops=0; // total number of kMC hops
         for (const auto &node: ktn_kps->nodes) nhops += node.h;
         for (const auto &edge: ktn_kps->edges) {
@@ -299,7 +280,7 @@ void KPS::graph_transformation(const Network &ktn) {
     ktn_kps_orig=get_subnetwork(ktn);
     ktn_l = new Network(N_B+N_c,0);
     ktn_u = new Network(N_B+N_c,0);
-    ktn_l->edges.resize(8); ktn_u->edges.resize(5); // quack
+    ktn_l->edges.resize(100*ktn_kps->n_nodes); ktn_u->edges.resize(100*ktn_kps->n_nodes); // quack
     for (int i=0;i<ktn_kps->n_nodes;i++) {
         ktn_l->nodes[i] = ktn_kps->nodes[i];
         ktn_u->nodes[i] = ktn_kps->nodes[i];
@@ -316,7 +297,7 @@ void KPS::graph_transformation(const Network &ktn) {
         if (debug) cout << "N: " << N << " Node: " << node_elim->node_id << " priority: " << node_elim->udeg \
                         << " k: " << node_elim->top_from->k << endl;
         gt_pq.pop();
-        node_elim = &ktn_kps->nodes[N]; // eliminate nodes in order of IDs
+//        node_elim = &ktn_kps->nodes[N]; // quack eliminate nodes in order of IDs
         gt_iteration(node_elim);
         basin_ids[node_elim->node_id-1]=1; // flag eliminated node
         eliminated_nodes.push_back(node_elim);
@@ -538,7 +519,7 @@ void KPS::gt_iteration(Node *node_elim) {
 /* undo a single iteration of the graph transformation. Argument is a pointer to the node to be un-eliminated from the network */
 vector<pair<Node*,Edge*>> KPS::undo_gt_iteration(Node *node_elim) {
 
-    if (debug) cout << "kps> undoing elimination of node " << node_elim->node_id << endl;
+    if (debug) cout << "\nkps> undoing elimination of node " << node_elim->node_id << endl;
     if (!node_elim->eliminated) throw exception(); // node is already noneliminated
     node_elim->eliminated=false;
     // set the self-loop for the restored node
