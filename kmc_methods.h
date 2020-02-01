@@ -19,7 +19,7 @@ struct Walker {
 
     explicit Walker()=default;
     ~Walker();
-    void dump_walker_info(int,bool); // write path quantities to file
+    void dump_walker_info(int,bool,bool,bool=true); // write path quantities to files
     void reset_walker_info();
 
     int walker_id; // ID of walker in set of trajectories
@@ -88,7 +88,7 @@ class WE_KMC : public KMC_Enhanced_Methods {
 
     public:
 
-    WE_KMC(const Network&,int,int,double,bool,int,bool);
+    WE_KMC(const Network&,int,int,double,double,bool,int,bool);
     ~WE_KMC();
     void run_enhanced_kmc(const Network&);
 };
@@ -118,6 +118,7 @@ class KPS : public KMC_Enhanced_Methods {
         // NB these pointers point to nodes in the original network, passed as the arg to run_enhanced_kmc()
     bool adaptivebins; // bins are defined adaptively (or else are set prior to the simulation)
     int kpskmcsteps; // number of kMC steps to run after each kPS trapping basin escape trajectory sampled
+    double next_tintvl; // next time interval for dumping trajectory data
 
     void setup_basin_sets(const Network&);
     double iterative_reverse_randomisation();
@@ -130,7 +131,7 @@ class KPS : public KMC_Enhanced_Methods {
 
     public:
 
-    KPS(const Network&,int,int,int,double,int,bool,int,bool);
+    KPS(const Network&,int,int,int,double,double,int,bool,int,bool);
     ~KPS();
     void run_enhanced_kmc(const Network&);
     static double calc_gt_factor(Node*);

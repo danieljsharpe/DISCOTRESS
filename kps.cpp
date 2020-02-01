@@ -10,7 +10,7 @@ File containing functions relating to kinetic path sampling
 
 using namespace std;
 
-KPS::KPS(const Network &ktn, int maxn_abpaths, int maxit, int nelim, double tau, int kpskmcsteps, \
+KPS::KPS(const Network &ktn, int maxn_abpaths, int maxit, int nelim, double tau, double tintvl, int kpskmcsteps, \
          bool adaptivebins, int seed, bool debug) {
 
     cout << "kps> running kPS with parameters:\n  lag time: " << tau << " \tmax. no. of eliminated nodes: " \
@@ -21,7 +21,7 @@ KPS::KPS(const Network &ktn, int maxn_abpaths, int maxit, int nelim, double tau,
     this->adaptivebins=adaptivebins;
     basin_ids.resize(ktn.n_nodes);
     // quack need to move this somewhere more general
-    this->maxn_abpaths=maxn_abpaths; this->maxit=maxit; this->seed=seed; this->debug=debug;
+    this->maxn_abpaths=maxn_abpaths; this->maxit=maxit; this->tintvl=tintvl; this->seed=seed; this->debug=debug;
     if (ktn.ncomms>0) {
         visited.resize(ktn.ncomms); fill(visited.begin(),visited.end(),false);
         tp_densities.resize(ktn.ncomms); committors.resize(ktn.ncomms);
@@ -49,22 +49,26 @@ void KPS::test_ktn(const Network &ktn) {
 /* main loop of the kinetic path sampling algorithm */
 void KPS::run_enhanced_kmc(const Network &ktn) {
     cout << "\nkps> beginning kPS simulation" << endl;
-    n_ab=0; n_traj=0; int n_kpsit=0;
-    while ((n_ab<maxn_abpaths) && (n_kpsit<maxit)) { // algorithm terminates when max no of kPS basin escapes have been simulated
+    n_ab=0; n_traj=0; int n_kpsit=1;
+    while ((n_ab<maxn_abpaths) && (n_kpsit<=maxit)) { // algorithm terminates when max no of kPS basin escapes have been simulated
         setup_basin_sets(ktn);
         graph_transformation(ktn);
         Node *dummy_alpha = sample_absorbing_node();
         alpha = &ktn.nodes[dummy_alpha->node_id-1];
+        walker.curr_node=&(*alpha);
         visited[alpha->comm_id]=true;
         double t_esc = iterative_reverse_randomisation();
         update_path_quantities(t_esc,alpha);
-        walker.dump_walker_info(n_traj,alpha->aorb==-1);
         if (alpha->aorb==-1 || alpha->aorb==1) { // traj has reached absorbing macrostate A or has returned to B
+            if (alpha->aorb==-1) walker.dump_walker_info(n_traj,true,false,tintvl>=0.);
             update_tp_stats(alpha->aorb==-1,!adaptivebins);
             walker.reset_walker_info();
+            epsilon=nullptr;
+        } else {
+            epsilon=alpha;
         }
         n_kpsit++;
-        epsilon=alpha; alpha=nullptr;
+        alpha=nullptr;
         delete ktn_kps; delete ktn_kps_orig;
         delete ktn_l; delete ktn_u;
     }
@@ -77,9 +81,14 @@ void KPS::setup_basin_sets(const Network &ktn) {
 
     if (debug) cout << "\nkps> setting up basin sets" << endl;
     N_c=0; N=0; N_B=0; N_e=0;
-    if (!epsilon) { epsilon = get_initial_node(ktn,walker); // first iteration of A<-B path, need to set starting node
-    } else { walker.curr_node=&(*epsilon); }
-    walker.dump_walker_info(n_traj,false);
+    bool newpath=false;
+    if (!epsilon) { // first iteration of A<-B path, need to set starting node
+        epsilon = get_initial_node(ktn,walker);
+        newpath=true; next_tintvl=tintvl;
+    }
+    walker.dump_walker_info(n_ab,false,newpath,(newpath || tintvl==0. || (tintvl>0. && walker.t>=next_tintvl)));
+    if (tintvl>0. && walker.t>=next_tintvl) { // reached time interval for dumping trajectory data, calc next interval
+        while (walker.t>=next_tintvl) next_tintvl+=tintvl; }
     fill(basin_ids.begin(),basin_ids.end(),0); // reset basin IDs (zero flag indicates absorbing nonboundary node)
     if (!adaptivebins) { // basin IDs are based on community IDs
         // find all nodes of the current occupied pre-set community, mark these nodes as transient noneliminated

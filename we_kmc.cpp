@@ -8,14 +8,14 @@ File containing functions relating to weighted ensemble sampling kMC (WE-kMC)
 
 using namespace std;
 
-WE_KMC::WE_KMC(const Network &ktn, int maxn_abpaths, int maxit, double tau, \
+WE_KMC::WE_KMC(const Network &ktn, int maxn_abpaths, int maxit, double tau, double tintvl, \
                bool adaptivebins, int seed, bool debug) {
 
     cout << "wekmc> running WE-kMC with parameters:\n  lag time: " << tau << " \tno. of bins: " \
          << ktn.ncomms << "\n  adaptive binning (y/n): " << adaptivebins \
          << "\n  random seed: " << seed << " \tdebug printing: " << debug << endl;
     this->tau=tau; this->adaptivebins=adaptivebins;
-    this->maxn_abpaths=maxn_abpaths; this->maxit=maxit;
+    this->maxn_abpaths=maxn_abpaths; this->maxit=maxit; this->tintvl=tintvl;
     this->seed=seed; this->debug=debug;
     if (!adaptivebins) walkers.reserve(ktn.ncomms); // quack use proper argument
 }

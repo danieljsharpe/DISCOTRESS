@@ -61,19 +61,20 @@ KMC_Suite::KMC_Suite () {
     }
     if (my_kws.initcond) ktn->set_initcond(init_probs);
     cout << "kmc_suite> setting up simulation..." << endl;
-    cout << "kmc_suite> max. no. of A-B paths: " << my_kws.nabpaths << " \tmax. iterations: " << my_kws.maxit << "\n" << endl;
+    cout << "kmc_suite> max. no. of A<-B paths: " << my_kws.nabpaths << " \tmax. iterations: " << my_kws.maxit << "\n" << endl;
+    cout << "kmc_suite> time interval for dumping trajectory data: " << my_kws.tintvl << endl;
     // set up enhanced sampling class
     if (my_kws.enh_method==0) {        // standard kMC simulation, no enhanced sampling
         STD_KMC *std_kmc_ptr = new STD_KMC(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.tintvl);
         enh_method = std_kmc_ptr;
     } else if (my_kws.enh_method==1) { // WE simulation
-        WE_KMC *we_kmc_ptr = new WE_KMC(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.tau,my_kws.adaptivebins, \
+        WE_KMC *we_kmc_ptr = new WE_KMC(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.tau,my_kws.tintvl,my_kws.adaptivebins, \
                     my_kws.seed,my_kws.debug);
         enh_method = we_kmc_ptr;
     } else if (my_kws.enh_method==2) { // kPS simulation
         if (my_kws.branchprobs) { ktn->get_tmtx_branch();
         } else if (!my_kws.transnprobs) { ktn->get_tmtx_lin(my_kws.tau); }
-        KPS *kps_ptr = new KPS(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.nelim,my_kws.tau,my_kws.kpskmcsteps, \
+        KPS *kps_ptr = new KPS(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.nelim,my_kws.tau,my_kws.tintvl,my_kws.kpskmcsteps, \
                     my_kws.adaptivebins,my_kws.seed,my_kws.debug);
         enh_method = kps_ptr;
     } else if (my_kws.enh_method==3) { // FFS simulation

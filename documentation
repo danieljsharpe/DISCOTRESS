@@ -40,14 +40,6 @@ MINBFILE <str> <int>
 NABPATHS <int>
   mandatory, the simulation is terminated when this number of A-B paths have been successfully sampled
 
-MAXIT <int>
-  mandatory, the maximum number of iterations of the relevant algorithm to run before the simulation is terminated (if the
-  target number of A-B paths to simulate is not reached). The interpretation of this option depends on the chosen enhanced
-  sampling method.
-    WE - number of iterations of the resampling procedure
-    KPS - number of basin escape trajectories simulated
-    NONE - number of iterations of the standard kMC algorithm chosen
-
 ### OPTIONAL KEYWORDS RELATING TO ENHANCED SAMPLING ###
 
 INITCONDFILE <str>
@@ -91,6 +83,14 @@ NELIM <int>
     the choice of this keyword (along with the sizes of communities) can strongly affect memory usage.
 
 ### OTHER OPTIONAL KEYWORDS ###
+
+MAXIT <int>
+  default is inf. The maximum number of iterations of the relevant algorithm to run before the simulation is terminated (if the
+  target number of A-B paths to simulate is not reached). The interpretation of this option depends on the chosen enhanced
+  sampling method.
+    WE - number of iterations of the resampling procedure
+    KPS - number of basin escape trajectories simulated
+    NONE - number of iterations of the standard kMC algorithm
 
 BRANCHPROBS
   the transition probabilities are calculated as the branching probabilities

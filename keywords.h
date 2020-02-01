@@ -7,6 +7,7 @@ Read keywords from file "input.kmc", also read in information on KTN and communi
 
 #include <vector>
 #include <string>
+#include <limits>
 #include <fstream>
 #include <sstream>
 #include <algorithm>
@@ -49,7 +50,7 @@ struct Keywords {
     int kpskmcsteps=0;       // "KPSKMCSTEPS" number of BKL kMC steps after a trapping basin escape (kPS)
     int nelim=-1;            // "NELIM" maximum number of states to be eliminated from any trapping basin (kPS)
     int nabpaths=-1;         // "NABPATHS" target number of complete A-B paths to simulate
-    int maxit=-1;            // "MAXIT" maximum number of iterations of the relevant standard or enhanced kMC algorithm
+    int maxit=numeric_limits<int>::max(); // "MAXIT" maximum number of iterations of the relevant standard or enhanced kMC algorithm
 
     // other keywords
     bool transnprobs=false;  // "TRANSNPROBS" edge weights are read in as transition probabilities (not as weights)

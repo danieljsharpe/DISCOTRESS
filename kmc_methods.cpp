@@ -14,14 +14,18 @@ using namespace std;
 Walker::~Walker() {}
 
 /* write trajectory and path quantities to file */
-void Walker::dump_walker_info(int path_no, bool transnpath) {
+void Walker::dump_walker_info(int path_no, bool transnpath, bool newpath, bool writetraj) {
     if (curr_node==nullptr) throw exception();
+    if (writetraj) {
     ofstream walker_f;
-    walker_f.open("walker."+to_string(path_no)+".dat",ios_base::app);
+    string walker_fname="walker."+to_string(this->walker_id)+"."+to_string(path_no)+".dat";
+    if (!newpath) { walker_f.open(walker_fname,ios_base::app);
+    } else { walker_f.open(walker_fname,ios_base::trunc); }
     walker_f.setf(ios::right,ios::adjustfield); walker_f.setf(ios::fixed,ios::floatfield); // walker_f.fill('x');
     walker_f << setw(7) << curr_node->node_id << setw(8) << curr_node->comm_id << setw(15) << k;
     walker_f.precision(12); // walker_f.width(18);
     walker_f << setw(30) << t << setw(30) << p << setw(30) << s << endl;
+    }
     if (!transnpath) return;
     ofstream tpdistrib_f;
     tpdistrib_f.open("tp_distribns.dat",ios_base::app);
@@ -146,25 +150,26 @@ void STD_KMC::run_enhanced_kmc(const Network &ktn) {
     cout << "\nstd_kmc> beginning standard kMC simulation" << endl;
     Walker walker={walker_id:0,bin_curr:0,bin_prev:0,k:0,active:true,p:0.,t:0.,s:0.}; // this method uses only a single walker
     Node *dummy_node = get_initial_node(ktn,walker);
-    cout << "path: " << 0 << " initial node is: " << walker.curr_node->node_id << endl;
-    walker.dump_walker_info(0,false);
-    n_ab=0; n_traj=0; int n_kmcit=0;
+    walker.dump_walker_info(0,false,true,tintvl>=0.);
+    n_ab=0; n_traj=0; int n_kmcit=1;
     double next_tintvl=tintvl; // next time interval for writing trajectory data
-    while ((n_ab<maxn_abpaths) && (n_kmcit<maxit)) { // algo terminates after max no of iterations of the standard kMC algorithm
+    bool leftb=false; // flag indicates if trajectory has left initial set of states yet
+    while ((n_ab<maxn_abpaths) && (n_kmcit<=maxit)) { // algo terminates after max no of iterations of the standard kMC algorithm
         (*kmc_func)(walker);
         visited[walker.curr_node->comm_id]=true;
-        if (tintvl==0. || (walker.t>=next_tintvl && tintvl>0.)) { // reached time interval for dumping trajectory data
-            walker.dump_walker_info(n_traj,walker.curr_node->aorb==-1);
-            if (tintvl>0.) {
-                while (walker.t>=next_tintvl) next_tintvl+=tintvl; }
-        }
-        if (walker.curr_node->aorb==-1 || walker.curr_node->aorb==1) { // traj has reached absorbing macrostate A or has returned to B
+        if (!leftb && walker.curr_node->aorb!=1) leftb=true;
+        walker.dump_walker_info(n_ab,walker.curr_node->aorb==-1,false, \
+            (walker.curr_node->aorb==-1 || tintvl==0. || (tintvl>0. && walker.t>=next_tintvl)));
+        if (tintvl>0. && walker.t>=next_tintvl) { // reached time interval for dumping trajectory data, calc next interval
+            while (walker.t>=next_tintvl) next_tintvl+=tintvl; }
+        n_kmcit++;
+        if (walker.curr_node->aorb==-1 || (walker.curr_node->aorb==1 && leftb)) { // traj has reached absorbing macrostate A or has returned to B
             update_tp_stats(walker.curr_node->aorb==-1,ktn.ncomms>0);
             walker.reset_walker_info();
             dummy_node = get_initial_node(ktn,walker);
-            walker.dump_walker_info(n_traj,false);
+            if ((n_ab<maxn_abpaths) && (n_kmcit<maxit) && (tintvl>=0.)) walker.dump_walker_info(n_ab,false,true);
+            leftb=false; next_tintvl=tintvl;
         }
-        n_kmcit++;
     }
     cout << "std_kmc> standard kMC simulation terminated after " << n_kmcit << " kMC iterations. Simulated " << n_ab << " transition paths" << endl;
     if (ktn.ncomms>0) calc_tp_stats(ktn.ncomms);
