@@ -302,7 +302,6 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         ktn.nodes[i].pi = stat_probs[i];
         tot_pi = log(exp(tot_pi) + exp(stat_probs[i]));
     }
-    cout << "honk" << endl;
     tot_pi = exp(tot_pi);
     if (abs(tot_pi-1.)>1.E-10) {
         cout << "ktn> Error: total equilibrium probabilities of minima is: " << tot_pi << " =/= 1." << endl;

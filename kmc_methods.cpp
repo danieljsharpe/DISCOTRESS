@@ -148,7 +148,7 @@ STD_KMC::~STD_KMC() {}
 /* main loop to drive a standard kMC simulation (no enhanced sampling) */
 void STD_KMC::run_enhanced_kmc(const Network &ktn) {
     cout << "\nstd_kmc> beginning standard kMC simulation" << endl;
-    Walker walker={walker_id:0,bin_curr:0,bin_prev:0,k:0,active:true,p:0.,t:0.,s:0.}; // this method uses only a single walker
+    Walker walker={walker_id:0,bin_curr:0,bin_prev:0,k:0,active:true,p:0.,t:0.,s:0.}; // only a single walker
     Node *dummy_node = get_initial_node(ktn,walker);
     walker.dump_walker_info(0,false,true,tintvl>=0.);
     n_ab=0; n_traj=0; int n_kmcit=1;
@@ -163,7 +163,8 @@ void STD_KMC::run_enhanced_kmc(const Network &ktn) {
         if (tintvl>0. && walker.t>=next_tintvl) { // reached time interval for dumping trajectory data, calc next interval
             while (walker.t>=next_tintvl) next_tintvl+=tintvl; }
         n_kmcit++;
-        if (walker.curr_node->aorb==-1 || (walker.curr_node->aorb==1 && leftb)) { // traj has reached absorbing macrostate A or has returned to B
+        if (walker.curr_node->aorb==-1 || (walker.curr_node->aorb==1 && leftb)) {
+            // traj has reached absorbing macrostate A or has returned to B
             update_tp_stats(walker.curr_node->aorb==-1,ktn.ncomms>0);
             walker.reset_walker_info();
             dummy_node = get_initial_node(ktn,walker);
@@ -171,7 +172,8 @@ void STD_KMC::run_enhanced_kmc(const Network &ktn) {
             leftb=false; next_tintvl=tintvl;
         }
     }
-    cout << "std_kmc> standard kMC simulation terminated after " << n_kmcit << " kMC iterations. Simulated " << n_ab << " transition paths" << endl;
+    cout << "std_kmc> standard kMC simulation terminated after " << n_kmcit-1 << " kMC iterations. Simulated " \
+         << n_ab << " transition paths" << endl;
     if (ktn.ncomms>0) calc_tp_stats(ktn.ncomms);
 }
 
