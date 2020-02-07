@@ -133,9 +133,9 @@ void KMC_Enhanced_Methods::write_tp_stats(int ncomms) {
     }
 }
 
-STD_KMC::STD_KMC(const Network& ktn, int maxn_abpaths, int maxit, double tintvl) {
-    this->maxn_abpaths=maxn_abpaths; this->maxit=maxit; this->tintvl=tintvl;
+STD_KMC::STD_KMC(const Network& ktn, int maxn_abpaths, int maxit, double tintvl, int seed) {
     // quack move this somewhere more general
+    this->maxn_abpaths=maxn_abpaths; this->maxit=maxit; this->tintvl=tintvl; this->seed=seed;
     if (ktn.ncomms>0) {
         visited.resize(ktn.ncomms); fill(visited.begin(),visited.end(),false);
         tp_densities.resize(ktn.ncomms); committors.resize(ktn.ncomms);
@@ -149,6 +149,7 @@ STD_KMC::~STD_KMC() {}
 void STD_KMC::run_enhanced_kmc(const Network &ktn) {
     cout << "\nstd_kmc> beginning standard kMC simulation" << endl;
     Walker walker={walker_id:0,bin_curr:0,bin_prev:0,k:0,active:true,p:0.,t:0.,s:0.}; // only a single walker
+    double dummy_randno = KMC_Standard_Methods::rand_unif_met(seed); // seed generator
     Node *dummy_node = get_initial_node(ktn,walker);
     walker.dump_walker_info(0,false,true,tintvl>=0.);
     n_ab=0; n_traj=0; int n_kmcit=1;
@@ -183,7 +184,7 @@ KMC_Standard_Methods::~KMC_Standard_Methods() {}
 /* function to take a single kMC step using the BKL algorithm */
 void KMC_Standard_Methods::bkl(Walker &walker) {
     // propagate trajectory
-    double rand_no = KMC_Standard_Methods::rand_unif_met(19); // quack // random number used to select transition
+    double rand_no = KMC_Standard_Methods::rand_unif_met(); // quack // random number used to select transition
     Edge *edgeptr = walker.curr_node->top_from;
     const Node *old_node = walker.curr_node;
     double prev_p = 0.; // previous accumulated branching probability
@@ -196,7 +197,7 @@ void KMC_Standard_Methods::bkl(Walker &walker) {
     // update path quantities
     walker.k++; // dynamical activity (no. of steps)
     walker.p += log(edgeptr->t-prev_p); // log path probability
-    walker.t += -(1./exp(old_node->k_esc))*log(KMC_Standard_Methods::rand_unif_met(19)); // quack // sample transition time
+    walker.t += -(1./exp(old_node->k_esc))*log(KMC_Standard_Methods::rand_unif_met()); // quack // sample transition time
     walker.s += edgeptr->rev_edge->k-edgeptr->k; // entropy flow
 }
 

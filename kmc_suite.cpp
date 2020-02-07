@@ -65,7 +65,7 @@ KMC_Suite::KMC_Suite () {
     cout << "kmc_suite> time interval for dumping trajectory data: " << my_kws.tintvl << endl;
     // set up enhanced sampling class
     if (my_kws.enh_method==0) {        // standard kMC simulation, no enhanced sampling
-        STD_KMC *std_kmc_ptr = new STD_KMC(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.tintvl);
+        STD_KMC *std_kmc_ptr = new STD_KMC(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.tintvl,my_kws.seed);
         enh_method = std_kmc_ptr;
     } else if (my_kws.enh_method==1) { // WE simulation
         WE_KMC *we_kmc_ptr = new WE_KMC(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.tau,my_kws.tintvl,my_kws.adaptivebins, \

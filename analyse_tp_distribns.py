@@ -6,7 +6,7 @@ Jan 2020
 '''
 
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from math import floor
 
 class Analyse_tp_distribns(object):
@@ -19,18 +19,22 @@ class Analyse_tp_distribns(object):
         self.bin_max=self.bin_min+(self.nbins*self.binw)
         self.binall=binall
         self.ntpaths=0
+        self.vals=None
 
     def get_hist_arr(self):
         hist_arr = np.zeros(self.nbins,dtype=int)
+        vals=[]
         with open("tp_distribns.dat","r") as tp_distribns_f:
             for line in tp_distribns_f.readlines():
                 val=float(line.split()[stat+1])
+                vals.append(val)
                 if not (val>self.bin_max or val<self.bin_min):
                     hist_arr[int(floor((val-self.bin_min)/self.binw))] += 1
                 elif self.binall:
                     print "found bad value: ", val
                     raise RuntimeError
                 self.ntpaths+=1
+        self.vals=np.array(vals,dtype=float)
         return hist_arr
 
     def plot_hist(self,hist_arr):
@@ -38,6 +42,9 @@ class Analyse_tp_distribns(object):
         bins=[self.bin_min+(i*self.binw) for i in range(self.nbins)]
         plt.bar(bins,hist_arr,self.binw,color='blue')
         plt.show()
+
+    def calc_mfpt(self):
+        return np.sum(self.vals)/float(self.ntpaths)
 
 if __name__=="__main__":
     ### CHOOSE PARAMS ###
@@ -48,9 +55,9 @@ if __name__=="__main__":
 
     #binning params
     nbins=300
-    binw=0.01
+    binw=0.05
     bin_min=0.
-    binall=True # enforce that all values 
+    binall=False # enforce that all values 
 
     # run
     calc_hist_obj=Analyse_tp_distribns(stat,nbins,binw,bin_min,binall)
@@ -58,5 +65,6 @@ if __name__=="__main__":
     print hist_arr
     print "total number of observed A<-B transition paths: ", calc_hist_obj.ntpaths
     print "total number of binned A<-B transition paths: ", np.sum(hist_arr)
+    print "MFPT: ", calc_hist_obj.calc_mfpt()
     # plot
-    calc_hist_obj.plot_hist(hist_arr)
+#    calc_hist_obj.plot_hist(hist_arr)

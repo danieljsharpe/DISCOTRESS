@@ -7,7 +7,6 @@ Classes and functions for handling enhanced kinetic Monte Carlo simulations and 
 
 #include "ktn.h"
 #include <limits>
-#include <map>
 #include <utility>
 
 using namespace std;
@@ -69,7 +68,7 @@ class STD_KMC : public KMC_Enhanced_Methods {
 
     public:
 
-    STD_KMC(const Network&,int,int,double);
+    STD_KMC(const Network&,int,int,double,int);
     ~STD_KMC();
     void run_enhanced_kmc(const Network&);
 };
@@ -108,7 +107,7 @@ class KPS : public KMC_Enhanced_Methods {
     vector<int> basin_ids; // used to indicate the set to which each node belongs for the current kPS iteration
         // (eliminated=1, transient noneliminated=2, absorbing boundary=3, absorbing nonboundary=0)
     vector<Node*> eliminated_nodes; // vector of eliminated nodes (in order)
-    map<int,int> nodemap; // map of ID's for full network to subnetwork
+    vector<int> nodedict; // dense dict of ID's for full network to subnetwork
     double tau;     // lag time at which transition matrix is evaluated
     int nelim;      // maximum number of nodes of a trapping basin to be eliminated
     int N_c;        // number of nodes connected to the eliminated states of the current trapping basin
@@ -207,7 +206,7 @@ class KMC_Standard_Methods {
     static void bkl(Walker&); // rejection-free algorithm of Bortz, Kalos and Lebowitz (aka n-fold way algorithm)
     static void rejection_kmc(Walker&); // kMC algorithm where some moves are rejected
     static void leapfrog(Walker&); // leapfrog algorithm of Trygubenko & Wales
-    static double rand_unif_met(int);
+    static double rand_unif_met(int=19); // draw random number between 0 and 1
     static vector<double> calc_committors(const Network&,int); // calculate committor functions from counts in Node structures of Network obj
     static vector<double> calc_tp_density(const Network&,int); // calculate transn path density from counts in Node structures of Network obj
 };

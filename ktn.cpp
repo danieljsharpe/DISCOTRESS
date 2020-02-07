@@ -292,7 +292,6 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         cout << "ktn> interpreteing edge weights as transition probabilities at a lag time: " << tau << endl;
         ktn.tau=tau; }
     ktn.ncomms=ncomms;
-    cout << "ncomms is: " << ncomms << endl;
     double tot_pi = -numeric_limits<double>::infinity();
     for (int i=0;i<ktn.n_nodes;i++) {
         ktn.nodes[i].node_id = i+1;

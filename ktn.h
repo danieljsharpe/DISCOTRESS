@@ -48,6 +48,7 @@ struct Edge {
 
 struct Node {
     int node_id;
+    int node_pos; // position of node in nodes vector of Network (needed in kPS, where a subnetwork is copied)
     int comm_id = -1; // community ID (-1 indicates null value)
     int aorb = 0; // indicates set to which node belongs: -1 for A, +1 for B, 0 for I
     int udeg = 0; // (unweighted) node (out-) degree

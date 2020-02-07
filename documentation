@@ -2,7 +2,14 @@
 
 these keywords appear in the input file named "input.kmc"
 
-mandatory input files containing the network information: stat_prob.dat, ts_conns.dat, ts_weights.dat
+mandatory input files containing the network information:
+  stat_prob.dat   - single col, ln stationary probabilities for nodes
+  ts_conns.dat    - double col, edge connecting node IDs (each is assumed to be bidirectional)
+  ts_weights.dat  - single col, ln transition rate for forward and reverse transitions (two lines per line in ts_conns.dat)
+  min.A           - single col, node IDs in the final set A (indexed from 1)
+  min.B           - single col, node IDs in the initial set B (indexed from 1)
+optional input files containing the network information:
+  communities.dat - single col, community IDs (indexed from 0) for nodes
 
 ### MAIN KEYWORDS ###
 
