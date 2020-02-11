@@ -16,6 +16,19 @@ Network::~Network() {}
 
 Network::Network(const Network &ktn) {
     n_nodes=ktn.n_nodes; n_edges=ktn.n_edges;
+    nodes.resize(n_nodes); edges.resize(n_edges);
+    for (int i=0;i<n_nodes;i++) nodes[i] = ktn.nodes[i];
+    for (int i=0;i<n_edges;i++) edges[i] = ktn.edges[i];
+    n_dead=ktn.n_dead; ncomms=ktn.ncomms;
+    branchprobs=ktn.branchprobs; tau=ktn.tau;
+    // now sort out pointers
+    for (int i=0;i<n_edges;i++) {
+        edges[i].from_node = &nodes[ktn.edges[i].from_node->node_pos];
+        edges[i].to_node = &nodes[ktn.edges[i].to_node->node_pos];
+        add_to_edge(ktn.edges[i].to_node->node_pos,i);
+        add_from_edge(ktn.edges[i].from_node->node_pos,i);
+        edges[i].rev_edge = &edges[ktn.edges[i].rev_edge->edge_pos];
+    }
 }
 
 Node::Node() {}
@@ -35,7 +48,9 @@ void Network::get_tmtx_lin(double tau) {
     cout << "ktn> calculating linearised transition probability matrix at lag time: " << tau << endl;
     for (auto &node: nodes) {
         if (tau>1./exp(node.k_esc)) throw Ktn_exception(); // value of tau does not give stochastic matrix
-        node.t = 1.-(exp(node.k_esc)*tau); }
+        node.t = 1.-(exp(node.k_esc)*tau);
+        node.k_esc = log(tau); // override node escape rates
+    }
     for (auto &edge: edges) {
         if (edge.deadts) continue;
         edge.t = exp(edge.k)*tau; }
@@ -287,16 +302,18 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         const vector<int> &nodesinB, bool transnprobs, double tau, int ncomms, const vector<int> &comms) {
 
     if (!((ts_conns.size()==ktn.n_edges) || (ts_wts.size()==2*ktn.n_edges) || \
-         (stat_probs.size()==ktn.n_nodes))) throw Network::Ktn_exception();
+         (stat_probs.size()==ktn.n_nodes) || \
+         (comms.size()==ktn.n_nodes && !comms.empty()))) throw Network::Ktn_exception();
     if (transnprobs) {
-        cout << "ktn> interpreteing edge weights as transition probabilities at a lag time: " << tau << endl;
+        cout << "ktn> interpreting edge weights as transition probabilities at a lag time: " << tau << endl;
         ktn.tau=tau; }
-    ktn.ncomms=ncomms;
+    ktn.ncomms=ncomms; vector<int> comm_sizes(ncomms);
     double tot_pi = -numeric_limits<double>::infinity();
     for (int i=0;i<ktn.n_nodes;i++) {
-        ktn.nodes[i].node_id = i+1;
+        ktn.nodes[i].node_id = i+1; ktn.nodes[i].node_pos = i;
         if (!comms.empty()) {
             ktn.nodes[i].comm_id = comms[i];
+            comm_sizes[comms[i]]++;
             if (comms[i]>=ncomms) throw Ktn_exception(); }
         ktn.nodes[i].pi = stat_probs[i];
         tot_pi = log(exp(tot_pi) + exp(stat_probs[i]));
@@ -344,7 +361,8 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         } else { ktn.edges[2*i].j = 0.; ktn.edges[(2*i)+1].j = 0.; } // dummy values
     }
     for (int i=0;i<ktn.n_nodes;i++) {
-        if (!transnprobs) { calc_k_esc(ktn.nodes[i]);
+        if (!transnprobs) {
+            calc_k_esc(ktn.nodes[i]);
         } else {
             calc_t_selfloop(ktn.nodes[i]);
             ktn.nodes[i].k_esc = log(1./tau); // all nodes have same escape rate
@@ -360,6 +378,15 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         ktn.nodes[nodesinB[i]-1].aorb = 1;
         ktn.nodesB.insert(&ktn.nodes[nodesinB[i]-1]);
     }
-
+    if (!comms.empty()) {
+        if (ktn.nodesA.size()!=comm_sizes[(*ktn.nodesA.begin())->comm_id] || \
+            ktn.nodesB.size()!=comm_sizes[(*ktn.nodesB.begin())->comm_id]) throw Ktn_exception();
+        int commA=(*ktn.nodesA.begin())->comm_id;
+        for (set<Node*>::iterator it_set=ktn.nodesA.begin();it_set!=ktn.nodesA.end();++it_set) {
+            if ((*it_set)->comm_id!=commA) throw Ktn_exception(); }
+        int commB=(*ktn.nodesB.begin())->comm_id;
+        for (set<Node*>::iterator it_set=ktn.nodesB.begin();it_set!=ktn.nodesB.end();++it_set) {
+            if ((*it_set)->comm_id!=commB) throw Ktn_exception(); }
+    }
     cout << "ktn> finished setting up transition network data structure" << endl;
 }

@@ -184,7 +184,7 @@ KMC_Standard_Methods::~KMC_Standard_Methods() {}
 /* function to take a single kMC step using the BKL algorithm */
 void KMC_Standard_Methods::bkl(Walker &walker) {
     // propagate trajectory
-    double rand_no = KMC_Standard_Methods::rand_unif_met(); // quack // random number used to select transition
+    double rand_no = KMC_Standard_Methods::rand_unif_met(); // random number used to select transition
     Edge *edgeptr = walker.curr_node->top_from;
     const Node *old_node = walker.curr_node;
     double prev_p = 0.; // previous accumulated branching probability
@@ -197,7 +197,7 @@ void KMC_Standard_Methods::bkl(Walker &walker) {
     // update path quantities
     walker.k++; // dynamical activity (no. of steps)
     walker.p += log(edgeptr->t-prev_p); // log path probability
-    walker.t += -(1./exp(old_node->k_esc))*log(KMC_Standard_Methods::rand_unif_met()); // quack // sample transition time
+    walker.t += -(1./exp(old_node->k_esc))*log(KMC_Standard_Methods::rand_unif_met()); // sample transition time
     walker.s += edgeptr->rev_edge->k-edgeptr->k; // entropy flow
 }
 

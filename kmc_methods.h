@@ -8,6 +8,7 @@ Classes and functions for handling enhanced kinetic Monte Carlo simulations and 
 #include "ktn.h"
 #include <limits>
 #include <utility>
+#include <unordered_map>
 
 using namespace std;
 
@@ -102,12 +103,13 @@ class KPS : public KMC_Enhanced_Methods {
 
     Network *ktn_kps=nullptr; // pointer to the subnetwork of the TN that kPS internally uses and transforms
     Network *ktn_kps_orig=nullptr; // pointer to the original subnetwork of the TN
+    Network *ktn_kps_gt=nullptr; // pointer to the graph-transformed subnetwork (used if recycling GT of a basin)
     Network *ktn_l=nullptr, *ktn_u=nullptr; // pointers to arrays used in LU-style decomposition of transition matrix
     Walker walker={walker_id:0,bin_curr:0,bin_prev:0,k:0,active:true,p:-numeric_limits<double>::infinity(),t:0.,s:0.};
     vector<int> basin_ids; // used to indicate the set to which each node belongs for the current kPS iteration
         // (eliminated=1, transient noneliminated=2, absorbing boundary=3, absorbing nonboundary=0)
-    vector<Node*> eliminated_nodes; // vector of eliminated nodes (in order)
-    vector<int> nodedict; // dense dict of ID's for full network to subnetwork
+    vector<int> eliminated_nodes; // vector of IDs of eliminated nodes (in order)
+    unordered_map<int,int> nodemap; // map of node IDs from original network to subnetwork
     double tau;     // lag time at which transition matrix is evaluated
     int nelim;      // maximum number of nodes of a trapping basin to be eliminated
     int N_c;        // number of nodes connected to the eliminated states of the current trapping basin
@@ -119,7 +121,7 @@ class KPS : public KMC_Enhanced_Methods {
     int kpskmcsteps; // number of kMC steps to run after each kPS trapping basin escape trajectory sampled
     double next_tintvl; // next time interval for dumping trajectory data
 
-    void setup_basin_sets(const Network&);
+    void setup_basin_sets(const Network&,bool);
     double iterative_reverse_randomisation();
     Node *sample_absorbing_node();
     void graph_transformation(const Network&);

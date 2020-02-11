@@ -1,5 +1,5 @@
 /*
-Custom data structure for representing and reading in a ktn
+Custom data structure for representing a Markovian transition network
 */
 
 #ifndef __KTN_H_INCLUDED__
@@ -8,7 +8,6 @@ Custom data structure for representing and reading in a ktn
 #include <set>
 #include <exception>
 #include <vector>
-
 #include <iostream>
 
 using namespace std;
@@ -41,7 +40,7 @@ struct Edge {
     }
 
     inline Edge& operator=(const Edge& other_edge) {
-        ts_id=other_edge.ts_id;
+        ts_id=other_edge.ts_id; edge_pos=other_edge.edge_pos; label=other_edge.label;
         k=other_edge.k; t=other_edge.t; j=other_edge.j; deadts=other_edge.deadts;
     }
 };
@@ -76,10 +75,10 @@ struct Node {
 
     /* in assignment operator for Node, do not copy the pointers to Edge objects */
     inline Node& operator=(const Node& other_node) {
-        node_id=other_node.node_id; comm_id=other_node.comm_id;
+        node_id=other_node.node_id; node_pos=other_node.node_pos;
+        comm_id=other_node.comm_id; udeg=0;
         aorb=other_node.aorb; eliminated=other_node.eliminated;
         k_esc=other_node.k_esc; t=other_node.t; pi=other_node.pi;
-        udeg=0;
     }
 };
 
@@ -133,10 +132,10 @@ struct Network {
     double tau=0.; // lag time at which transition probabilities are calculated
 
     inline Network& operator=(const Network& other_network) {
-        nodes=other_network.nodes; edges=other_network.edges;
+        cout << "called assignment operator for Network" << endl;
         n_nodes=other_network.n_nodes; n_edges=other_network.n_edges;
         n_dead=other_network.n_dead; ncomms=other_network.ncomms;
-        nodesA=other_network.nodesA; nodesB=other_network.nodesB;
+        branchprobs=other_network.branchprobs; tau=other_network.tau;
         return *this;
     }
 
