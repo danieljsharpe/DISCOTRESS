@@ -57,6 +57,7 @@ KMC_Suite::KMC_Suite () {
         Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesA,nodesB,my_kws.transnprobs, \
             my_kws.tau,my_kws.ncomms,communities);
     } else {
+        cout << "there is no binfile" << endl;
         Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesA,nodesB,my_kws.transnprobs,my_kws.tau,my_kws.ncomms);
     }
     if (my_kws.initcond) ktn->set_initcond(init_probs);

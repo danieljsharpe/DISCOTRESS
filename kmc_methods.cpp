@@ -157,7 +157,7 @@ void STD_KMC::run_enhanced_kmc(const Network &ktn) {
     bool leftb=false; // flag indicates if trajectory has left initial set of states yet
     while ((n_ab<maxn_abpaths) && (n_kmcit<=maxit)) { // algo terminates after max no of iterations of the standard kMC algorithm
         (*kmc_func)(walker);
-        visited[walker.curr_node->comm_id]=true;
+        if (ktn.ncomms>0) visited[walker.curr_node->comm_id]=true;
         if (!leftb && walker.curr_node->aorb!=1) leftb=true;
         walker.dump_walker_info(n_ab,walker.curr_node->aorb==-1,false, \
             (walker.curr_node->aorb==-1 || tintvl==0. || (tintvl>0. && walker.t>=next_tintvl)));

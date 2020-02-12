@@ -301,13 +301,15 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         const vector<double> &ts_wts, const vector<double> &stat_probs, const vector<int> &nodesinA, \
         const vector<int> &nodesinB, bool transnprobs, double tau, int ncomms, const vector<int> &comms) {
 
+    cout << "ktn> constructing nodes and edges of transition network from vectors" << endl;
     if (!((ts_conns.size()==ktn.n_edges) || (ts_wts.size()==2*ktn.n_edges) || \
          (stat_probs.size()==ktn.n_nodes) || \
-         (comms.size()==ktn.n_nodes && !comms.empty()))) throw Network::Ktn_exception();
+         (!comms.empty() && comms.size()==ktn.n_nodes))) throw Network::Ktn_exception();
     if (transnprobs) {
         cout << "ktn> interpreting edge weights as transition probabilities at a lag time: " << tau << endl;
         ktn.tau=tau; }
-    ktn.ncomms=ncomms; vector<int> comm_sizes(ncomms);
+    ktn.ncomms=ncomms; vector<int> comm_sizes;
+    if (!comms.empty()) comm_sizes.resize(ncomms);
     double tot_pi = -numeric_limits<double>::infinity();
     for (int i=0;i<ktn.n_nodes;i++) {
         ktn.nodes[i].node_id = i+1; ktn.nodes[i].node_pos = i;
