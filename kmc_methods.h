@@ -26,6 +26,7 @@ struct Walker {
     int bin_curr, bin_prev; // for WE-kMC
     int k; // path activity
     bool active; // walker is currently a member of the set of active trajectories being propagated
+    bool accumprobs=false; // indicates if the Network on which the Walker is active has accumulated transition probs
     double p; // (log) path probability
     double t; // path time (stochastically sampled)
     double s; // entropy flow along path
@@ -67,6 +68,11 @@ class KMC_Enhanced_Methods {
 /* Standard kMC, simply propagates the dynamics of a single trajectory using the chosen standard method */
 class STD_KMC : public KMC_Enhanced_Methods {
 
+    private:
+
+    Walker walker={walker_id:0,bin_curr:0,bin_prev:0,k:0,active:true,accumprobs:false,\
+                   p:-numeric_limits<double>::infinity(),t:0.,s:0.}; // method uses only a single walker
+
     public:
 
     STD_KMC(const Network&,int,int,double,int);
@@ -105,7 +111,8 @@ class KPS : public KMC_Enhanced_Methods {
     Network *ktn_kps_orig=nullptr; // pointer to the original subnetwork of the TN
     Network *ktn_kps_gt=nullptr; // pointer to the graph-transformed subnetwork (used if recycling GT of a basin)
     Network *ktn_l=nullptr, *ktn_u=nullptr; // pointers to arrays used in LU-style decomposition of transition matrix
-    Walker walker={walker_id:0,bin_curr:0,bin_prev:0,k:0,active:true,p:-numeric_limits<double>::infinity(),t:0.,s:0.};
+    Walker walker={walker_id:0,bin_curr:0,bin_prev:0,k:0,active:true,accumprobs:false,\
+                   p:-numeric_limits<double>::infinity(),t:0.,s:0.};
     vector<int> basin_ids; // used to indicate the set to which each node belongs for the current kPS iteration
         // (eliminated=1, transient noneliminated=2, absorbing boundary=3, absorbing nonboundary=0)
     vector<int> eliminated_nodes; // vector of IDs of eliminated nodes (in order)

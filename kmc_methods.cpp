@@ -135,6 +135,7 @@ void KMC_Enhanced_Methods::write_tp_stats(int ncomms) {
 
 STD_KMC::STD_KMC(const Network& ktn, int maxn_abpaths, int maxit, double tintvl, int seed) {
     // quack move this somewhere more general
+    this->walker.accumprobs=ktn.accumprobs;
     this->maxn_abpaths=maxn_abpaths; this->maxit=maxit; this->tintvl=tintvl; this->seed=seed;
     if (ktn.ncomms>0) {
         visited.resize(ktn.ncomms); fill(visited.begin(),visited.end(),false);
@@ -148,7 +149,6 @@ STD_KMC::~STD_KMC() {}
 /* main loop to drive a standard kMC simulation (no enhanced sampling) */
 void STD_KMC::run_enhanced_kmc(const Network &ktn) {
     cout << "\nstd_kmc> beginning standard kMC simulation" << endl;
-    Walker walker={walker_id:0,bin_curr:0,bin_prev:0,k:0,active:true,p:0.,t:0.,s:0.}; // only a single walker
     double dummy_randno = KMC_Standard_Methods::rand_unif_met(seed); // seed generator
     Node *dummy_node = get_initial_node(ktn,walker);
     walker.dump_walker_info(0,false,true,tintvl>=0.);
@@ -187,16 +187,22 @@ void KMC_Standard_Methods::bkl(Walker &walker) {
     double rand_no = KMC_Standard_Methods::rand_unif_met(); // random number used to select transition
     Edge *edgeptr = walker.curr_node->top_from;
     const Node *old_node = walker.curr_node;
-    double prev_p = 0.; // previous accumulated branching probability
+    double prev_cum_p = 0.; // previous accumulated branching probability
+    double p; // branching probability of accepted move
     while (edgeptr!=nullptr) { // loop over FROM edges and check random number against accumulated branching probability
-        if (edgeptr->t > rand_no) break;
-        prev_p = edgeptr->t;
+        if (walker.accumprobs) { // branching probability values are cumulative
+            if (edgeptr->t > rand_no) { p = edgeptr->t-prev_cum_p; break; }
+            prev_cum_p = edgeptr->t;
+        } else {
+            if (edgeptr->t+prev_cum_p > rand_no) { p = edgeptr->t; break; }
+            prev_cum_p += edgeptr->t;
+        }
         edgeptr = edgeptr->next_from;
     }
     walker.curr_node = edgeptr->to_node; // advance trajectory
     // update path quantities
     walker.k++; // dynamical activity (no. of steps)
-    walker.p += log(edgeptr->t-prev_p); // log path probability
+    walker.p += log(p); // log path probability
     walker.t += -(1./exp(old_node->k_esc))*log(KMC_Standard_Methods::rand_unif_met()); // sample transition time
     walker.s += edgeptr->rev_edge->k-edgeptr->k; // entropy flow
 }

@@ -128,6 +128,7 @@ struct Network {
     set<Node*> nodesA, nodesB; // A and B endpoint nodes (A<-B)
     vector<double> init_probs; // initial probabilities for nodes in B
     bool branchprobs=false; // transition probabilities of Edges are branching probabilities (Y/N)
+    bool accumprobs=false; // transition probabilities are accumulated values (Y/N)
     bool initcond=false; // nodes in set B have initial probabilities different to their equilibrium values (Y/N)
     double tau=0.; // lag time at which transition probabilities are calculated
 

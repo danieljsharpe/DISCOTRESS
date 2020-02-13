@@ -80,6 +80,8 @@ void Network::get_tmtx_branch() {
    probabilities as the accumulated values. This is for optimisation of the rejection-free kMC algorithm (BKL) */
 void Network::get_cum_branchprobs() {
     this->get_tmtx_branch();
+    cout << "ktn> calculating accumulative branching probabilities" << endl;
+    accumprobs=true;
     for (auto &node: nodes) {
         Edge *edgeptr = node.top_from;
         auto cmp = [](Edge *l, Edge *r) { return l->t > r->t; };

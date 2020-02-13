@@ -22,6 +22,7 @@ KPS::KPS(const Network &ktn, int maxn_abpaths, int maxit, int nelim, double tau,
     this->adaptivebins=adaptivebins;
     basin_ids.resize(ktn.n_nodes);
     // quack need to move this somewhere more general
+    this->walker.accumprobs=ktn.accumprobs;
     this->maxn_abpaths=maxn_abpaths; this->maxit=maxit; this->tintvl=tintvl; this->seed=seed; this->debug=debug;
     if (ktn.ncomms>0) {
         visited.resize(ktn.ncomms); fill(visited.begin(),visited.end(),false);
@@ -79,7 +80,7 @@ void KPS::run_enhanced_kmc(const Network &ktn) {
         }
         check_if_endpoint:
             if (alpha->aorb==-1 || alpha->aorb==1) { // traj has reached absorbing macrostate A or has returned to B
-                if (alpha->aorb==-1) walker.dump_walker_info(n_traj,true,false,tintvl>=0.);
+                if (alpha->aorb==-1) walker.dump_walker_info(n_ab,true,false,tintvl>=0.);
                 update_tp_stats(alpha->aorb==-1,!adaptivebins);
                 walker.reset_walker_info();
                 epsilon=nullptr; alpha=nullptr;
@@ -251,6 +252,7 @@ double KPS::iterative_reverse_randomisation() {
             if (edge.deadts) continue; nhops += edge.h; }
         t_esc = KPS::gamma_distribn(nhops,tau,seed);
     } else { // the waiting times are different between nodes
+//        cout << "CALCULATING THE ESCAPE TIME BASED ON BRANCHING PROBABILITIES" << endl;
         for (const auto &node: ktn_kps->nodes) {
             int nhops=0;
             Edge *edgeptr = node.top_from;
@@ -258,9 +260,12 @@ double KPS::iterative_reverse_randomisation() {
                 if (!edgeptr->deadts) nhops += edgeptr->h;
                 edgeptr = edgeptr->next_from;
             }
+//            cout << "node: " << node.node_id << "  nhops: " << nhops << "  h: " << node.h << "  tau: " << 1./exp(node.k_esc) << endl;
             t_esc += KPS::gamma_distribn(nhops+node.h,1./exp(node.k_esc),seed);
+//            cout << "  accumulated t_esc is now: " << t_esc << endl;
         }
     }
+//    cout << "t_esc is: " << t_esc << endl; exit(0);
     if (debug) {
         cout << "network after iterative reverse randomisation:" << endl; test_ktn(*ktn_kps);
         cout << "kps> finished iterative reverse randomisation" << endl; }
@@ -371,8 +376,8 @@ Network *KPS::get_subnetwork(const Network& ktn) {
 
     if (debug) cout << "\nkps> get_subnetwork: create TN of " << N_B+N_c << " nodes and " << N_e << " edges" << endl;
     Network *ktnptr = new Network(N_B+N_c,N_e);
-//    ktnptr->edges.resize((N_B*N_B)+(N_B*N_c)); // quack why is this necessary?
-    ktnptr->edges.resize(N_B*100);
+    ktnptr->edges.resize((N_B*(N_B-1))+(2*N_B*N_c)); // quack why is this necessary?
+    ktnptr->branchprobs=ktn.branchprobs;
     int j=0;
     for (int i=0;i<ktn.n_nodes;i++) {
         if (!basin_ids[i]) continue;
@@ -644,7 +649,7 @@ vector<pair<Node*,Edge*>> KPS::undo_gt_iteration(Node *node_elim) {
 double KPS::calc_gt_factor(Node *node_elim) {
 
     double factor=0.; // equal to (1-T_{nn})
-    if (node_elim->t>0.999) { // loop over neighbouring edges to maintain numerical precision
+    if (node_elim->t>0.99) { // loop over neighbouring edges to maintain numerical precision
         Edge *edgeptr = node_elim->top_from;
         while (edgeptr!=nullptr) {
             if (!(edgeptr->deadts || edgeptr->to_node->eliminated)) factor += edgeptr->t;
@@ -670,17 +675,20 @@ void KPS::update_path_quantities(double t_esc, const Node *curr_node) {
     walker.curr_node = &(*curr_node);
     walker.t += t_esc;
     for (const auto &node: ktn_kps->nodes) {
-        walker.k += node.h;
-        if (!ktn_kps->branchprobs) walker.p += node.h*log(node.t);
+        if (!ktn_kps->branchprobs || basin_ids[node.node_id-1]==2) {
+            walker.k += node.h;
+            walker.p += node.h*log(node.t);
+        }
+        Edge *edgeptr = node.top_from;
+        while (edgeptr!=nullptr) {
+            if (edgeptr->deadts) { edgeptr=edgeptr->next_from; continue; }
+            walker.k += edgeptr->h;
+            walker.p += edgeptr->h*log(edgeptr->t);
+            if (ktn_kps->branchprobs) { // can also calculate contribution to the entropy flow
+                walker.s += (edgeptr->h)*(edgeptr->rev_edge->k-edgeptr->k); }
+            edgeptr=edgeptr->next_from;
+        }
     }
-    for (const auto &edge: ktn_kps->edges) {
-        if (edge.deadts) continue;
-        walker.k += edge.h;
-        walker.p += edge.h*log(edge.t);
-        if (ktn_kps->branchprobs) { // can also calculate the contribution to the entropy flow
-            walker.s += (edge.h)*(edge.rev_edge->k-edge.k); }
-    }
-//    cout << "walker.p is now: " << walker.p << endl;
 }
 
 /* Gamma distribution with shape parameter a and rate parameter 1./b */

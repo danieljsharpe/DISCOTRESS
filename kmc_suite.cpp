@@ -57,7 +57,6 @@ KMC_Suite::KMC_Suite () {
         Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesA,nodesB,my_kws.transnprobs, \
             my_kws.tau,my_kws.ncomms,communities);
     } else {
-        cout << "there is no binfile" << endl;
         Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesA,nodesB,my_kws.transnprobs,my_kws.tau,my_kws.ncomms);
     }
     if (my_kws.initcond) ktn->set_initcond(init_probs);
@@ -66,6 +65,7 @@ KMC_Suite::KMC_Suite () {
     cout << "kmc_suite> time interval for dumping trajectory data: " << my_kws.tintvl << endl;
     // set up enhanced sampling class
     if (my_kws.enh_method==0) {        // standard kMC simulation, no enhanced sampling
+        ktn->get_cum_branchprobs();
         STD_KMC *std_kmc_ptr = new STD_KMC(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.tintvl,my_kws.seed);
         enh_method = std_kmc_ptr;
     } else if (my_kws.enh_method==1) { // WE simulation
@@ -89,7 +89,6 @@ KMC_Suite::KMC_Suite () {
     // set up method to propagate kMC trajectories
     if (my_kws.kmc_method==1) {        // BKL algorithm
         enh_method->set_standard_kmc(&KMC_Standard_Methods::bkl);
-        ktn->get_cum_branchprobs();
     } else if (my_kws.kmc_method==2) { // rejection algorithm
         enh_method->set_standard_kmc(&KMC_Standard_Methods::rejection_kmc);
     } else if (my_kws.kmc_method==3) { // leapfrog algorithm

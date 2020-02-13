@@ -17,7 +17,7 @@ WE_KMC::WE_KMC(const Network &ktn, int maxn_abpaths, int maxit, double tau, doub
     this->tau=tau; this->adaptivebins=adaptivebins;
     this->maxn_abpaths=maxn_abpaths; this->maxit=maxit; this->tintvl=tintvl;
     this->seed=seed; this->debug=debug;
-    if (!adaptivebins) walkers.reserve(ktn.ncomms); // quack use proper argument
+    if (!adaptivebins) walkers.reserve(ktn.ncomms); // quack use proper argument and set accumprobs
 }
 
 WE_KMC::~WE_KMC() {}
