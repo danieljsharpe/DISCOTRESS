@@ -19,12 +19,12 @@ struct Node;
 struct Edge {
     int ts_id;
     int edge_pos; // position of the TS in the edges array
-    int h=0; // no. of kMC moves along the edge (used in kPS)
+    long h=0; // no. of kMC moves along the edge (used in kPS)
     int label=0; // label indicates node ID of GT iteration at which edge becomes dead (in kPS)
     double k; // (log) transition rate
-    double t; // transition probability
+    long double t; // transition probability
     double j; // net flux
-    double dt; // change in transition probability (used in kPS)
+    long double dt; // change in transition probability (used in kPS)
     bool deadts=false; // indicates TS only linked to one minimum or is otherwise deleted
     Node *to_node=nullptr;
     Node *from_node=nullptr;
@@ -53,10 +53,10 @@ struct Node {
     int udeg = 0; // (unweighted) node (out-) degree
     bool eliminated = false; // node has been eliminated from the network (in graph transformation) (or otherwise deleted)
     double k_esc; // (log) escape rate from node (sum of outgoing transition rates)
-    double t; // self-transition probability
+    long double t; // self-transition probability
     double pi; // (log) occupation probability (usually the stationary/equilibrium probability)
-    int h=0; // no. of kMC moves along the self-edge (used in kPS)
-    double dt; // change in transition probability (used in kPS)
+    long h=0; // no. of kMC moves along the self-edge (used in kPS)
+    long double dt; // change in transition probability (used in kPS)
     bool flag=false; // additional flag variable
     Edge *top_to=nullptr;
     Edge *top_from=nullptr;

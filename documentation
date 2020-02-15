@@ -60,7 +60,9 @@ BINFILE <str> <int>
     to the number of nodes in the network) and no. of communities. Is overridden by ADAPTIVEBINS
     the communities are used in the calculation of transition path statistics (ie committor functions and
     transition path probability densities). For enhanced sampling methods, the communities are used to divide the state
-    space (eg the communities define the trapping basins in KPS, or the bins in WE)
+    space (eg the communities define the trapping basins in KPS, or the bins in WE). The specification of communities must be
+    consistent with the definition of the A and B sets. An exception is if the number of communities is 2, in which case the
+    initial set B can be a subset of the relevant community
 
 ADAPTIVEBINS
   mandatory if ENHANCED WE or ENHANCED KPS and not BINFILE, default False
@@ -81,7 +83,7 @@ TAU <double>
 
 KPSKMCSTEPS <int>
   optional, if ENHANCED KPS, the number of standard BKL kMC steps to be performed after a kPS escape from
-    a trapping basin. Default 0 (pure kPS, no kMC steps)
+    a trapping basin. Default 0 (pure kPS, no kMC steps). Requires BRANCHPROBS to be set.
 
 NELIM <int>
   mandatory if ENHANCED KPS, the maximum number of nodes that can be eliminated from the current trapping basin. If

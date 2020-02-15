@@ -22,16 +22,16 @@ void Walker::dump_walker_info(int path_no, bool transnpath, bool newpath, bool w
     if (!newpath) { walker_f.open(walker_fname,ios_base::app);
     } else { walker_f.open(walker_fname,ios_base::trunc); }
     walker_f.setf(ios::right,ios::adjustfield); walker_f.setf(ios::fixed,ios::floatfield); // walker_f.fill('x');
-    walker_f << setw(7) << curr_node->node_id << setw(8) << curr_node->comm_id << setw(15) << k;
+    walker_f << setw(7) << curr_node->node_id << setw(8) << curr_node->comm_id << setw(20) << k;
     walker_f.precision(12); // walker_f.width(18);
-    walker_f << setw(30) << t << setw(30) << p << setw(30) << s << endl;
+    walker_f << setw(50) << t << setw(30) << p << setw(30) << s << endl;
     }
     if (!transnpath) return;
     ofstream tpdistrib_f;
     tpdistrib_f.open("tp_distribns.dat",ios_base::app);
     tpdistrib_f.setf(ios::right,ios::adjustfield); tpdistrib_f.setf(ios::fixed,ios::floatfield);
     tpdistrib_f.precision(12);
-    tpdistrib_f << setw(15) << path_no << setw(15) << k << setw(30) << t << setw(30) << p << setw(30) << s << endl;
+    tpdistrib_f << setw(15) << path_no << setw(20) << k << setw(50) << t << setw(30) << p << setw(30) << s << endl;
 }
 
 /* reset path quantities */
@@ -82,7 +82,7 @@ Node *KMC_Enhanced_Methods::get_initial_node(const Network &ktn, Walker &walker)
     }
     walker.curr_node=&(*node_b);
     walker.p=node_b->pi-pi_B; // factor in path probability corresponding to initial occupation of node
-    if (ktn.ncomms>0) visited[node_b->comm_id]=true;
+    if (ktn.ncomms>0) walker.visited[node_b->comm_id]=true;
     return node_b;
 }
 
@@ -97,18 +97,18 @@ void KMC_Enhanced_Methods::find_bin_onthefly() {
 
 /* Increment number of A<-B and B<-B paths simulated. If desired, update the vectors containing counts needed to
    calculate transition path statistics for communities */
-void KMC_Enhanced_Methods::update_tp_stats(bool abpath, bool update) {
+void KMC_Enhanced_Methods::update_tp_stats(Walker &walker, bool abpath, bool update) {
     n_traj++; if (abpath) n_ab++;
     if (!update) return;
     int i=0; // community ID
-    for (bool comm_visit: visited) {
+    for (bool comm_visit: walker.visited) {
         if (comm_visit) {
             if (abpath) { ab_successes[i]++;
             } else { ab_failures[i]++; }
         }
         i++;
     }
-    fill(visited.begin(),visited.end(),false);
+    fill(walker.visited.begin(),walker.visited.end(),false);
 }
 
 /* calculate the transition path statistics for communities from the observed counts during the simulation */
@@ -138,7 +138,7 @@ STD_KMC::STD_KMC(const Network& ktn, int maxn_abpaths, int maxit, double tintvl,
     this->walker.accumprobs=ktn.accumprobs;
     this->maxn_abpaths=maxn_abpaths; this->maxit=maxit; this->tintvl=tintvl; this->seed=seed;
     if (ktn.ncomms>0) {
-        visited.resize(ktn.ncomms); fill(visited.begin(),visited.end(),false);
+        walker.visited.resize(ktn.ncomms); fill(walker.visited.begin(),walker.visited.end(),false);
         tp_densities.resize(ktn.ncomms); committors.resize(ktn.ncomms);
         ab_successes.resize(ktn.ncomms); ab_failures.resize(ktn.ncomms);
     }
@@ -154,10 +154,10 @@ void STD_KMC::run_enhanced_kmc(const Network &ktn) {
     walker.dump_walker_info(0,false,true,tintvl>=0.);
     n_ab=0; n_traj=0; int n_kmcit=1;
     double next_tintvl=tintvl; // next time interval for writing trajectory data
-    bool leftb=false; // flag indicates if trajectory has left initial set of states yet
+    bool leftb=false; // flag indicates if trajectory has left initial set of nodes yet
     while ((n_ab<maxn_abpaths) && (n_kmcit<=maxit)) { // algo terminates after max no of iterations of the standard kMC algorithm
         (*kmc_func)(walker);
-        if (ktn.ncomms>0) visited[walker.curr_node->comm_id]=true;
+        if (ktn.ncomms>0) walker.visited[walker.curr_node->comm_id]=true;
         if (!leftb && walker.curr_node->aorb!=1) leftb=true;
         walker.dump_walker_info(n_ab,walker.curr_node->aorb==-1,false, \
             (walker.curr_node->aorb==-1 || tintvl==0. || (tintvl>0. && walker.t>=next_tintvl)));
@@ -166,7 +166,8 @@ void STD_KMC::run_enhanced_kmc(const Network &ktn) {
         n_kmcit++;
         if (walker.curr_node->aorb==-1 || (walker.curr_node->aorb==1 && leftb)) {
             // traj has reached absorbing macrostate A or has returned to B
-            update_tp_stats(walker.curr_node->aorb==-1,ktn.ncomms>0);
+            update_tp_stats(walker,walker.curr_node->aorb==-1,ktn.ncomms>0);
+            if (walker.curr_node->aorb==1) continue;
             walker.reset_walker_info();
             dummy_node = get_initial_node(ktn,walker);
             if ((n_ab<maxn_abpaths) && (n_kmcit<maxit) && (tintvl>=0.)) walker.dump_walker_info(n_ab,false,true);

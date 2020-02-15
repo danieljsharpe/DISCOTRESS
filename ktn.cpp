@@ -383,7 +383,7 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         ktn.nodesB.insert(&ktn.nodes[nodesinB[i]-1]);
     }
     if (!comms.empty()) {
-        if (ktn.nodesA.size()!=comm_sizes[(*ktn.nodesA.begin())->comm_id] || \
+//        if (ktn.nodesA.size()!=comm_sizes[(*ktn.nodesA.begin())->comm_id] || \
             ktn.nodesB.size()!=comm_sizes[(*ktn.nodesB.begin())->comm_id]) throw Ktn_exception();
         int commA=(*ktn.nodesA.begin())->comm_id;
         for (set<Node*>::iterator it_set=ktn.nodesA.begin();it_set!=ktn.nodesA.end();++it_set) {

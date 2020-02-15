@@ -24,13 +24,14 @@ struct Walker {
 
     int walker_id; // ID of walker in set of trajectories
     int bin_curr, bin_prev; // for WE-kMC
-    int k; // path activity
+    long k; // path activity
     bool active; // walker is currently a member of the set of active trajectories being propagated
     bool accumprobs=false; // indicates if the Network on which the Walker is active has accumulated transition probs
     double p; // (log) path probability
     double t; // path time (stochastically sampled)
     double s; // entropy flow along path
     const Node *curr_node; // pointer to node currently occupied by the walker
+    vector<bool> visited;  // element is true when the corresponding community has been visited along the trajectory
 };
 
 /* abstract class containing functions to handle enhanced sampling kMC methods */
@@ -42,7 +43,6 @@ class KMC_Enhanced_Methods {
     int n_ab;                   // number of successfully simulated A<-B transition paths
     int n_traj;                 // total number of B<-B or A<-B paths simulated
     double tintvl;              // time interval for dumping trajectory data
-    vector<bool> visited;       // is true when the corresponding community has been visited along the trajectory
     vector<int> ab_successes;   // vector of counts of node appearances along A<-B transition paths
     vector<int> ab_failures;    // vector of counts of node appearances along B<-B unreactive paths
     vector<double> tp_densities; // probability that a community is visited along an A<-B transition path
@@ -60,7 +60,7 @@ class KMC_Enhanced_Methods {
     Node *get_initial_node(const Network&, Walker&); // sample an initial node
     void set_standard_kmc(void(*)(Walker&)); // function to set the kmc_std_method
     void find_bin_onthefly();
-    void update_tp_stats(bool,bool); // update the transition path statistics, depends on if the path is a transn path or is unreactive
+    void update_tp_stats(Walker&,bool,bool); // update the transition path statistics, depends on if the path is a transn path or is unreactive
     void calc_tp_stats(int);    // calculate the transition path statistics from the observed counts
     void write_tp_stats(int);   // write transition path statistics to file
 };
@@ -129,12 +129,12 @@ class KPS : public KMC_Enhanced_Methods {
     double next_tintvl; // next time interval for dumping trajectory data
 
     void setup_basin_sets(const Network&,bool);
-    double iterative_reverse_randomisation();
+    long double iterative_reverse_randomisation();
     Node *sample_absorbing_node();
     void graph_transformation(const Network&);
     void gt_iteration(Node*);
     vector<pair<Node*,Edge*>> undo_gt_iteration(Node*);
-    void update_path_quantities(double,const Node*);
+    void update_path_quantities(long double,const Node*);
     Network *get_subnetwork(const Network&);
 
     public:
@@ -142,12 +142,12 @@ class KPS : public KMC_Enhanced_Methods {
     KPS(const Network&,int,int,int,double,double,int,bool,int,bool);
     ~KPS();
     void run_enhanced_kmc(const Network&);
-    static double calc_gt_factor(Node*);
+    static long double calc_gt_factor(Node*);
     static void reset_kmc_hop_counts(Network&);
-    static double gamma_distribn(int,double,int);
-    static int binomial_distribn(int,double,int);
-    static int negbinomial_distribn(int,double,int);
-    static double exp_distribn(double,int);
+    static long double gamma_distribn(long,double,int);
+    static long binomial_distribn(long,long double,int);
+    static long negbinomial_distribn(long,long double,int);
+    static long double exp_distribn(double,int);
     static void test_ktn(const Network&);
 };
 
