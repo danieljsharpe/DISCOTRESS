@@ -108,6 +108,11 @@ TRANSNPROBS
   the weights to read in are transition probabilities, not rates (compatible with ENHANCED KPS only)
   the self-loop transition probabilities for nodes are inferred to be the remainders
 
+PFOLD
+  when used in conjunction with ENHANCED KPS, specifies that a committor function calculation is performed instead of a kPS simulation
+  the communities.dat file must specify precisely three communities; the A set, the B set, and the set of all other nodes
+  the committor functions are written to the files "committor_AB.dat" and "committor_BA.dat" (for A<-B and B<-A directions, respectively)
+
 TINTVL <double>
   ignored if ENHANCED KPS. Time interval for dumping trajectory information
   negative value (default) indicates that trajectory data is not written

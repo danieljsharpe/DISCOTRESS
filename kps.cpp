@@ -12,14 +12,14 @@ File containing functions relating to kinetic path sampling
 using namespace std;
 
 KPS::KPS(const Network &ktn, int maxn_abpaths, int maxit, int nelim, double tau, double tintvl, int kpskmcsteps, \
-         bool adaptivebins, int seed, bool debug) {
+         bool adaptivebins, bool pfold, int seed, bool debug) {
 
     cout << "kps> running kPS with parameters:\n  lag time: " << tau << " \tmax. no. of eliminated nodes: " \
          << nelim << "\n  no. of basins: " << ktn.ncomms << " \tno. of kMC steps after kPS iteration: " << kpskmcsteps \
          << "\n  adaptive binning (y/n): " << adaptivebins \
          << "\n  random seed: " << seed << " \tdebug printing: " << debug << endl;
     this->nelim=nelim; this->tau=tau; this->kpskmcsteps=kpskmcsteps;
-    this->adaptivebins=adaptivebins;
+    this->adaptivebins=adaptivebins; this->pfold=pfold;
     basin_ids.resize(ktn.n_nodes);
     // quack need to move this somewhere more general
     this->walker.accumprobs=ktn.accumprobs;
@@ -64,6 +64,8 @@ void KPS::run_enhanced_kmc(const Network &ktn) {
         } else {
             setup_basin_sets(ktn,false); // get the new initial node without updating the definition of the basin
         }
+        if (pfold) {
+            calc_pfold(ktn); break; }
         Node *dummy_alpha = sample_absorbing_node();
         alpha = &ktn.nodes[dummy_alpha->node_id-1];
         walker.curr_node=&(*alpha);
@@ -113,7 +115,12 @@ void KPS::setup_basin_sets(const Network &ktn, bool get_new_basin) {
 
     if (debug) cout << "\nkps> setting up basin sets" << endl;
     bool newpath=false;
-    if (!epsilon) { // first iteration of A<-B path, need to set starting node
+    if (pfold) { // not simulating a trajectory, set epsilon to any node not in A or B
+        for (const Node &node: ktn.nodes) {
+            if (node.aorb==-1 || node.aorb==1) continue;
+            epsilon=&node; break;
+        }
+    } else if (!epsilon) { // first iteration of A<-B path, need to set starting node
         epsilon = get_initial_node(ktn,walker);
         walker.dump_walker_info(n_ab,false,true,true);
         next_tintvl=tintvl;
@@ -329,8 +336,10 @@ Node *KPS::sample_absorbing_node() {
 void KPS::graph_transformation(const Network &ktn) {
 
     if (debug) cout << "\nkps> graph transformation" << endl;
-    ktn_kps=get_subnetwork(ktn);
-    ktn_kps_orig=get_subnetwork(ktn);
+    ktn_kps=get_subnetwork(ktn,true);
+//    ktn_kps->edges.resize((N_B*(N_B-1))+(2*N_B*N_c));
+    if (!pfold) { // the original, L and U networks are not needed for the pfold calculation, which only requires GT
+    ktn_kps_orig=get_subnetwork(ktn,false);
     ktn_l = new Network(N_B+N_c,0);
     ktn_u = new Network(N_B+N_c,0);
     vector<int> noderange(N_B); iota(noderange.begin(),noderange.end(),N_c);
@@ -340,6 +349,7 @@ void KPS::graph_transformation(const Network &ktn) {
         ktn_u->nodes[i] = ktn_kps->nodes[i];
         ktn_l->nodes[i].node_pos=i; ktn_u->nodes[i].node_pos=i;
         ktn_l->nodes[i].t=0.; ktn_u->nodes[i].t=0.; // the "transn probs" in the L and U TNs are the values to "undo" GT
+    }
     }
     auto cmp = [](Node *l,Node *r) { return l->udeg >= r->udeg; };
     priority_queue<Node*,vector<Node*>,decltype(cmp)> gt_pq(cmp); // priority queue of nodes (based on out-degree)
@@ -359,7 +369,7 @@ void KPS::graph_transformation(const Network &ktn) {
         if (debug) { cout << "\nrunning debug tests on transformed network:" << endl; test_ktn(*ktn_kps); }
     }
     if (!adaptivebins && ktn.ncomms==2 && ktn_kps_gt==nullptr) ktn_kps_gt = new Network(*ktn_kps);
-    if (debug) {
+    if (debug && !pfold) {
         cout << "\nrunning debug tests on L:" << endl; test_ktn(*ktn_l);
         cout << "\nrunning debug tests on U:" << endl; test_ktn(*ktn_u);
     }
@@ -370,11 +380,11 @@ void KPS::graph_transformation(const Network &ktn) {
 
 /* return the subnetwork corresponding to the active trapping basin and absorbing boundary nodes, to be transformed
    in the graph transformation phase of the kPS algorithm */
-Network *KPS::get_subnetwork(const Network& ktn) {
+Network *KPS::get_subnetwork(const Network& ktn, bool resize_edgevec) {
 
     if (debug) cout << "\nkps> get_subnetwork: create TN of " << N_B+N_c << " nodes and " << N_e << " edges" << endl;
     Network *ktnptr = new Network(N_B+N_c,N_e);
-    ktnptr->edges.resize((N_B*(N_B-1))+(2*N_B*N_c)); // quack why is this necessary?
+    if (resize_edgevec) ktnptr->edges.resize((N_B*(N_B-1))+(2*N_B*N_c));
     ktnptr->branchprobs=ktn.branchprobs;
     int j=0;
     for (int i=0;i<ktn.n_nodes;i++) {
@@ -443,8 +453,10 @@ void KPS::gt_iteration(Node *node_elim) {
     // vector of which relevant entries are for all nodes directly connected to the current elimd node, incl elimd nodes
     vector<nbrnode> nbrnode_vec(N_B+N_c,(nbrnode){false,0.,0.});
     // update the self-loops of the L and U networks
+    if (!pfold) {
     ktn_u->nodes[node_elim->node_pos].t = -factor;
     ktn_l->nodes[node_elim->node_pos].t = node_elim->t/factor;
+    }
     // update the weights for all edges from the elimd node to non-elimd nbr nodes, and self-loops of non-elimd nbr nodes
     Edge *edgeptr = node_elim->top_from;
     if (debug) cout << "updating edges from the eliminated node..." << endl;
@@ -455,6 +467,7 @@ void KPS::gt_iteration(Node *node_elim) {
         nodes_nbrs.push_back(edgeptr->to_node); // queue nbr node
         nbrnode_vec[edgeptr->to_node->node_pos].t_fromn=edgeptr->t;
         nbrnode_vec[edgeptr->to_node->node_pos].t_ton=edgeptr->rev_edge->t;
+        if (!pfold) {
         // update L and U networks
         ktn_l->edges[ktn_l->n_edges].t = edgeptr->rev_edge->t/factor;
         ktn_l->edges[ktn_l->n_edges].edge_pos = ktn_l->n_edges;
@@ -470,6 +483,7 @@ void KPS::gt_iteration(Node *node_elim) {
         ktn_u->edges[ktn_u->n_edges].to_node = &ktn_u->nodes[edgeptr->to_node->node_pos];
         ktn_u->add_from_edge(node_elim->node_pos,ktn_u->n_edges);
         ktn_u->n_edges++;
+        }
         // update subnetwork
         if (debug) cout << "    old node t: " << edgeptr->to_node->t << "  incr in node t: " \
                         << (edgeptr->t)*(edgeptr->rev_edge->t)/factor << endl;
@@ -641,6 +655,54 @@ vector<pair<Node*,Edge*>> KPS::undo_gt_iteration(Node *node_elim) {
         edgeptr=edgeptr->next_from;
     }
     return nodes_nbrs;
+}
+
+/* calculate the A<-B and B<-A committor functions and write to files */
+void KPS::calc_pfold(const Network& ktn) {
+
+    cout << "kps> calculating committor functions from the graph transformation" << endl;
+    vector<long double> q_ab_vals(ktn.n_nodes); // A<-B committor
+    vector<long double> q_ba_vals(ktn.n_nodes); // B<-A committor
+    /* NB nodes in A or B that are not directly connected to the intermediate set do not appear in the ktn_kps
+       Network object. Use a nodemask to do bookkeeping - the committor probabilities of any nodes in A or B
+       are precisely 0 or 1 */
+    vector<bool> nodemask(ktn.n_nodes,false);
+    for (const Node& node: ktn_kps->nodes) {
+        nodemask[node.node_id-1]=true;
+        if (node.aorb==-1) { // node in A
+            q_ab_vals[node.node_id-1]=1.; q_ba_vals[node.node_id-1]=0.; continue;
+        } else if (node.aorb==1) { // node in B
+            q_ab_vals[node.node_id-1]=0.; q_ba_vals[node.node_id-1]=1.; continue;
+        }
+        const Edge *edgeptr = node.top_from;
+        long double q_ab=0., q_ba=0.;
+        while (edgeptr!=nullptr) {
+            if (edgeptr->deadts || edgeptr->to_node->eliminated) {
+                edgeptr=edgeptr->next_from; continue; }
+            if (edgeptr->to_node->aorb==-1) { // node in A
+                q_ab += edgeptr->t;
+            } else if (edgeptr->to_node->aorb==1) { // node in B
+                q_ba += edgeptr->t;
+            } else { // all remaining edges should be to nodes in A or B
+                throw exception();
+            }
+            edgeptr=edgeptr->next_from;
+        }
+        q_ab_vals[node.node_id-1] = q_ab/(q_ab+q_ba);
+        q_ba_vals[node.node_id-1] = q_ba/(q_ab+q_ba);
+    }
+    for (int i=0;i<ktn.n_nodes;i++) {
+        if (nodemask[i]) continue;
+        if (ktn.nodes[i].aorb==-1) {
+            q_ab_vals[ktn.nodes[i].node_id-1]=1.; q_ba_vals[ktn.nodes[i].node_id-1]=0.;
+        } else if (ktn.nodes[i].aorb==1) {
+            q_ab_vals[ktn.nodes[i].node_id-1]=0.; q_ba_vals[ktn.nodes[i].node_id-1]-0.;
+        } else { // committor probabilities should already have been calculated for all nodes not in A or B 
+            throw exception();
+        }
+    }
+    KMC_Enhanced_Methods::write_vec<long double>(q_ab_vals,"committor_AB.dat");
+    KMC_Enhanced_Methods::write_vec<long double>(q_ba_vals,"committor_BA.dat");
 }
 
 /* calculate the factor (1-T_{nn}) needed in the elimination of the n-th node in graph transformation */

@@ -9,6 +9,10 @@ Classes and functions for handling enhanced kinetic Monte Carlo simulations and 
 #include <limits>
 #include <utility>
 #include <unordered_map>
+#include <string>
+#include <typeinfo>
+#include <iomanip>
+#include <fstream>
 
 using namespace std;
 
@@ -63,6 +67,14 @@ class KMC_Enhanced_Methods {
     void update_tp_stats(Walker&,bool,bool); // update the transition path statistics, depends on if the path is a transn path or is unreactive
     void calc_tp_stats(int);    // calculate the transition path statistics from the observed counts
     void write_tp_stats(int);   // write transition path statistics to file
+
+    template <typename T>
+    static void write_vec(const vector<T>& vec, string fname) {
+        ofstream vec_f; vec_f.open(fname);
+        if (typeid(T)==typeid(double) || typeid(T)==typeid(long double)) {
+            vec_f.precision(30); vec_f.setf(ios::scientific,ios::floatfield); }
+        for (const T elem: vec) vec_f << setw(30) << elem << endl;
+    }
 };
 
 /* Standard kMC, simply propagates the dynamics of a single trajectory using the chosen standard method */
@@ -125,6 +137,7 @@ class KPS : public KMC_Enhanced_Methods {
     const Node *alpha=nullptr, *epsilon=nullptr; // final and initial microstates of current escape trajectory
         // NB these pointers point to nodes in the original network, passed as the arg to run_enhanced_kmc()
     bool adaptivebins; // bins are defined adaptively (or else are set prior to the simulation)
+    bool pfold;      // calculate the committor functions instead of performing a kPS simulation
     int kpskmcsteps; // number of kMC steps to run after each kPS trapping basin escape trajectory sampled
     double next_tintvl; // next time interval for dumping trajectory data
 
@@ -135,11 +148,12 @@ class KPS : public KMC_Enhanced_Methods {
     void gt_iteration(Node*);
     vector<pair<Node*,Edge*>> undo_gt_iteration(Node*);
     void update_path_quantities(long double,const Node*);
-    Network *get_subnetwork(const Network&);
+    Network *get_subnetwork(const Network&,bool);
+    void calc_pfold(const Network&);
 
     public:
 
-    KPS(const Network&,int,int,int,double,double,int,bool,int,bool);
+    KPS(const Network&,int,int,int,double,double,int,bool,bool,int,bool);
     ~KPS();
     void run_enhanced_kmc(const Network&);
     static long double calc_gt_factor(Node*);

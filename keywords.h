@@ -55,6 +55,7 @@ struct Keywords {
     // other keywords
     bool transnprobs=false;  // "TRANSNPROBS" edge weights are read in as transition probabilities (not as weights)
     bool branchprobs=false;  // "BRANCHPROBS" transition probabilities are calculated as branching probabilities
+    bool pfold=false;        // "PFOLD" specifies that a committor function calculation is to be performed instead of a kPS simulation
     bool debug=false;
     int seed=17;
 

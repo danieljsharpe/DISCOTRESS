@@ -87,6 +87,8 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.kpskmcsteps=stoi(vecstr[1]);
         } else if (vecstr[0]=="NELIM") {
             my_kws.nelim=stoi(vecstr[1]);
+        } else if (vecstr[0]=="PFOLD") {
+            my_kws.pfold=true;
         } else if (vecstr[0]=="TRANSNPROBS") {
             my_kws.transnprobs=true;
         } else if (vecstr[0]=="BRANCHPROBS") {
@@ -122,7 +124,7 @@ Keywords read_keywords(const char *kw_file) {
             cout << "keywords> error: WE simulation not set up correctly" << endl; exit(EXIT_FAILURE); } }
     if (my_kws.enh_method==2) { // kPS simulation
         if ((!(my_kws.tau>0.) && !my_kws.branchprobs) || (my_kws.binfile==nullptr && !my_kws.adaptivebins) || my_kws.nelim<=0 || \
-            (my_kws.kpskmcsteps>0 && !my_kws.branchprobs)) {
+            (my_kws.kpskmcsteps>0 && !my_kws.branchprobs) || (my_kws.pfold && my_kws.ncomms!=3)) {
             cout << "keywords> error: kPS simulation not set up correctly" << endl; exit(EXIT_FAILURE); } }
 
     return my_kws;

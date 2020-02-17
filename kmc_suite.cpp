@@ -76,7 +76,7 @@ KMC_Suite::KMC_Suite () {
         if (my_kws.branchprobs) { ktn->get_tmtx_branch();
         } else if (!my_kws.transnprobs) { ktn->get_tmtx_lin(my_kws.tau); }
         KPS *kps_ptr = new KPS(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.nelim,my_kws.tau,my_kws.tintvl,my_kws.kpskmcsteps, \
-                    my_kws.adaptivebins,my_kws.seed,my_kws.debug);
+                    my_kws.adaptivebins,my_kws.pfold,my_kws.seed,my_kws.debug);
         enh_method = kps_ptr;
     } else if (my_kws.enh_method==3) { // FFS simulation
     } else if (my_kws.enh_method==4) { // AS-kMC simulation
