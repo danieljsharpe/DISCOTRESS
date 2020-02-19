@@ -22,21 +22,21 @@ void Walker::dump_walker_info(int path_no, bool transnpath, bool newpath, bool w
     if (!newpath) { walker_f.open(walker_fname,ios_base::app);
     } else { walker_f.open(walker_fname,ios_base::trunc); }
     walker_f.setf(ios::right,ios::adjustfield); walker_f.setf(ios::fixed,ios::floatfield); // walker_f.fill('x');
-    walker_f << setw(7) << curr_node->node_id << setw(8) << curr_node->comm_id << setw(20) << k;
-    walker_f.precision(12); // walker_f.width(18);
-    walker_f << setw(50) << t << setw(30) << p << setw(30) << s << endl;
+    walker_f << setw(7) << curr_node->node_id << setw(7) << curr_node->comm_id << setw(30) << k;
+    walker_f.precision(10); // walker_f.width(18);
+    walker_f << setw(60) << t << setw(35) << p << setw(20) << s << endl;
     }
     if (!transnpath) return;
     ofstream tpdistrib_f;
     tpdistrib_f.open("tp_distribns.dat",ios_base::app);
     tpdistrib_f.setf(ios::right,ios::adjustfield); tpdistrib_f.setf(ios::fixed,ios::floatfield);
-    tpdistrib_f.precision(12);
-    tpdistrib_f << setw(15) << path_no << setw(20) << k << setw(50) << t << setw(30) << p << setw(30) << s << endl;
+    tpdistrib_f.precision(10);
+    tpdistrib_f << setw(14) << path_no << setw(30) << k << setw(60) << t << setw(35) << p << setw(20) << s << endl;
 }
 
 /* reset path quantities */
 void Walker::reset_walker_info() {
-    k=0; p=-numeric_limits<double>::infinity(); t=0.; s=0.;
+    k=0; p=-numeric_limits<long double>::infinity(); t=0.; s=0.;
     curr_node=nullptr;
 }
 

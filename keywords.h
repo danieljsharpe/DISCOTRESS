@@ -38,7 +38,7 @@ struct Keywords {
     int nA=-1, nB=-1;          // number of nodes in A and B sets, respectively
 
     // optional arguments pertaining to enhanced sampling methods
-    double tau=-1.;          // "TAU" time interval between checking bins (WE-kMC)
+    long double tau=-1.;       // "TAU" time interval between checking bins (WE-kMC)
                              //       lag time at which transition probability matrix is evaluated (kPS)
     double tintvl=-1.;       // "TINTVL" time interval for writing trajectory data
     int ncomms=-1;           // number of communities on the network, eg no. of bins (WE-kMC) or trapping basins (kPS)
@@ -108,6 +108,8 @@ class Read_files {
             vec_data.emplace_back(stoi(line));
         } else if (typeid(T)==typeid(double)) {
             vec_data.emplace_back(stod(line));
+        } else if (typeid(T)==typeid(long double)) {
+            vec_data.emplace_back(stold(line));
         }
     }
     inp_f.close();

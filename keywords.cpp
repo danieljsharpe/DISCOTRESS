@@ -62,7 +62,7 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.minbfile=vecstr[1];
             my_kws.nB=stoi(vecstr[2]);
         } else if (vecstr[0]=="TAU") {
-            my_kws.tau=stod(vecstr[1]);
+            my_kws.tau=stold(vecstr[1]);
         } else if (vecstr[0]=="TINTVL") {
             my_kws.tintvl=stod(vecstr[1]);
         } else if (vecstr[0]=="INITCOND") {

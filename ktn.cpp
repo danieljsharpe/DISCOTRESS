@@ -44,7 +44,7 @@ Node::Node(const Node &node) {
 
 /* update the Nodes and Edges of the Network data structure to contain transition probabibilities
    calculated from the linearised transition probabibility matrix */
-void Network::get_tmtx_lin(double tau) {
+void Network::get_tmtx_lin(long double tau) {
     cout << "ktn> calculating linearised transition probability matrix at lag time: " << tau << endl;
     for (auto &node: nodes) {
         if (tau>1./exp(node.k_esc)) throw Ktn_exception(); // value of tau does not give stochastic matrix
@@ -66,13 +66,13 @@ void Network::get_tmtx_branch() {
         edge.t = exp(edge.k-edge.from_node->k_esc); }
     for (auto &node: nodes) {
         node.t = 0.; // branching probability matrix contains no self-loops
-        double cum_t=0.; // accumulated branching probability
+        long double cum_t=0.; // accumulated branching probability
         Edge *edgeptr = node.top_from;
         while (edgeptr!=nullptr) {
             if (!edgeptr->deadts) { cum_t += edgeptr->t; }
             edgeptr=edgeptr->next_from;
         }
-        if (abs(cum_t-1.)>1.E-08) throw Ktn_exception(); // transition probabilities do not give stochastic matrix
+        if (abs(cum_t-1.)>1.E-16) throw Ktn_exception(); // transition probabilities do not give stochastic matrix
     }
 }
 
@@ -98,14 +98,15 @@ void Network::get_cum_branchprobs() {
             edge_pq.pop();
         }
         edgeptr = node.top_from;
-        double cum_t=0.;
+        long double cum_t=0.;
         while (edgeptr!=nullptr) { // calculate accumulated branching probabilities
             if (edgeptr->deadts) { edgeptr=edgeptr->next_from; continue; }
-            double prev_cum_t = cum_t;
+            long double prev_cum_t = cum_t;
             cum_t += edgeptr->t;
             edgeptr->t += prev_cum_t;
             edgeptr=edgeptr->next_from;
         }
+        if (abs(cum_t-1.)>1.E-20) throw Ktn_exception();
     }
 }
 
@@ -250,7 +251,7 @@ void Network::update_from_edge(int i, int j) {
 /* calculate the escape rate for node */
 void Network::calc_k_esc(Node &node) {
     Edge *edgeptr;
-    node.k_esc = -numeric_limits<double>::infinity();
+    node.k_esc = -numeric_limits<long double>::infinity();
     edgeptr = node.top_from;
     while (edgeptr!=nullptr) {
         if (!edgeptr->deadts) node.k_esc = log(exp(node.k_esc)+exp(edgeptr->k));
@@ -300,8 +301,8 @@ void Network::add_edge_network(Network *ktn, Node &from_node, Node &to_node, int
 
 /* set up the kinetic transition network */
 void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns, \
-        const vector<double> &ts_wts, const vector<double> &stat_probs, const vector<int> &nodesinA, \
-        const vector<int> &nodesinB, bool transnprobs, double tau, int ncomms, const vector<int> &comms) {
+        const vector<long double> &ts_wts, const vector<double> &stat_probs, const vector<int> &nodesinA, \
+        const vector<int> &nodesinB, bool transnprobs, long double tau, int ncomms, const vector<int> &comms) {
 
     cout << "ktn> constructing nodes and edges of transition network from vectors" << endl;
     if (!((ts_conns.size()==ktn.n_edges) || (ts_wts.size()==2*ktn.n_edges) || \

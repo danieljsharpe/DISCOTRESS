@@ -76,7 +76,7 @@ BININITFILE <str>
   optional, if ENHANCED WE and not ADAPTIVEBINS, name of the file containing the initial trajectory probability distribution
     over nodes
 
-TAU <double>
+TAU <long double>
   mandatory if ENHANCED WE or if ENHANCED KPS and not BRANCHPROBS
     If WE, tau is the time between resampling trajectories
     If KPS, tau is the lag time at which the linear transition probability matrices are estimated (or provided, if TRANSNPROBS)

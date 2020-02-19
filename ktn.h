@@ -19,9 +19,9 @@ struct Node;
 struct Edge {
     int ts_id;
     int edge_pos; // position of the TS in the edges array
-    long h=0; // no. of kMC moves along the edge (used in kPS)
+    unsigned long long int h=0; // no. of kMC moves along the edge (used in kPS)
     int label=0; // label indicates node ID of GT iteration at which edge becomes dead (in kPS)
-    double k; // (log) transition rate
+    long double k; // (log) transition rate
     long double t; // transition probability
     double j; // net flux
     long double dt; // change in transition probability (used in kPS)
@@ -52,10 +52,10 @@ struct Node {
     int aorb = 0; // indicates set to which node belongs: -1 for A, +1 for B, 0 for I
     int udeg = 0; // (unweighted) node (out-) degree
     bool eliminated = false; // node has been eliminated from the network (in graph transformation) (or otherwise deleted)
-    double k_esc; // (log) escape rate from node (sum of outgoing transition rates)
+    long double k_esc; // (log) escape rate from node (sum of outgoing transition rates)
     long double t; // self-transition probability
     double pi; // (log) occupation probability (usually the stationary/equilibrium probability)
-    long h=0; // no. of kMC moves along the self-edge (used in kPS)
+    unsigned long long int h=0; // no. of kMC moves along the self-edge (used in kPS)
     long double dt; // change in transition probability (used in kPS)
     bool flag=false; // additional flag variable
     Edge *top_to=nullptr;
@@ -105,13 +105,13 @@ struct Network {
     static void calc_k_esc(Node&);
     static void calc_t_selfloop(Node&);
     static void calc_net_flux(Edge&);
-    void get_tmtx_lin(double); // calculate the linearised transition probability matrix
+    void get_tmtx_lin(long double); // calculate the linearised transition probability matrix
     void get_tmtx_branch(); // calculate the branching transition probability matrix
     void get_cum_branchprobs(); // set transition probabilities to accumulated branching probability values (for optimisation in kMC)
     void set_initcond(const vector<double>&); // set initial probabilities for nodes in set B
     static void add_edge_network(Network*,Node&,Node&,int);
-    static void setup_network(Network&,const vector<pair<int,int>>&,const vector<double>&, \
-        const vector<double>&,const vector<int>&, const vector<int>&, bool, double, int, const vector<int>& = {});
+    static void setup_network(Network&,const vector<pair<int,int>>&,const vector<long double>&, \
+        const vector<double>&,const vector<int>&,const vector<int>&,bool,long double,int,const vector<int>& = {});
 
     vector<Node> nodes;
     vector<Edge> edges; // note that this vector contains two entries for forward and reverse transitions for
@@ -130,7 +130,7 @@ struct Network {
     bool branchprobs=false; // transition probabilities of Edges are branching probabilities (Y/N)
     bool accumprobs=false; // transition probabilities are accumulated values (Y/N)
     bool initcond=false; // nodes in set B have initial probabilities different to their equilibrium values (Y/N)
-    double tau=0.; // lag time at which transition probabilities are calculated
+    long double tau=0.; // lag time at which transition probabilities are calculated
 
     inline Network& operator=(const Network& other_network) {
         cout << "called assignment operator for Network" << endl;

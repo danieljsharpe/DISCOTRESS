@@ -42,7 +42,7 @@ KMC_Suite::KMC_Suite () {
     const char *conns_fname="ts_conns.dat", *wts_fname="ts_weights.dat", \
                *stat_probs_fname = "stat_prob.dat";
     vector<pair<int,int>> ts_conns = Read_files::read_two_col<int>(conns_fname);
-    vector<double> ts_wts = Read_files::read_one_col<double>(wts_fname);
+    vector<long double> ts_wts = Read_files::read_one_col<long double>(wts_fname);
     vector<double> stat_probs = Read_files::read_one_col<double>(stat_probs_fname);
     vector<int> communities;
     if (my_kws.binfile!=nullptr) communities = Read_files::read_one_col<int>(my_kws.binfile);

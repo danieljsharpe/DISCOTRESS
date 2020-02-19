@@ -11,7 +11,7 @@ File containing functions relating to kinetic path sampling
 
 using namespace std;
 
-KPS::KPS(const Network &ktn, int maxn_abpaths, int maxit, int nelim, double tau, double tintvl, int kpskmcsteps, \
+KPS::KPS(const Network &ktn, int maxn_abpaths, int maxit, int nelim, long double tau, double tintvl, int kpskmcsteps, \
          bool adaptivebins, bool pfold, int seed, bool debug) {
 
     cout << "kps> running kPS with parameters:\n  lag time: " << tau << " \tmax. no. of eliminated nodes: " \
@@ -66,12 +66,15 @@ void KPS::run_enhanced_kmc(const Network &ktn) {
         }
         if (pfold) {
             calc_pfold(ktn); break; }
+//        cout << "done GT" << endl;
         Node *dummy_alpha = sample_absorbing_node();
         alpha = &ktn.nodes[dummy_alpha->node_id-1];
         walker.curr_node=&(*alpha);
         walker.visited[alpha->comm_id]=true;
         long double t_esc = iterative_reverse_randomisation();
+//        cout << "finished iir" << endl;
         update_path_quantities(t_esc,alpha);
+//        cout << "updated path quantities" << endl;
         n_kpsit++;
         delete ktn_kps; ktn_kps=nullptr;
         if (!(!adaptivebins && ktn.ncomms==2)) {
@@ -180,8 +183,9 @@ long double KPS::iterative_reverse_randomisation() {
     for (int i=N;i>0;i--) {
         Node *curr_node = &(ktn_kps->nodes[nodemap[eliminated_nodes[i-1]]-1]);
         vector<pair<Node*,Edge*>> nodes_nbrs = undo_gt_iteration(curr_node);
+        cout << "  undone GT elimination of node: " << curr_node->node_id << endl;
         // vector stores number of kMC hops from i-th node to noneliminated nodes, other elems are irrelevant
-        vector<long> fromn_hops(N_B+N_c);
+        vector<unsigned long long int> fromn_hops(N_B+N_c);
         for (vector<pair<Node*,Edge*>>::iterator it_nodevec=nodes_nbrs.begin();it_nodevec!=nodes_nbrs.end();++it_nodevec) {
             if (((*it_nodevec).first)->eliminated || (*it_nodevec).first==curr_node) continue;
             fromn_hops[((*it_nodevec).first)->node_pos]=0;
@@ -191,13 +195,15 @@ long double KPS::iterative_reverse_randomisation() {
            Note that only nodes directly connected to the i-th node are affected. */
         for (vector<pair<Node*,Edge*>>::iterator it_nodevec=nodes_nbrs.begin();it_nodevec!=nodes_nbrs.end();++it_nodevec) {
             if (basin_ids[((*it_nodevec).first)->node_id-1]!=1 || (*it_nodevec).first==curr_node) continue;
-            long hx=0; // number of transitions from eliminated node to the i-th node
+            unsigned long long int hx=0; // number of transitions from eliminated node to the i-th node
             Edge *edgeptr=((*it_nodevec).first)->top_from;
             if (debug) cout << "from node: " << edgeptr->from_node->node_id << endl;
             // update the self-loop for this node
+//            cout << "    stage 1" << endl;
             if (!edgeptr->from_node->eliminated) {
                 long double ratio=edgeptr->from_node->t/(edgeptr->from_node->t+edgeptr->from_node->dt);
-                long h_prev = edgeptr->from_node->h;
+                unsigned long long int h_prev = edgeptr->from_node->h;
+//                cout << "      about to draw from B distribn. h: " << edgeptr->from_node->h << "  ratio: " << ratio << endl;
                 edgeptr->from_node->h = KPS::binomial_distribn(edgeptr->from_node->h,ratio,seed);
                 hx += h_prev-edgeptr->from_node->h;
                 fromn_hops[edgeptr->from_node->node_pos] += h_prev-edgeptr->from_node->h;
@@ -206,6 +212,7 @@ long double KPS::iterative_reverse_randomisation() {
             }
             edgeptr->from_node->dt=0.;
             // update edges
+//            cout << "    stage 2" << endl;
             while (edgeptr!=nullptr) {
                 if (edgeptr->to_node->eliminated || (edgeptr->deadts && edgeptr->label!=curr_node->node_id) \
                     || edgeptr->to_node==curr_node) {
@@ -214,7 +221,8 @@ long double KPS::iterative_reverse_randomisation() {
                 long double ratio;
                 if (!edgeptr->deadts) { ratio=edgeptr->t/(edgeptr->t+edgeptr->dt);
                 } else { ratio=0.; }
-                long h_prev = edgeptr->h;
+                unsigned long long int h_prev = edgeptr->h;
+//                cout << "      about to draw from B distribn. h: " << edgeptr->from_node->h << "  ratio: " << ratio << endl;                
                 edgeptr->h = KPS::binomial_distribn(edgeptr->h,ratio,seed);
                 hx += h_prev-edgeptr->h;
                 fromn_hops[edgeptr->to_node->node_pos] += h_prev-edgeptr->h;
@@ -225,6 +233,7 @@ long double KPS::iterative_reverse_randomisation() {
             ((*it_nodevec).second)->rev_edge->h = hx; // transitions from eliminated nodes to the i-th node
             if (debug) cout << "  new h to elimd node: " << hx << endl;
         }
+//        cout << "    stage 3" << endl;
         // update transitions from the i-th node to noneliminated nodes
         for (vector<pair<Node*,Edge*>>::iterator it_nodevec=nodes_nbrs.begin();it_nodevec!=nodes_nbrs.end();++it_nodevec) {
             if (((*it_nodevec).first)->eliminated || (*it_nodevec).first==curr_node) continue;
@@ -236,7 +245,7 @@ long double KPS::iterative_reverse_randomisation() {
         for (vector<pair<Node*,Edge*>>::iterator it_nodevec=nodes_nbrs.begin();it_nodevec!=nodes_nbrs.end();++it_nodevec) {
             ((*it_nodevec).first)->flag=false; }
         // sample the number of self-hops for the i-th node
-        int nhops=0; // number of kMC hops from the i-th node to alternative nonelimd nodes (ie no self-loops)
+        unsigned long long int nhops=0; // number of kMC hops from the i-th node to alternative nonelimd nodes (ie no self-loops)
         Edge *edgeptr = curr_node->top_from;
         while (edgeptr!=nullptr) {
             if (!(edgeptr->deadts || edgeptr->to_node->eliminated)) {
@@ -244,7 +253,9 @@ long double KPS::iterative_reverse_randomisation() {
             edgeptr=edgeptr->next_from;
         }
         long double nb_prob = calc_gt_factor(curr_node);
+//        cout << "    about to draw from NB distribn. nhops: " << nhops << " nb_prob: " << nb_prob << endl;
         curr_node->h = KPS::negbinomial_distribn(nhops,nb_prob,seed);
+//        cout << "    curr_node->h is now: " << curr_node->h << endl;
         if (debug) {
             cout << "tot no of hops from node " << curr_node->node_id << " to alt nonelimd nodes: " \
                  << nhops << "  1-t: " << nb_prob << endl;
@@ -255,14 +266,14 @@ long double KPS::iterative_reverse_randomisation() {
     // count the number of hops and stochastically draw the time for the escape trajectory
     long double t_esc=0.; // sampled time for basin escape trajectory
     if (!ktn_kps->branchprobs) { // transitions from all nodes are associated with the same waiting time
-        long nhops=0; // total number of kMC hops
+        unsigned long long int nhops=0; // total number of kMC hops
         for (const auto &node: ktn_kps->nodes) nhops += node.h;
         for (const auto &edge: ktn_kps->edges) {
             if (edge.deadts) continue; nhops += edge.h; }
         t_esc = KPS::gamma_distribn(nhops,tau,seed);
     } else { // the waiting times are different between nodes
         for (const auto &node: ktn_kps->nodes) {
-            long nhops=0;
+            unsigned long long int nhops=0;
             Edge *edgeptr = node.top_from;
             while (edgeptr!=nullptr) {
                 if (!edgeptr->deadts) nhops += edgeptr->h;
@@ -337,13 +348,18 @@ void KPS::graph_transformation(const Network &ktn) {
 
     if (debug) cout << "\nkps> graph transformation" << endl;
     ktn_kps=get_subnetwork(ktn,true);
+//    cout << "allocated ktn_kps" << endl;
 //    ktn_kps->edges.resize((N_B*(N_B-1))+(2*N_B*N_c));
     if (!pfold) { // the original, L and U networks are not needed for the pfold calculation, which only requires GT
     ktn_kps_orig=get_subnetwork(ktn,false);
+//    cout << "allocated ktn_kps_orig" << endl;
     ktn_l = new Network(N_B+N_c,0);
     ktn_u = new Network(N_B+N_c,0);
     vector<int> noderange(N_B); iota(noderange.begin(),noderange.end(),N_c);
-    ktn_l->edges.resize((N_B*(N_B+N_c))-N_B); ktn_u->edges.resize(accumulate(noderange.begin(),noderange.end(),0));
+    ktn_l->edges.resize((N_B*(N_B+N_c))-N_B);
+//    cout << "allocated L" << endl;
+    ktn_u->edges.resize(accumulate(noderange.begin(),noderange.end(),0));
+//    cout << "allocated U" << endl;
     for (int i=0;i<ktn_kps->n_nodes;i++) {
         ktn_l->nodes[i] = ktn_kps->nodes[i];
         ktn_u->nodes[i] = ktn_kps->nodes[i];
@@ -752,38 +768,38 @@ void KPS::update_path_quantities(long double t_esc, const Node *curr_node) {
 }
 
 /* Gamma distribution with shape parameter a and rate parameter 1./b */
-long double KPS::gamma_distribn(long a, double b, int seed) {
+long double KPS::gamma_distribn(unsigned long long int a, long double b, int seed) {
 
     static default_random_engine generator(seed);
-    gamma_distribution<double> gamma_distrib(a,b);
+    gamma_distribution<long double> gamma_distrib(a,b);
     return gamma_distrib(generator);
 }
 
 /* Binomial distribution with trial number h and success probability p.
    Returns the number of successes after h Bernoulli trials. */
-long KPS::binomial_distribn(long h, long double p, int seed) {
+unsigned long long int KPS::binomial_distribn(unsigned long long int h, long double p, int seed) {
 
     static default_random_engine generator(seed);
-    if (!((h>=0) || ((p>=0.) && (p<=1.)))) throw exception();
+    if (h<0 || (p<=0. && p>1.)) { cout << "h: " << h << " p: " << p << endl; throw exception(); }
     if (h==0)  { return 0;
     } else if (p==1.) { return h; }
-    binomial_distribution<long> binom_distrib(h,p);
+    binomial_distribution<unsigned long long int> binom_distrib(h,p);
     return binom_distrib(generator);
 }
 
 /* Negative binomial distribution with success number r and success probability p.
    Returns the number of failures before the r-th success. */
-long KPS::negbinomial_distribn(long r, long double p, int seed) {
+unsigned long long int KPS::negbinomial_distribn(unsigned long long int r, long double p, int seed) {
 
     static default_random_engine generator(seed);
-    if (!((r>=0) || ((p>0.) && (p<=1.)))) throw exception();
-    if ((r==0) || (p==1.)) return 0;
-    negative_binomial_distribution<long> neg_binom_distrib(r,p);
+    if (!(r>=0 && (p>0. && p<=1.)) && !(r==0 &p==0.)) { cout << "r: " << r << " p: " << p << endl; throw exception(); }
+    if (r==0) return 0;
+    negative_binomial_distribution<unsigned long long int> neg_binom_distrib(r,p);
     return neg_binom_distrib(generator);
 }
 
 /* Exponential distribution with rate parameter 1./tau */
-long double KPS::exp_distribn(double tau, int seed) {
+long double KPS::exp_distribn(long double tau, int seed) {
 
     static default_random_engine generator(seed);
     exponential_distribution<long double> exp_distrib(1./tau);

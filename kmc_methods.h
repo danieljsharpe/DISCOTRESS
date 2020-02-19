@@ -28,12 +28,12 @@ struct Walker {
 
     int walker_id; // ID of walker in set of trajectories
     int bin_curr, bin_prev; // for WE-kMC
-    long k; // path activity
+    unsigned long long int k; // path activity
     bool active; // walker is currently a member of the set of active trajectories being propagated
     bool accumprobs=false; // indicates if the Network on which the Walker is active has accumulated transition probs
-    double p; // (log) path probability
-    double t; // path time (stochastically sampled)
-    double s; // entropy flow along path
+    long double p; // (log) path probability
+    long double t; // path time (stochastically sampled)
+    long double s; // entropy flow along path
     const Node *curr_node; // pointer to node currently occupied by the walker
     vector<bool> visited;  // element is true when the corresponding community has been visited along the trajectory
 };
@@ -83,7 +83,7 @@ class STD_KMC : public KMC_Enhanced_Methods {
     private:
 
     Walker walker={walker_id:0,bin_curr:0,bin_prev:0,k:0,active:true,accumprobs:false,\
-                   p:-numeric_limits<double>::infinity(),t:0.,s:0.}; // method uses only a single walker
+                   p:-numeric_limits<long double>::infinity(),t:0.,s:0.}; // method uses only a single walker
 
     public:
 
@@ -106,7 +106,7 @@ class WE_KMC : public KMC_Enhanced_Methods {
 
     public:
 
-    WE_KMC(const Network&,int,int,double,double,bool,int,bool);
+    WE_KMC(const Network&,int,int,long double,double,bool,int,bool);
     ~WE_KMC();
     void run_enhanced_kmc(const Network&);
 };
@@ -124,12 +124,12 @@ class KPS : public KMC_Enhanced_Methods {
     Network *ktn_kps_gt=nullptr; // pointer to the graph-transformed subnetwork (used if recycling GT of a basin)
     Network *ktn_l=nullptr, *ktn_u=nullptr; // pointers to arrays used in LU-style decomposition of transition matrix
     Walker walker={walker_id:0,bin_curr:0,bin_prev:0,k:0,active:true,accumprobs:false,\
-                   p:-numeric_limits<double>::infinity(),t:0.,s:0.};
+                   p:-numeric_limits<long double>::infinity(),t:0.,s:0.};
     vector<int> basin_ids; // used to indicate the set to which each node belongs for the current kPS iteration
         // (eliminated=1, transient noneliminated=2, absorbing boundary=3, absorbing nonboundary=0)
     vector<int> eliminated_nodes; // vector of IDs of eliminated nodes (in order)
     unordered_map<int,int> nodemap; // map of node IDs from original network to subnetwork
-    double tau;     // lag time at which transition matrix is evaluated
+    long double tau;     // lag time at which transition matrix is evaluated
     int nelim;      // maximum number of nodes of a trapping basin to be eliminated
     int N_c;        // number of nodes connected to the eliminated states of the current trapping basin
     int N, N_B;     // number of eliminated nodes / total number of nodes for the currently active trapping basin
@@ -153,15 +153,15 @@ class KPS : public KMC_Enhanced_Methods {
 
     public:
 
-    KPS(const Network&,int,int,int,double,double,int,bool,bool,int,bool);
+    KPS(const Network&,int,int,int,long double,double,int,bool,bool,int,bool);
     ~KPS();
     void run_enhanced_kmc(const Network&);
     static long double calc_gt_factor(Node*);
     static void reset_kmc_hop_counts(Network&);
-    static long double gamma_distribn(long,double,int);
-    static long binomial_distribn(long,long double,int);
-    static long negbinomial_distribn(long,long double,int);
-    static long double exp_distribn(double,int);
+    static long double gamma_distribn(unsigned long long int,long double,int);
+    static unsigned long long int binomial_distribn(unsigned long long int,long double,int);
+    static unsigned long long int negbinomial_distribn(unsigned long long int,long double,int);
+    static long double exp_distribn(long double,int);
     static void test_ktn(const Network&);
 };
 
