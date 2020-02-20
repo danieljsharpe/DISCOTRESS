@@ -49,13 +49,14 @@ struct Node {
     int node_id;
     int node_pos; // position of node in nodes vector of Network (needed in kPS, where a subnetwork is copied)
     int comm_id = -1; // community ID (-1 indicates null value)
+    int bin_id = -1; // bin ID (for calculating TP statistics) (-1 indicates null value)
     int aorb = 0; // indicates set to which node belongs: -1 for A, +1 for B, 0 for I
     int udeg = 0; // (unweighted) node (out-) degree
     bool eliminated = false; // node has been eliminated from the network (in graph transformation) (or otherwise deleted)
     long double k_esc; // (log) escape rate from node (sum of outgoing transition rates)
     long double t; // self-transition probability
     double pi; // (log) occupation probability (usually the stationary/equilibrium probability)
-    unsigned long long int h=0; // no. of kMC moves along the self-edge (used in kPS)
+    unsigned long long int h=0; // no. of kMC moves along the self-loop "edge" (used in kPS)
     long double dt; // change in transition probability (used in kPS)
     bool flag=false; // additional flag variable
     Edge *top_to=nullptr;
@@ -76,7 +77,7 @@ struct Node {
     /* in assignment operator for Node, do not copy the pointers to Edge objects */
     inline Node& operator=(const Node& other_node) {
         node_id=other_node.node_id; node_pos=other_node.node_pos;
-        comm_id=other_node.comm_id; udeg=0;
+        comm_id=other_node.comm_id; bin_id=other_node.bin_id; udeg=0;
         aorb=other_node.aorb; eliminated=other_node.eliminated;
         k_esc=other_node.k_esc; t=other_node.t; pi=other_node.pi;
     }
@@ -111,7 +112,8 @@ struct Network {
     void set_initcond(const vector<double>&); // set initial probabilities for nodes in set B
     static void add_edge_network(Network*,Node&,Node&,int);
     static void setup_network(Network&,const vector<pair<int,int>>&,const vector<long double>&, \
-        const vector<double>&,const vector<int>&,const vector<int>&,bool,long double,int,const vector<int>& = {});
+        const vector<double>&,const vector<int>&,const vector<int>&,bool,long double,int,const vector<int>& = {}, \
+        const vector<int>& = {});
 
     vector<Node> nodes;
     vector<Edge> edges; // note that this vector contains two entries for forward and reverse transitions for
@@ -125,6 +127,7 @@ struct Network {
     int tot_nodes=0, tot_edges=0;
     int n_dead=0; // number of dead/deleted edges
     int ncomms; // total number of communities
+    int nbins=0; // total number of bins
     set<Node*> nodesA, nodesB; // A and B endpoint nodes (A<-B)
     vector<double> init_probs; // initial probabilities for nodes in B
     bool branchprobs=false; // transition probabilities of Edges are branching probabilities (Y/N)

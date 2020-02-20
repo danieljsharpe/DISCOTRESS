@@ -12,22 +12,22 @@ File containing functions relating to kinetic path sampling
 using namespace std;
 
 KPS::KPS(const Network &ktn, int maxn_abpaths, int maxit, int nelim, long double tau, double tintvl, int kpskmcsteps, \
-         bool adaptivebins, bool pfold, int seed, bool debug) {
+         bool adaptivecomms, double adaptminrate, bool pfold, int seed, bool debug) {
 
     cout << "kps> running kPS with parameters:\n  lag time: " << tau << " \tmax. no. of eliminated nodes: " \
          << nelim << "\n  no. of basins: " << ktn.ncomms << " \tno. of kMC steps after kPS iteration: " << kpskmcsteps \
-         << "\n  adaptive binning (y/n): " << adaptivebins \
+         << "\n  adaptive definition of communities (y/n): " << adaptivecomms \
          << "\n  random seed: " << seed << " \tdebug printing: " << debug << endl;
     this->nelim=nelim; this->tau=tau; this->kpskmcsteps=kpskmcsteps;
-    this->adaptivebins=adaptivebins; this->pfold=pfold;
+    this->adaptivecomms=adaptivecomms; this->adaptminrate=adaptminrate; this->pfold=pfold;
     basin_ids.resize(ktn.n_nodes);
     // quack need to move this somewhere more general
     this->walker.accumprobs=ktn.accumprobs;
     this->maxn_abpaths=maxn_abpaths; this->maxit=maxit; this->tintvl=tintvl; this->seed=seed; this->debug=debug;
     if (ktn.ncomms>0) {
-        walker.visited.resize(ktn.ncomms); fill(walker.visited.begin(),walker.visited.end(),false);
-        tp_densities.resize(ktn.ncomms); committors.resize(ktn.ncomms);
-        ab_successes.resize(ktn.ncomms); ab_failures.resize(ktn.ncomms);
+        walker.visited.resize(ktn.nbins); fill(walker.visited.begin(),walker.visited.end(),false);
+        tp_densities.resize(ktn.nbins); committors.resize(ktn.nbins);
+        ab_successes.resize(ktn.nbins); ab_failures.resize(ktn.nbins);
     }
 }
 
@@ -58,7 +58,7 @@ void KPS::run_enhanced_kmc(const Network &ktn) {
     cout << "\nkps> beginning kPS simulation" << endl;
     n_ab=0; n_traj=0; int n_kpsit=1;
     while ((n_ab<maxn_abpaths) && (n_kpsit<=maxit)) { // algo terminates when max no of kPS basin escapes have been simulated
-        if (!(!adaptivebins && ktn.ncomms==2 && n_kpsit!=1)) { // for a two-state problem, only need to setup basin and do GT once
+        if (!(!adaptivecomms && ktn.ncomms==2 && n_kpsit!=1)) { // for a two-state problem, only need to setup basin and do GT once
             setup_basin_sets(ktn,true);
             graph_transformation(ktn);
         } else {
@@ -66,18 +66,14 @@ void KPS::run_enhanced_kmc(const Network &ktn) {
         }
         if (pfold) {
             calc_pfold(ktn); break; }
-//        cout << "done GT" << endl;
         Node *dummy_alpha = sample_absorbing_node();
         alpha = &ktn.nodes[dummy_alpha->node_id-1];
         walker.curr_node=&(*alpha);
-        walker.visited[alpha->comm_id]=true;
         long double t_esc = iterative_reverse_randomisation();
-//        cout << "finished iir" << endl;
         update_path_quantities(t_esc,alpha);
-//        cout << "updated path quantities" << endl;
         n_kpsit++;
         delete ktn_kps; ktn_kps=nullptr;
-        if (!(!adaptivebins && ktn.ncomms==2)) {
+        if (!(!adaptivecomms && ktn.ncomms==2)) {
             delete ktn_kps_orig; ktn_kps_orig=nullptr;
             delete ktn_l; delete ktn_u; ktn_l=nullptr; ktn_u=nullptr;
         } else { // restore the graph transformed subnetwork
@@ -86,7 +82,7 @@ void KPS::run_enhanced_kmc(const Network &ktn) {
         int n_kmcit=0;
         check_if_endpoint:
             if (alpha->aorb==-1 || alpha->aorb==1) { // traj has reached absorbing macrostate A or has returned to B
-                update_tp_stats(walker,alpha->aorb==-1,!adaptivebins);
+                update_tp_stats(walker,alpha->aorb==-1,!adaptivecomms);
                 if (alpha->aorb==-1) {
                     walker.dump_walker_info(n_ab-1,true,false,true);
                     walker.reset_walker_info();
@@ -94,23 +90,24 @@ void KPS::run_enhanced_kmc(const Network &ktn) {
                     continue;
                 }
             }
-        if (epsilon->comm_id!=alpha->comm_id) { // escaped previous basin, write trajectory data
+        if (epsilon->comm_id!=alpha->comm_id || adaptivecomms) { // escaped previous basin, write trajectory data
             walker.dump_walker_info(n_ab,false,false,tintvl==0. || (tintvl>0. && walker.t>=next_tintvl));
             if (tintvl>0. && walker.t>=next_tintvl) { // reached time interval for dumping trajectory data, calc next interval
                 while (walker.t>=next_tintvl) next_tintvl+=tintvl; }
         }
+        if (adaptivecomms) continue;
         epsilon=alpha; alpha=nullptr;
         while (n_kmcit<kpskmcsteps) { // simulate a number of BKL steps to attempt to move away from the transition region of the community
             KMC_Standard_Methods::bkl(walker);
             alpha=walker.curr_node;
             if (alpha->aorb==-1 || alpha->aorb==1 || alpha->comm_id!=epsilon->comm_id) {
-                walker.visited[alpha->comm_id]=true; goto check_if_endpoint; }
+                walker.visited[alpha->bin_id]=true; goto check_if_endpoint; }
             n_kmcit++; epsilon=alpha;
         }
     }
     cout << "\nkps> kPS simulation terminated after " << n_kpsit-1 << " kPS iterations. Simulated " \
          << n_ab << " transition paths" << endl;
-    if (!adaptivebins) calc_tp_stats(ktn.ncomms); // calc committors and transn path densities for communities and write to file
+    if (!adaptivecomms) calc_tp_stats(ktn.nbins); // calc committors and transn path densities for communities and write to file
 }
 
 /* Reset data of previous kPS iteration and find the microstates of the current trapping basin */
@@ -131,7 +128,7 @@ void KPS::setup_basin_sets(const Network &ktn, bool get_new_basin) {
     if (!get_new_basin) return; // the basin is not to be updated
     N_c=0; N=0; N_B=0; N_e=0;
     fill(basin_ids.begin(),basin_ids.end(),0); // reset basin IDs (zero flag indicates absorbing nonboundary node)
-    if (!adaptivebins) { // basin IDs are based on community IDs
+    if (!adaptivecomms) { // basin IDs are based on community IDs
         // find all nodes of the current occupied pre-set community, mark these nodes as transient noneliminated
         if (debug) cout << "basin nodes:" << endl;
         for (int i=0;i<ktn.n_nodes;i++) {
@@ -145,7 +142,7 @@ void KPS::setup_basin_sets(const Network &ktn, bool get_new_basin) {
             if (basin_ids[i]!=2) continue;
             Edge *edgeptr = ktn.nodes[i].top_from;
             while (edgeptr!=nullptr) {
-                if (edgeptr->deadts) {edgeptr=edgeptr->next_from; continue; }
+                if (edgeptr->deadts) { edgeptr=edgeptr->next_from; continue; }
                 if (edgeptr->to_node->comm_id!=epsilon->comm_id && !basin_ids[edgeptr->to_node->node_id-1]) {
                     basin_ids[edgeptr->to_node->node_id-1]=3; // flag absorbing boundary node
                     N_c++;
@@ -157,8 +154,22 @@ void KPS::setup_basin_sets(const Network &ktn, bool get_new_basin) {
         }
         if (debug) cout << endl;
     } else {
-        // quack
-        find_bin_onthefly();
+        vector<int> nodes_in_comm = KMC_Enhanced_Methods::find_comm_onthefly(ktn,epsilon,adaptminrate,nelim);
+        basin_ids=nodes_in_comm;
+        for (int i=0;i<ktn.n_nodes;i++) {
+            if (basin_ids[i]==2) {
+                N_B++; N_e+=ktn.nodes[i].udeg;
+                
+            } else if (basin_ids[i]==3) {
+                N_c++; int N_e_add=0;
+                Edge *edgeptr = ktn.nodes[i].top_from;
+                while (edgeptr!=nullptr) {
+                    if (!edgeptr->deadts && basin_ids[edgeptr->to_node->node_id-1]==2) N_e_add++;
+                    edgeptr=edgeptr->next_from;
+                }
+                N_e+=N_e_add;
+            }
+        }
     }
     eliminated_nodes.clear(); nodemap.clear();
     eliminated_nodes.reserve(!(N_B>nelim)?N_B:nelim);
@@ -183,7 +194,7 @@ long double KPS::iterative_reverse_randomisation() {
     for (int i=N;i>0;i--) {
         Node *curr_node = &(ktn_kps->nodes[nodemap[eliminated_nodes[i-1]]-1]);
         vector<pair<Node*,Edge*>> nodes_nbrs = undo_gt_iteration(curr_node);
-        cout << "  undone GT elimination of node: " << curr_node->node_id << endl;
+//        cout << "  i: " << i << "    undone GT elimination of node: " << curr_node->node_id << endl;
         // vector stores number of kMC hops from i-th node to noneliminated nodes, other elems are irrelevant
         vector<unsigned long long int> fromn_hops(N_B+N_c);
         for (vector<pair<Node*,Edge*>>::iterator it_nodevec=nodes_nbrs.begin();it_nodevec!=nodes_nbrs.end();++it_nodevec) {
@@ -335,6 +346,7 @@ Node *KPS::sample_absorbing_node() {
             curr_node=next_node;
         }
         next_node=nullptr;
+        if (adaptivecomms && basin_ids[curr_node->node_id-1]==3) break; // reached absorbing boundary of on-the-fly community
     } while (curr_node->comm_id==curr_comm_id);
     if (debug) cout << "after categorical sampling procedure the current node is: " << curr_node->node_id << endl;
     return curr_node;
@@ -348,18 +360,14 @@ void KPS::graph_transformation(const Network &ktn) {
 
     if (debug) cout << "\nkps> graph transformation" << endl;
     ktn_kps=get_subnetwork(ktn,true);
-//    cout << "allocated ktn_kps" << endl;
-//    ktn_kps->edges.resize((N_B*(N_B-1))+(2*N_B*N_c));
+    ktn_kps->ncomms=ktn.ncomms;
     if (!pfold) { // the original, L and U networks are not needed for the pfold calculation, which only requires GT
     ktn_kps_orig=get_subnetwork(ktn,false);
-//    cout << "allocated ktn_kps_orig" << endl;
     ktn_l = new Network(N_B+N_c,0);
     ktn_u = new Network(N_B+N_c,0);
     vector<int> noderange(N_B); iota(noderange.begin(),noderange.end(),N_c);
     ktn_l->edges.resize((N_B*(N_B+N_c))-N_B);
-//    cout << "allocated L" << endl;
     ktn_u->edges.resize(accumulate(noderange.begin(),noderange.end(),0));
-//    cout << "allocated U" << endl;
     for (int i=0;i<ktn_kps->n_nodes;i++) {
         ktn_l->nodes[i] = ktn_kps->nodes[i];
         ktn_u->nodes[i] = ktn_kps->nodes[i];
@@ -370,7 +378,8 @@ void KPS::graph_transformation(const Network &ktn) {
     auto cmp = [](Node *l,Node *r) { return l->udeg >= r->udeg; };
     priority_queue<Node*,vector<Node*>,decltype(cmp)> gt_pq(cmp); // priority queue of nodes (based on out-degree)
     for (vector<Node>::iterator it_nodevec=ktn_kps->nodes.begin();it_nodevec!=ktn_kps->nodes.end();++it_nodevec) {
-        if (it_nodevec->comm_id!=epsilon->comm_id) continue;
+        if ((!adaptivecomms && it_nodevec->comm_id!=epsilon->comm_id) || \
+            (adaptivecomms && basin_ids[it_nodevec->node_id-1]!=2)) continue;
         gt_pq.push(&(*it_nodevec));
     }
     while (!gt_pq.empty() && N<nelim) {
@@ -384,7 +393,7 @@ void KPS::graph_transformation(const Network &ktn) {
         N++;
         if (debug) { cout << "\nrunning debug tests on transformed network:" << endl; test_ktn(*ktn_kps); }
     }
-    if (!adaptivebins && ktn.ncomms==2 && ktn_kps_gt==nullptr) ktn_kps_gt = new Network(*ktn_kps);
+    if (!adaptivecomms && ktn.ncomms==2 && ktn_kps_gt==nullptr) ktn_kps_gt = new Network(*ktn_kps);
     if (debug && !pfold) {
         cout << "\nrunning debug tests on L:" << endl; test_ktn(*ktn_l);
         cout << "\nrunning debug tests on U:" << endl; test_ktn(*ktn_u);
@@ -416,7 +425,8 @@ Network *KPS::get_subnetwork(const Network& ktn, bool resize_edgevec) {
         n++;
         const Node *node_orig = &ktn.nodes[node.node_id-1];
         // for absorbing node, do not incl any FROM edges, or any TO edges for non-basin nbr nodes, in the subnetwork
-        if (node_orig->comm_id!=epsilon->comm_id) continue;
+        if ((!adaptivecomms && node_orig->comm_id!=epsilon->comm_id) || \
+            (adaptivecomms && basin_ids[node_orig->node_id-1]!=2)) continue;
         const Edge *edgeptr = node_orig->top_from;
         while (edgeptr!=nullptr) {
             if (edgeptr->deadts || edgemask[edgeptr->edge_pos]) { edgeptr=edgeptr->next_from; continue; }
@@ -448,7 +458,8 @@ Network *KPS::get_subnetwork(const Network& ktn, bool resize_edgevec) {
     }
     if (debug) cout << "added " << n << " nodes and " << m << " edges to subnetwork" << endl;
     reset_kmc_hop_counts(*ktnptr);
-    if (n!=N_B+N_c || m!=N_e) { cout << "kps> something went wrong in get_subnetwork()" << endl; exit(EXIT_FAILURE); }
+    if (n!=N_B+N_c || m!=N_e) { cout << "n: " << n << "  m: " << m << endl;
+cout << "kps> something went wrong in get_subnetwork()" << endl; exit(EXIT_FAILURE); }
     return ktnptr;
 }
 
@@ -751,15 +762,17 @@ void KPS::update_path_quantities(long double t_esc, const Node *curr_node) {
     walker.curr_node = &(*curr_node);
     walker.t += t_esc;
     for (const auto &node: ktn_kps->nodes) {
-        if (!ktn_kps->branchprobs || basin_ids[node.node_id-1]==2) {
+        if ((!ktn_kps->branchprobs || basin_ids[node.node_id-1]==2) && node.h>0) {
             walker.k += node.h;
             walker.p += static_cast<long double>(node.h)*log(node.t);
+            if (ktn_kps->ncomms>0) walker.visited[node.bin_id]=true;
         }
         Edge *edgeptr = node.top_from;
         while (edgeptr!=nullptr) {
-            if (edgeptr->deadts) { edgeptr=edgeptr->next_from; continue; }
+            if (edgeptr->deadts || edgeptr->h==0) { edgeptr=edgeptr->next_from; continue; }
             walker.k += edgeptr->h;
             walker.p += static_cast<long double>(edgeptr->h)*log(edgeptr->t);
+            if (ktn_kps->ncomms>0) walker.visited[edgeptr->to_node->bin_id]=true;
             if (ktn_kps->branchprobs) { // can also calculate contribution to the entropy flow
                 walker.s += static_cast<long double>(edgeptr->h)*(edgeptr->rev_edge->k-edgeptr->k); }
             edgeptr=edgeptr->next_from;
@@ -780,8 +793,9 @@ long double KPS::gamma_distribn(unsigned long long int a, long double b, int see
 unsigned long long int KPS::binomial_distribn(unsigned long long int h, long double p, int seed) {
 
     static default_random_engine generator(seed);
-    if (h<0 || (p<=0. && p>1.)) { cout << "h: " << h << " p: " << p << endl; throw exception(); }
-    if (h==0)  { return 0;
+    if (h<0 || (p>1. && h>0) ) { // || (p<0. && h>0)) {
+cout << "h: " << h << " p: " << p << endl; throw exception(); }
+    if (h==0 || p==0.)  { return 0;
     } else if (p==1.) { return h; }
     binomial_distribution<unsigned long long int> binom_distrib(h,p);
     return binom_distrib(generator);

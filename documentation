@@ -54,27 +54,29 @@ INITCONDFILE <str>
     stationary probabilities. The number of entries is assumed to be the same as the specified number of nodes in B,
     and the specified order is assumed to be the same also (cf MINBFILE)
 
-BINFILE <str> <int>
-  mandatory if ENHANCED WE or ENHANCED KPS and not ADAPTIVEBINS
+COMMSFILE <str> <int>
+  mandatory if ENHANCED WE or ENHANCED KPS and not ADAPTIVECOMMS
     name of the file containing the definitions of communities (single-column, indexed from zero, number of entries equal
-    to the number of nodes in the network) and no. of communities. Is overridden by ADAPTIVEBINS
+    to the number of nodes in the network) and no. of communities. Is overridden by ADAPTIVECOMMS
     the communities are used in the calculation of transition path statistics (ie committor functions and
     transition path probability densities). For enhanced sampling methods, the communities are used to divide the state
-    space (eg the communities define the trapping basins in KPS, or the bins in WE). The specification of communities must be
-    consistent with the definition of the A and B sets. An exception is if the number of communities is 2, in which case the
-    initial set B can be a subset of the relevant community
+    space (eg the communities define the trapping basins in KPS, or the communities for resampling in WE).
+    The specification of communities must be consistent with the definition of the A and B sets. An exception is
+    if the number of communities is 2, in which case the initial set B can be a subset of the relevant community
 
-ADAPTIVEBINS
-  mandatory if ENHANCED WE or ENHANCED KPS and not BINFILE, default False
+ADAPTIVECOMMS <double>
+  mandatory if ENHANCED WE or ENHANCED KPS and not COMMSFILE, default False
     set the partitioning of the state space leveraged in WE-kMC and in kPS to be defined on-the-fly
+    argument is the minimum transition rate for a node to be included in the community being built up
+    if set with ENHANCED KPS, KPSKMCSTEPS is ignored
 
-BINTARGFILE <str>
-  mandatory if ENHANCED WE and not ADAPTIVEBINS, name of the file containing the target number of trajectories in each bin
+COMMSTARGFILE <str>
+  mandatory if ENHANCED WE and not ADAPTIVECOMMS, name of the file containing the target number of trajectories in each bin
     (single-column, number of entries equal to the number of communities in the network)
 
-BININITFILE <str>
-  optional, if ENHANCED WE and not ADAPTIVEBINS, name of the file containing the initial trajectory probability distribution
-    over nodes
+BINFILE <str>
+  optional. Default to be the same as COMMSFILE
+    name of the file containing the definition of bins (indexed from 0) for calculating transition path statistics
 
 TAU <long double>
   mandatory if ENHANCED WE or if ENHANCED KPS and not BRANCHPROBS
@@ -83,7 +85,7 @@ TAU <long double>
 
 KPSKMCSTEPS <int>
   optional, if ENHANCED KPS, the number of standard BKL kMC steps to be performed after a kPS escape from
-    a trapping basin. Default 0 (pure kPS, no kMC steps). Requires BRANCHPROBS to be set.
+    a trapping basin. Default 0 (pure kPS, no kMC steps). Requires BRANCHPROBS to be set. Ignored if ADAPTIVECOMMS
 
 NELIM <int>
   mandatory if ENHANCED KPS, the maximum number of nodes that can be eliminated from the current trapping basin. If

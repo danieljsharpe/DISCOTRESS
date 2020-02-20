@@ -13,7 +13,6 @@ Read keywords from file "input.kmc", also read in information on KTN and communi
 #include <algorithm>
 #include <iterator>
 #include <typeinfo>
-
 #include <iostream>
 
 using namespace std;
@@ -22,9 +21,9 @@ struct Keywords {
 
     ~Keywords() {
         if (initcondfile) delete[] initcondfile;
+        if (commsfile) delete[] commsfile;
+        if (commstargfile) delete[] commstargfile;
         if (binfile) delete[] binfile;
-        if (bintargfile) delete[] bintargfile;
-        if (bininitfile) delete[] bininitfile;
     }
 
     /* main keywords (see documentation). Here, -1 represents a value that must be set if the parameter is mandatory given
@@ -38,19 +37,21 @@ struct Keywords {
     int nA=-1, nB=-1;          // number of nodes in A and B sets, respectively
 
     // optional arguments pertaining to enhanced sampling methods
-    long double tau=-1.;       // "TAU" time interval between checking bins (WE-kMC)
+    long double tau=-1.;     // "TAU" time interval between checking communities (WE-kMC)
                              //       lag time at which transition probability matrix is evaluated (kPS)
     double tintvl=-1.;       // "TINTVL" time interval for writing trajectory data
-    int ncomms=-1;           // number of communities on the network, eg no. of bins (WE-kMC) or trapping basins (kPS)
+    int ncomms=-1;           // number of communities on the network, eg no. of communities for resampling (WE-kMC) or trapping basins (kPS)
+    int nbins=-1;            // number of bins on the network, used to calculate transition path statistics
     char *initcondfile=nullptr; // "INITCOND" name of file where nonequilibrium initial probs of nodes in B are specified
-    char *binfile=nullptr;   // "BINFILE" name of file where bins are defined (WE-kMC, kPS)
-    char *bintargfile=nullptr; // "BINTARGFILE" name of file where target number of trajectories in each bin is defined (WE-kMC)
-    char *bininitfile=nullptr; // "BININITFILE" name of file where initial prob distrib of trajs is defined (WE-kMC)
-    bool adaptivebins=false; // "ADAPTIVEBINS" bins (WE-kMC) or trapping basins (kPS) are determined on-the-fly
+    char *commsfile=nullptr; // "COMMSFILE" name of file where communities are defined (WE-kMC, kPS)
+    char *commstargfile=nullptr; // "COMMSTARGFILE" name of file where target number of trajectories in each community is defined (WE-kMC)
+    char *binfile=nullptr;   // "BINFILE" name of file where bins are defined (for calculating TP statistics)
+    bool adaptivecomms=false; // "ADAPTIVECOMMS" communities for resampling (WE-kMC) or trapping basins (kPS) are determined on-the-fly
     int kpskmcsteps=0;       // "KPSKMCSTEPS" number of BKL kMC steps after a trapping basin escape (kPS)
     int nelim=-1;            // "NELIM" maximum number of states to be eliminated from any trapping basin (kPS)
     int nabpaths=-1;         // "NABPATHS" target number of complete A-B paths to simulate
     int maxit=numeric_limits<int>::max(); // "MAXIT" maximum number of iterations of the relevant standard or enhanced kMC algorithm
+    double adaptminrate=0.;  // "ADAPTIVECOMMS" minimum transition rate to include in the BFS procedure to define a community on-the-fly
 
     // other keywords
     bool transnprobs=false;  // "TRANSNPROBS" edge weights are read in as transition probabilities (not as weights)
@@ -61,7 +62,6 @@ struct Keywords {
 
     // implicitly set switches
     bool initcond=false;     // "INITCOND" specifies if a nonequilibrium initial condition for the nodes in set B has been set
-    bool bininitcond=false;  // cf. "BININITFILE", indicates if an initial probability distribution for bins has been specified (in WE)
 };
 
 Keywords read_keywords(const char *);

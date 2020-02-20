@@ -4,6 +4,7 @@ File containing kinetic Monte Carlo simulation algorithms to propagate individua
 
 #include "kmc_methods.h"
 #include <random>
+#include <queue>
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -82,7 +83,7 @@ Node *KMC_Enhanced_Methods::get_initial_node(const Network &ktn, Walker &walker)
     }
     walker.curr_node=&(*node_b);
     walker.p=node_b->pi-pi_B; // factor in path probability corresponding to initial occupation of node
-    if (ktn.ncomms>0) walker.visited[node_b->comm_id]=true;
+    if (ktn.nbins>0) walker.visited[node_b->bin_id]=true;
     return node_b;
 }
 
@@ -91,18 +92,45 @@ void KMC_Enhanced_Methods::set_standard_kmc(void(*kmcfuncptr)(Walker&)) {
     kmc_func = kmcfuncptr;
 }
 
-void KMC_Enhanced_Methods::find_bin_onthefly() {
+/* use breadth-first search (BFS) procedure to find a community on-the-fly, based on a maximum size of the community
+   and a specified transition rate cutoff */
+vector<int> KMC_Enhanced_Methods::find_comm_onthefly(const Network &ktn, const Node *init_node, \
+        double adaptminrate, int maxsz) {
 
+    vector<int> nodes_in_comm(ktn.n_nodes); // store flags indicating if node is of community or is part of absorbing boundary
+    queue<int> nbr_queue; // queue of node IDs to visit in the BFS procedure
+    nbr_queue.push(init_node->node_id);
+    int nv=1; // number of nodes in the community being built up
+    nodes_in_comm[init_node->node_id-1]=2; // indicates that node is part of the current community
+    while (!nbr_queue.empty() && nv<=maxsz) {
+        int curr_node_id = nbr_queue.front();
+        nbr_queue.pop();
+        const Node *nodeptr = &ktn.nodes[curr_node_id-1];
+        const Edge *edgeptr = nodeptr->top_from;
+        while (edgeptr!=nullptr) {
+            if (edgeptr->deadts || nodes_in_comm[edgeptr->to_node->node_id-1]==2) {
+                edgeptr=edgeptr->next_from; continue; }
+            if (exp(edgeptr->k)>adaptminrate && edgeptr->to_node->aorb!=-1) { // incorporate neighbouring node into community
+                nodes_in_comm[edgeptr->to_node->node_id-1]=2;
+                nv++;
+                nbr_queue.push(edgeptr->to_node->node_id);
+            } else { // mark node as belonging to absorbing boundary (for now)
+                nodes_in_comm[edgeptr->to_node->node_id-1]=3;
+            }
+            edgeptr=edgeptr->next_from;
+        }
+    }
+    return nodes_in_comm;
 }
 
 /* Increment number of A<-B and B<-B paths simulated. If desired, update the vectors containing counts needed to
-   calculate transition path statistics for communities */
+   calculate transition path statistics for bins */
 void KMC_Enhanced_Methods::update_tp_stats(Walker &walker, bool abpath, bool update) {
     n_traj++; if (abpath) n_ab++;
     if (!update) return;
-    int i=0; // community ID
-    for (bool comm_visit: walker.visited) {
-        if (comm_visit) {
+    int i=0; // bin ID
+    for (bool bin_visit: walker.visited) {
+        if (bin_visit) {
             if (abpath) { ab_successes[i]++;
             } else { ab_failures[i]++; }
         }
@@ -111,25 +139,25 @@ void KMC_Enhanced_Methods::update_tp_stats(Walker &walker, bool abpath, bool upd
     fill(walker.visited.begin(),walker.visited.end(),false);
 }
 
-/* calculate the transition path statistics for communities from the observed counts during the simulation */
-void KMC_Enhanced_Methods::calc_tp_stats(int ncomms) {
+/* calculate the transition path statistics for bins from the observed counts during the simulation */
+void KMC_Enhanced_Methods::calc_tp_stats(int nbins) {
     cout << "kmc_enhanced_methods> calculating transition path statistics" << endl;
-    for (int i=0;i<ncomms;i++) {
+    for (int i=0;i<nbins;i++) {
         committors[i] = static_cast<double>(ab_successes[i])/static_cast<double>(ab_successes[i]+ab_failures[i]);
         tp_densities[i] = static_cast<double>(ab_successes[i])/static_cast<double>(n_ab);
     }
-    write_tp_stats(ncomms);
+    write_tp_stats(nbins);
 }
 
 /* write transition path statistics to file */
-void KMC_Enhanced_Methods::write_tp_stats(int ncomms) {
+void KMC_Enhanced_Methods::write_tp_stats(int nbins) {
     cout << "kmc_enhanced_methods> writing transition path statistics to file" << endl;
     ofstream tpstats_f;
     tpstats_f.open("tp_stats.dat");
-    for (int i=0;i<ncomms;i++) {
+    for (int i=0;i<nbins;i++) {
         tpstats_f << setw(7) << i << setw(10) << ab_successes[i] << setw(10) << ab_failures[i];
-        tpstats_f << fixed << setprecision(6);
-        tpstats_f << setw(20) << tp_densities[i] << setw(14) << committors[i] << endl;
+        tpstats_f << fixed << setprecision(12);
+        tpstats_f << setw(26) << tp_densities[i] << setw(20) << committors[i] << endl;
     }
 }
 
@@ -138,9 +166,9 @@ STD_KMC::STD_KMC(const Network& ktn, int maxn_abpaths, int maxit, double tintvl,
     this->walker.accumprobs=ktn.accumprobs;
     this->maxn_abpaths=maxn_abpaths; this->maxit=maxit; this->tintvl=tintvl; this->seed=seed;
     if (ktn.ncomms>0) {
-        walker.visited.resize(ktn.ncomms); fill(walker.visited.begin(),walker.visited.end(),false);
-        tp_densities.resize(ktn.ncomms); committors.resize(ktn.ncomms);
-        ab_successes.resize(ktn.ncomms); ab_failures.resize(ktn.ncomms);
+        walker.visited.resize(ktn.nbins); fill(walker.visited.begin(),walker.visited.end(),false);
+        tp_densities.resize(ktn.nbins); committors.resize(ktn.nbins);
+        ab_successes.resize(ktn.nbins); ab_failures.resize(ktn.nbins);
     }
 }
 
@@ -149,7 +177,7 @@ STD_KMC::~STD_KMC() {}
 /* main loop to drive a standard kMC simulation (no enhanced sampling) */
 void STD_KMC::run_enhanced_kmc(const Network &ktn) {
     cout << "\nstd_kmc> beginning standard kMC simulation" << endl;
-    double dummy_randno = KMC_Standard_Methods::rand_unif_met(seed); // seed generator
+    long double dummy_randno = KMC_Standard_Methods::rand_unif_met(seed); // seed generator
     Node *dummy_node = get_initial_node(ktn,walker);
     walker.dump_walker_info(0,false,true,tintvl>=0.);
     n_ab=0; n_traj=0; int n_kmcit=1;
@@ -157,7 +185,7 @@ void STD_KMC::run_enhanced_kmc(const Network &ktn) {
     bool leftb=false; // flag indicates if trajectory has left initial set of nodes yet
     while ((n_ab<maxn_abpaths) && (n_kmcit<=maxit)) { // algo terminates after max no of iterations of the standard kMC algorithm
         (*kmc_func)(walker);
-        if (ktn.ncomms>0) walker.visited[walker.curr_node->comm_id]=true;
+        if (ktn.nbins>0) walker.visited[walker.curr_node->bin_id]=true;
         if (!leftb && walker.curr_node->aorb!=1) leftb=true;
         walker.dump_walker_info(n_ab,walker.curr_node->aorb==-1,false, \
             (walker.curr_node->aorb==-1 || tintvl==0. || (tintvl>0. && walker.t>=next_tintvl)));
@@ -166,7 +194,7 @@ void STD_KMC::run_enhanced_kmc(const Network &ktn) {
         n_kmcit++;
         if (walker.curr_node->aorb==-1 || (walker.curr_node->aorb==1 && leftb)) {
             // traj has reached absorbing macrostate A or has returned to B
-            update_tp_stats(walker,walker.curr_node->aorb==-1,ktn.ncomms>0);
+            update_tp_stats(walker,walker.curr_node->aorb==-1,ktn.nbins>0);
             if (walker.curr_node->aorb==1) continue;
             walker.reset_walker_info();
             dummy_node = get_initial_node(ktn,walker);
@@ -176,7 +204,7 @@ void STD_KMC::run_enhanced_kmc(const Network &ktn) {
     }
     cout << "std_kmc> standard kMC simulation terminated after " << n_kmcit-1 << " kMC iterations. Simulated " \
          << n_ab << " transition paths" << endl;
-    if (ktn.ncomms>0) calc_tp_stats(ktn.ncomms);
+    if (ktn.nbins>0) calc_tp_stats(ktn.nbins);
 }
 
 KMC_Standard_Methods::KMC_Standard_Methods() {}
@@ -188,8 +216,8 @@ void KMC_Standard_Methods::bkl(Walker &walker) {
     double rand_no = KMC_Standard_Methods::rand_unif_met(); // random number used to select transition
     Edge *edgeptr = walker.curr_node->top_from;
     const Node *old_node = walker.curr_node;
-    double prev_cum_p = 0.; // previous accumulated branching probability
-    double p; // branching probability of accepted move
+    long double prev_cum_p = 0.; // previous accumulated branching probability
+    long double p; // branching probability of accepted move
     while (edgeptr!=nullptr) { // loop over FROM edges and check random number against accumulated branching probability
         if (walker.accumprobs) { // branching probability values are cumulative
             if (edgeptr->t > rand_no) { p = edgeptr->t-prev_cum_p; break; }
@@ -217,8 +245,8 @@ void KMC_Standard_Methods::leapfrog(Walker &walker) {
 }
 
 /* draw a uniform random number between 0 and 1, used in Metropolis conditions etc. */
-double KMC_Standard_Methods::rand_unif_met(int seed) {
+long double KMC_Standard_Methods::rand_unif_met(int seed) {
     static default_random_engine generator(seed);
-    static uniform_real_distribution<double> unif_real_distrib(0.,1.);
+    static uniform_real_distribution<long double> unif_real_distrib(0.,1.);
     return unif_real_distrib(generator);
 }

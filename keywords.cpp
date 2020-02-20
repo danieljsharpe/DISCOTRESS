@@ -68,21 +68,25 @@ Keywords read_keywords(const char *kw_file) {
         } else if (vecstr[0]=="INITCOND") {
             my_kws.initcondfile = new char[vecstr[1].size()+1];
             copy(vecstr[1].begin(),vecstr[1].end(),my_kws.initcondfile);
+            my_kws.initcondfile[vecstr[1].size()]='\0';
             my_kws.initcond=true;
+        } else if (vecstr[0]=="COMMSFILE") {
+            my_kws.commsfile = new char[vecstr[1].size()+1];
+            copy(vecstr[1].begin(),vecstr[1].end(),my_kws.commsfile);
+            my_kws.commsfile[vecstr[1].size()]='\0'; // trailing character
+            my_kws.ncomms=stoi(vecstr[2]);
+        } else if (vecstr[0]=="COMMSTARGFILE") {
+            my_kws.commstargfile = new char[vecstr[1].size()+1];
+            copy(vecstr[1].begin(),vecstr[1].end(),my_kws.commstargfile);
+            my_kws.commstargfile[vecstr[1].size()]='\0';
         } else if (vecstr[0]=="BINFILE") {
             my_kws.binfile = new char[vecstr[1].size()+1];
             copy(vecstr[1].begin(),vecstr[1].end(),my_kws.binfile);
-            my_kws.binfile[vecstr[1].size()]='\0'; // trailing character
-            my_kws.ncomms=stoi(vecstr[2]);
-        } else if (vecstr[0]=="BINTARGFILE") {
-            my_kws.bintargfile = new char[vecstr[1].size()+1];
-            copy(vecstr[1].begin(),vecstr[1].end(),my_kws.bintargfile);
-        } else if (vecstr[0]=="BININITFILE") {
-            my_kws.bininitfile = new char[vecstr[1].size()+1];
-            copy(vecstr[1].begin(),vecstr[1].end(),my_kws.bininitfile);
-            my_kws.bininitcond=true;
-        } else if (vecstr[0]=="ADAPTIVEBINS") {
-            my_kws.adaptivebins=true;
+            my_kws.binfile[vecstr[1].size()]='\0';
+            my_kws.nbins=stoi(vecstr[2]);
+        } else if (vecstr[0]=="ADAPTIVECOMMS") {
+            my_kws.adaptivecomms=true;
+            my_kws.adaptminrate=stod(vecstr[1]);
         } else if (vecstr[0]=="KPSKMCSTEPS") {
             my_kws.kpskmcsteps=stoi(vecstr[1]);
         } else if (vecstr[0]=="NELIM") {
@@ -110,8 +114,8 @@ Keywords read_keywords(const char *kw_file) {
         cout << "keywords> error: transition network parameters not set correctly" << endl; exit(EXIT_FAILURE); }
     if (my_kws.nabpaths<=0 || my_kws.maxit<=0) {
         cout << "keywords> error: termination condition not specified correctly" << endl; exit(EXIT_FAILURE); }
-    if (my_kws.binfile!=nullptr && my_kws.ncomms<=1) {
-        cout << "keywords> error: there must be at least two bins in the specified partitioning" << endl; exit(EXIT_FAILURE); }
+    if (my_kws.commsfile!=nullptr && my_kws.ncomms<=1) {
+        cout << "keywords> error: there must be at least two communities in the specified partitioning" << endl; exit(EXIT_FAILURE); }
     if (my_kws.kmc_method<=0 && my_kws.enh_method!=2) {
         cout << "keywords> error: must choose a kMC trajectory method except with kPS" << endl; exit(EXIT_FAILURE); }
     if (my_kws.enh_method==-1) {
@@ -119,11 +123,11 @@ Keywords read_keywords(const char *kw_file) {
     if (my_kws.transnprobs && my_kws.enh_method!=2) {
         cout << "keywords> error: edge weights must be read in as transition rates if not using kPS" << endl; exit(EXIT_FAILURE); }
     if (my_kws.enh_method==1) { // WE simulation
-        if (!(my_kws.tau>0.) || (my_kws.binfile!=nullptr && !my_kws.adaptivebins) || \
-            (my_kws.bintargfile!=nullptr && !my_kws.adaptivebins) ) {
+        if (!(my_kws.tau>0.) || (my_kws.commsfile!=nullptr && !my_kws.adaptivecomms) || \
+            (my_kws.commstargfile!=nullptr && !my_kws.adaptivecomms) ) {
             cout << "keywords> error: WE simulation not set up correctly" << endl; exit(EXIT_FAILURE); } }
     if (my_kws.enh_method==2) { // kPS simulation
-        if ((!(my_kws.tau>0.) && !my_kws.branchprobs) || (my_kws.binfile==nullptr && !my_kws.adaptivebins) || my_kws.nelim<=0 || \
+        if ((!(my_kws.tau>0.) && !my_kws.branchprobs) || (my_kws.commsfile==nullptr && !my_kws.adaptivecomms) || my_kws.nelim<=0 || \
             (my_kws.kpskmcsteps>0 && !my_kws.branchprobs) || (my_kws.pfold && my_kws.ncomms!=3)) {
             cout << "keywords> error: kPS simulation not set up correctly" << endl; exit(EXIT_FAILURE); } }
 

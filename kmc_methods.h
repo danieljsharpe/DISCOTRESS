@@ -27,7 +27,7 @@ struct Walker {
     void reset_walker_info();
 
     int walker_id; // ID of walker in set of trajectories
-    int bin_curr, bin_prev; // for WE-kMC
+    int comm_curr, comm_prev; // for WE-kMC
     unsigned long long int k; // path activity
     bool active; // walker is currently a member of the set of active trajectories being propagated
     bool accumprobs=false; // indicates if the Network on which the Walker is active has accumulated transition probs
@@ -35,7 +35,7 @@ struct Walker {
     long double t; // path time (stochastically sampled)
     long double s; // entropy flow along path
     const Node *curr_node; // pointer to node currently occupied by the walker
-    vector<bool> visited;  // element is true when the corresponding community has been visited along the trajectory
+    vector<bool> visited;  // element is true when the corresponding bin has been visited along the trajectory
 };
 
 /* abstract class containing functions to handle enhanced sampling kMC methods */
@@ -47,10 +47,10 @@ class KMC_Enhanced_Methods {
     int n_ab;                   // number of successfully simulated A<-B transition paths
     int n_traj;                 // total number of B<-B or A<-B paths simulated
     double tintvl;              // time interval for dumping trajectory data
-    vector<int> ab_successes;   // vector of counts of node appearances along A<-B transition paths
-    vector<int> ab_failures;    // vector of counts of node appearances along B<-B unreactive paths
-    vector<double> tp_densities; // probability that a community is visited along an A<-B transition path
-    vector<double> committors;  // forward (A<-B) committor probabilities for communities
+    vector<int> ab_successes;   // vector of counts of bin appearances along A<-B transition paths
+    vector<int> ab_failures;    // vector of counts of bin appearances along B<-B unreactive paths
+    vector<double> tp_densities; // probability that a bin is visited along an A<-B transition path
+    vector<double> committors;  // forward (A<-B) committor probabilities for bins
     int maxit;                  // another termination condition; the maximum number of iterations of the enhanced kMC method
     int seed;                   // seed for random number generator
     bool debug;                 // debug printing on/off
@@ -63,7 +63,7 @@ class KMC_Enhanced_Methods {
     virtual void run_enhanced_kmc(const Network&)=0; // pure virtual function
     Node *get_initial_node(const Network&, Walker&); // sample an initial node
     void set_standard_kmc(void(*)(Walker&)); // function to set the kmc_std_method
-    void find_bin_onthefly();
+    static vector<int> find_comm_onthefly(const Network&,const Node*,double,int); // find a community on-the-fly based on max allowed rate and size
     void update_tp_stats(Walker&,bool,bool); // update the transition path statistics, depends on if the path is a transn path or is unreactive
     void calc_tp_stats(int);    // calculate the transition path statistics from the observed counts
     void write_tp_stats(int);   // write transition path statistics to file
@@ -82,7 +82,7 @@ class STD_KMC : public KMC_Enhanced_Methods {
 
     private:
 
-    Walker walker={walker_id:0,bin_curr:0,bin_prev:0,k:0,active:true,accumprobs:false,\
+    Walker walker={walker_id:0,comm_curr:0,comm_prev:0,k:0,active:true,accumprobs:false,\
                    p:-numeric_limits<long double>::infinity(),t:0.,s:0.}; // method uses only a single walker
 
     public:
@@ -99,8 +99,9 @@ class WE_KMC : public KMC_Enhanced_Methods {
 
     vector<Walker> walkers; // list of active trajectories (walkers) on the network
     int nwalkers;
-    double tau; // time interval between checking bins and resampling trajectories
-    bool adaptivebins;
+    double tau; // time interval between checking communities and resampling trajectories
+    bool adaptivecomms;
+    double adaptminrate;
 
     void we_resampling();
 
@@ -123,7 +124,7 @@ class KPS : public KMC_Enhanced_Methods {
     Network *ktn_kps_orig=nullptr; // pointer to the original subnetwork of the TN
     Network *ktn_kps_gt=nullptr; // pointer to the graph-transformed subnetwork (used if recycling GT of a basin)
     Network *ktn_l=nullptr, *ktn_u=nullptr; // pointers to arrays used in LU-style decomposition of transition matrix
-    Walker walker={walker_id:0,bin_curr:0,bin_prev:0,k:0,active:true,accumprobs:false,\
+    Walker walker={walker_id:0,comm_curr:0,comm_prev:0,k:0,active:true,accumprobs:false,\
                    p:-numeric_limits<long double>::infinity(),t:0.,s:0.};
     vector<int> basin_ids; // used to indicate the set to which each node belongs for the current kPS iteration
         // (eliminated=1, transient noneliminated=2, absorbing boundary=3, absorbing nonboundary=0)
@@ -136,7 +137,8 @@ class KPS : public KMC_Enhanced_Methods {
     int N_e;        // number of edges in the subnetwork
     const Node *alpha=nullptr, *epsilon=nullptr; // final and initial microstates of current escape trajectory
         // NB these pointers point to nodes in the original network, passed as the arg to run_enhanced_kmc()
-    bool adaptivebins; // bins are defined adaptively (or else are set prior to the simulation)
+    bool adaptivecomms; // comunities are defined adaptively (or else are set prior to the simulation)
+    double adaptminrate; // maximum allowed rate in finding a community on-the-fly
     bool pfold;      // calculate the committor functions instead of performing a kPS simulation
     int kpskmcsteps; // number of kMC steps to run after each kPS trapping basin escape trajectory sampled
     double next_tintvl; // next time interval for dumping trajectory data
@@ -153,7 +155,7 @@ class KPS : public KMC_Enhanced_Methods {
 
     public:
 
-    KPS(const Network&,int,int,int,long double,double,int,bool,bool,int,bool);
+    KPS(const Network&,int,int,int,long double,double,int,bool,double,bool,int,bool);
     ~KPS();
     void run_enhanced_kmc(const Network&);
     static long double calc_gt_factor(Node*);
@@ -229,7 +231,7 @@ class KMC_Standard_Methods {
     static void bkl(Walker&); // rejection-free algorithm of Bortz, Kalos and Lebowitz (aka n-fold way algorithm)
     static void rejection_kmc(Walker&); // kMC algorithm where some moves are rejected
     static void leapfrog(Walker&); // leapfrog algorithm of Trygubenko & Wales
-    static double rand_unif_met(int=19); // draw random number between 0 and 1
+    static long double rand_unif_met(int=19); // draw random number between 0 and 1
     static vector<double> calc_committors(const Network&,int); // calculate committor functions from counts in Node structures of Network obj
     static vector<double> calc_tp_density(const Network&,int); // calculate transn path density from counts in Node structures of Network obj
 };

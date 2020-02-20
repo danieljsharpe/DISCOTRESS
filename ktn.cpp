@@ -106,7 +106,7 @@ void Network::get_cum_branchprobs() {
             edgeptr->t += prev_cum_t;
             edgeptr=edgeptr->next_from;
         }
-        if (abs(cum_t-1.)>1.E-20) throw Ktn_exception();
+        if (abs(cum_t-1.)>1.E-16) throw Ktn_exception();
     }
 }
 
@@ -302,7 +302,8 @@ void Network::add_edge_network(Network *ktn, Node &from_node, Node &to_node, int
 /* set up the kinetic transition network */
 void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns, \
         const vector<long double> &ts_wts, const vector<double> &stat_probs, const vector<int> &nodesinA, \
-        const vector<int> &nodesinB, bool transnprobs, long double tau, int ncomms, const vector<int> &comms) {
+        const vector<int> &nodesinB, bool transnprobs, long double tau, int ncomms, const vector<int> &comms,
+        const vector<int> &bins) {
 
     cout << "ktn> constructing nodes and edges of transition network from vectors" << endl;
     if (!((ts_conns.size()==ktn.n_edges) || (ts_wts.size()==2*ktn.n_edges) || \
@@ -318,8 +319,11 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         ktn.nodes[i].node_id = i+1; ktn.nodes[i].node_pos = i;
         if (!comms.empty()) {
             ktn.nodes[i].comm_id = comms[i];
+            ktn.nodes[i].bin_id = bins[i];
             comm_sizes[comms[i]]++;
-            if (comms[i]>=ncomms) throw Ktn_exception(); }
+            if (comms[i]>=ncomms) throw Ktn_exception();
+            if (bins[i]+1>ktn.nbins) ktn.nbins=bins[i]+1;
+        }
         ktn.nodes[i].pi = stat_probs[i];
         tot_pi = log(exp(tot_pi) + exp(stat_probs[i]));
     }
@@ -333,6 +337,7 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         ktn.edges[2*i].edge_pos = 2*i;
         ktn.edges[(2*i)+1].edge_pos = (2*i)+1;
         if (ts_conns[i].first == ts_conns[i].second) { // "dead" transition state (dangling node)
+            cout << "ktn> warning: transition state " << i << " is dead" << endl;
             ktn.edges[2*i].deadts = true;
             ktn.edges[(2*i)+1].deadts = true;
             ktn.n_dead++;

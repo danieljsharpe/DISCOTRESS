@@ -44,8 +44,12 @@ KMC_Suite::KMC_Suite () {
     vector<pair<int,int>> ts_conns = Read_files::read_two_col<int>(conns_fname);
     vector<long double> ts_wts = Read_files::read_one_col<long double>(wts_fname);
     vector<double> stat_probs = Read_files::read_one_col<double>(stat_probs_fname);
-    vector<int> communities;
-    if (my_kws.binfile!=nullptr) communities = Read_files::read_one_col<int>(my_kws.binfile);
+    vector<int> communities, bins;
+    if (my_kws.commsfile!=nullptr) {
+        communities = Read_files::read_one_col<int>(my_kws.commsfile);
+        if (my_kws.binfile!=nullptr) { bins = Read_files::read_one_col<int>(my_kws.binfile);
+        } else { bins = communities; } // copy community vector to bin vector
+    }
     vector<int> nodesA = Read_files::read_one_col<int>(my_kws.minafile.c_str());
     vector<int> nodesB = Read_files::read_one_col<int>(my_kws.minbfile.c_str());
     if (!((nodesA.size()==my_kws.nA) || (nodesB.size()==my_kws.nB))) throw exception();
@@ -53,9 +57,9 @@ KMC_Suite::KMC_Suite () {
     if (my_kws.initcond) init_probs = Read_files::read_one_col<double>(my_kws.initcondfile);
     cout << "kmc_suite> setting up the transition network data structure..." << endl;
     ktn = new Network(my_kws.n_nodes,my_kws.n_edges);
-    if (my_kws.binfile!=nullptr) {
+    if (my_kws.commsfile!=nullptr) {
         Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesA,nodesB,my_kws.transnprobs, \
-            my_kws.tau,my_kws.ncomms,communities);
+            my_kws.tau,my_kws.ncomms,communities,bins);
     } else {
         Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesA,nodesB,my_kws.transnprobs,my_kws.tau,my_kws.ncomms);
     }
@@ -69,14 +73,14 @@ KMC_Suite::KMC_Suite () {
         STD_KMC *std_kmc_ptr = new STD_KMC(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.tintvl,my_kws.seed);
         enh_method = std_kmc_ptr;
     } else if (my_kws.enh_method==1) { // WE simulation
-        WE_KMC *we_kmc_ptr = new WE_KMC(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.tau,my_kws.tintvl,my_kws.adaptivebins, \
+        WE_KMC *we_kmc_ptr = new WE_KMC(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.tau,my_kws.tintvl,my_kws.adaptivecomms, \
                     my_kws.seed,my_kws.debug);
         enh_method = we_kmc_ptr;
     } else if (my_kws.enh_method==2) { // kPS simulation
         if (my_kws.branchprobs) { ktn->get_tmtx_branch();
         } else if (!my_kws.transnprobs) { ktn->get_tmtx_lin(my_kws.tau); }
         KPS *kps_ptr = new KPS(*ktn,my_kws.nabpaths,my_kws.maxit,my_kws.nelim,my_kws.tau,my_kws.tintvl,my_kws.kpskmcsteps, \
-                    my_kws.adaptivebins,my_kws.pfold,my_kws.seed,my_kws.debug);
+                    my_kws.adaptivecomms,my_kws.adaptminrate,my_kws.pfold,my_kws.seed,my_kws.debug);
         enh_method = kps_ptr;
     } else if (my_kws.enh_method==3) { // FFS simulation
     } else if (my_kws.enh_method==4) { // AS-kMC simulation

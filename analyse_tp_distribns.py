@@ -54,8 +54,8 @@ if __name__=="__main__":
     stat=1
 
     #binning params
-    nbins=300
-    binw=0.05
+    nbins=100
+    binw=50.
     bin_min=0.
     binall=False # enforce that all values 
 
