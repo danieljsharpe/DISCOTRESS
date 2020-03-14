@@ -44,12 +44,16 @@ class Analyse_tp_distribns(object):
         bins=[self.bin_min+(i*self.binw) for i in range(self.nbins)]
         plt.figure(figsize=(10,6)) # size in inches
         plt.bar(bins,hist_arr,self.binw,color='blue')
-        plt.xlabel("$\log_{10} t_\mathrm{FPT}$",fontsize=14)
-        plt.ylabel("$p ( \log_{10} t_\mathrm{FPT} )$",fontsize=14)
+        if self.logtime:
+            plt.xlabel("$\log_{10} t_\mathrm{FPT}$",fontsize=24)
+            plt.ylabel("$p ( \log_{10} t_\mathrm{FPT} )$",fontsize=24)
+        else:
+            plt.xlabel("$t_\mathrm{FPT}$",fontsize=24)
+            plt.ylabel("p(t_\mahtrm{FPT})$",fontsize=24)
         ax = plt.gca()
         ax.set_xlim([self.bin_min,self.bin_max])
         ax.set_ylim([0.,ymax])
-        ax.tick_params(direction="out",labelsize=12)
+        ax.tick_params(direction="out",labelsize=18)
         xtick_intvl=float(self.bin_max-self.bin_min)/float(nxticks)
         ytick_intvl=float(ymax)/float(nyticks)
         xtick_vals=[self.bin_min+(float(i)*xtick_intvl) for i in range(nxticks+1)]
