@@ -65,7 +65,7 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.tau=stold(vecstr[1]);
         } else if (vecstr[0]=="TINTVL") {
             my_kws.tintvl=stod(vecstr[1]);
-        } else if (vecstr[0]=="INITCOND") {
+        } else if (vecstr[0]=="INITCONDFILE") {
             my_kws.initcondfile = new char[vecstr[1].size()+1];
             copy(vecstr[1].begin(),vecstr[1].end(),my_kws.initcondfile);
             my_kws.initcondfile[vecstr[1].size()]='\0';
@@ -101,6 +101,8 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.debug=true;
         } else if (vecstr[0]=="SEED") {
             my_kws.seed=stoi(vecstr[1]);
+        } else if (vecstr[0]=="DUMPWAITTIMES") {
+            my_kws.dumpwaittimes=true;
         } else {
             cout << "keywords> error: unrecognised keyword: " << vecstr[0] << endl;
             exit(EXIT_FAILURE);

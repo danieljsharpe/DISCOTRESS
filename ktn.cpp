@@ -2,8 +2,10 @@
 #include <vector>
 #include <queue>
 #include <cmath>
-#include <iostream>
 #include <limits>
+#include <iostream>
+#include <fstream>
+#include <iomanip>
 
 using namespace std;
 
@@ -40,6 +42,15 @@ Node::Node(const Node &node) {
     node_id=node.node_id; comm_id=node.comm_id; aorb=node.aorb;
     udeg=node.udeg; eliminated=node.eliminated;
     k_esc=node.k_esc; t=node.t; pi=node.pi;
+}
+
+/* print mean waiting times for nodes to file */
+void Network::dumpwaittimes() {
+    ofstream tau_f; // file containing mean waiting times for nodes
+    tau_f.open("meanwaitingtimes.dat");
+    tau_f.setf(ios::scientific,ios::floatfield); tau_f.precision(20);
+    for (const Node &node: nodes) {
+        tau_f << 1./exp(node.k_esc) << endl; }
 }
 
 /* update the Nodes and Edges of the Network data structure to contain transition probabibilities
@@ -284,7 +295,7 @@ void Network::set_initcond(const vector<double> &init_probs) {
 
     if (init_probs.size()!=nodesB.size()) throw Network::Ktn_exception();
     double p_tot=0.;
-    for (const auto &p: init_probs) p_tot+=exp(p);
+    for (const auto &p: init_probs) p_tot+=p;
     if (abs(p_tot-1.)>1.E-10) throw Network::Ktn_exception();
     initcond=true;
     this->init_probs=init_probs;
@@ -312,15 +323,15 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
     if (transnprobs) {
         cout << "ktn> interpreting edge weights as transition probabilities at a lag time: " << tau << endl;
         ktn.tau=tau; }
-    ktn.ncomms=ncomms; vector<int> comm_sizes;
-    if (!comms.empty()) comm_sizes.resize(ncomms);
+    ktn.ncomms=ncomms;
+    if (!comms.empty()) ktn.comm_sizes.resize(ncomms);
     double tot_pi = -numeric_limits<double>::infinity();
     for (int i=0;i<ktn.n_nodes;i++) {
         ktn.nodes[i].node_id = i+1; ktn.nodes[i].node_pos = i;
         if (!comms.empty()) {
             ktn.nodes[i].comm_id = comms[i];
             ktn.nodes[i].bin_id = bins[i];
-            comm_sizes[comms[i]]++;
+            ktn.comm_sizes[comms[i]]++;
             if (comms[i]>=ncomms) throw Ktn_exception();
             if (bins[i]+1>ktn.nbins) ktn.nbins=bins[i]+1;
         }
@@ -389,8 +400,8 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         ktn.nodesB.insert(&ktn.nodes[nodesinB[i]-1]);
     }
     if (!comms.empty()) {
-//        if (ktn.nodesA.size()!=comm_sizes[(*ktn.nodesA.begin())->comm_id] || \
-            ktn.nodesB.size()!=comm_sizes[(*ktn.nodesB.begin())->comm_id]) throw Ktn_exception();
+//        if (ktn.nodesA.size()!=ktn.comm_sizes[(*ktn.nodesA.begin())->comm_id] || \
+            ktn.nodesB.size()!=ktn.comm_sizes[(*ktn.nodesB.begin())->comm_id]) throw Ktn_exception();
         int commA=(*ktn.nodesA.begin())->comm_id;
         for (set<Node*>::iterator it_set=ktn.nodesA.begin();it_set!=ktn.nodesA.end();++it_set) {
             if ((*it_set)->comm_id!=commA) throw Ktn_exception(); }

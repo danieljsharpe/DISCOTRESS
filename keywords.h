@@ -59,6 +59,7 @@ struct Keywords {
     bool pfold=false;        // "PFOLD" specifies that a committor function calculation is to be performed instead of a kPS simulation
     bool debug=false;
     int seed=17;
+    bool dumpwaittimes=false; // "DUMPWAITTIMES" print waiting times for nodes to file "meanwaitingtimes.dat"
 
     // implicitly set switches
     bool initcond=false;     // "INITCOND" specifies if a nonequilibrium initial condition for the nodes in set B has been set

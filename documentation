@@ -52,7 +52,7 @@ NABPATHS <int>
 INITCONDFILE <str>
   optional. Name of the file containing initial occupation probabilities for nodes in B that are alternative to the
     stationary probabilities. The number of entries is assumed to be the same as the specified number of nodes in B,
-    and the specified order is assumed to be the same also (cf MINBFILE)
+    and the specified order is assumed to be the same also (cf MINBFILE). Values must sum to unity
 
 COMMSFILE <str> <int>
   mandatory if ENHANCED WE or ENHANCED KPS and not ADAPTIVECOMMS
@@ -74,9 +74,9 @@ COMMSTARGFILE <str>
   mandatory if ENHANCED WE and not ADAPTIVECOMMS, name of the file containing the target number of trajectories in each bin
     (single-column, number of entries equal to the number of communities in the network)
 
-BINFILE <str>
+BINFILE <str> <int>
   optional. Default to be the same as COMMSFILE
-    name of the file containing the definition of bins (indexed from 0) for calculating transition path statistics
+    name of the file containing the definition of bins (indexed from 0) for calculating transition path statistics, and no. of bins
 
 TAU <long double>
   mandatory if ENHANCED WE or if ENHANCED KPS and not BRANCHPROBS
@@ -125,3 +125,12 @@ SEED <int>
 
 DEBUG
   enable extra printing and tests to aid debugging
+
+DUMPWAITTIMES
+  dump the mean waiting times for nodes to the file meanwaitingtimes.dat
+
+### INFORMATION RELATING TO NONLINEAR MASTER EQUATIONS ###
+
+DISCOTRESS can be used to interpret a set of rules relating to a nonlinear master equation and map the system to a linear transition network.
+Additional files are needed for this purpose:
+  changevecs.dat  - ...

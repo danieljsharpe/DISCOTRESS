@@ -1,4 +1,7 @@
 /*
+DISCOTRESS
+DIscrete State COntinuous Time Rare Event Simulation Suite
+
 C++ code providing a suite for kinetic Monte Carlo simulations, including various advanced sampling strategies,
 applicable to any generic kinetic transition network
 
@@ -63,6 +66,7 @@ KMC_Suite::KMC_Suite () {
     } else {
         Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesA,nodesB,my_kws.transnprobs,my_kws.tau,my_kws.ncomms);
     }
+    if (my_kws.dumpwaittimes) ktn->dumpwaittimes();
     if (my_kws.initcond) ktn->set_initcond(init_probs);
     cout << "kmc_suite> setting up simulation..." << endl;
     cout << "kmc_suite> max. no. of A<-B paths: " << my_kws.nabpaths << " \tmax. iterations: " << my_kws.maxit << "\n" << endl;

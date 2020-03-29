@@ -69,8 +69,9 @@ Node *KMC_Enhanced_Methods::get_initial_node(const Network &ktn, Walker &walker)
         pi_B=0.; // for specified initial condition, sum of probabilities should be unity
         double cum_prob=0.; int i=0;
         while (it_set!=ktn.nodesB.end()) {
-            cum_prob += exp(ktn.init_probs[i]);
-            b_probs.push_back(make_pair(*it_set,cum_prob)); i++;
+            cum_prob += ktn.init_probs[i];
+            b_probs.push_back(make_pair(*it_set,cum_prob));
+            i++; it_set++;
         }
     }
     if (node_b==nullptr) { // if there was more than one node in B, sample the initial node
@@ -81,6 +82,7 @@ Node *KMC_Enhanced_Methods::get_initial_node(const Network &ktn, Walker &walker)
             it_vec++; }
         if (it_vec==b_probs.end()) node_b=(*it_vec).first;
     }
+    if (node_b==nullptr) throw exception();
     walker.curr_node=&(*node_b);
     walker.p=node_b->pi-pi_B; // factor in path probability corresponding to initial occupation of node
     if (ktn.nbins>0) walker.visited[node_b->bin_id]=true;
@@ -100,23 +102,23 @@ vector<int> KMC_Enhanced_Methods::find_comm_onthefly(const Network &ktn, const N
     vector<int> nodes_in_comm(ktn.n_nodes); // store flags indicating if node is of community or is part of absorbing boundary
     queue<int> nbr_queue; // queue of node IDs to visit in the BFS procedure
     nbr_queue.push(init_node->node_id);
-    int nv=1; // number of nodes in the community being built up
-    nodes_in_comm[init_node->node_id-1]=2; // indicates that node is part of the current community
-    while (!nbr_queue.empty() && nv<=maxsz) {
+    int nv=0; // number of nodes in the community being built up
+    while (!nbr_queue.empty() && nv<maxsz) {
         int curr_node_id = nbr_queue.front();
         nbr_queue.pop();
+        nodes_in_comm[curr_node_id-1]=2; nv++; // indicates that node is part of the current community
         const Node *nodeptr = &ktn.nodes[curr_node_id-1];
         const Edge *edgeptr = nodeptr->top_from;
         while (edgeptr!=nullptr) {
-            if (edgeptr->deadts || nodes_in_comm[edgeptr->to_node->node_id-1]==2) {
+            if (edgeptr->deadts || nodes_in_comm[edgeptr->to_node->node_id-1]==2) { // removed edge or node already in comm
                 edgeptr=edgeptr->next_from; continue; }
-            if (exp(edgeptr->k)>adaptminrate && edgeptr->to_node->aorb!=-1) { // incorporate neighbouring node into community
-                nodes_in_comm[edgeptr->to_node->node_id-1]=2;
-                nv++;
-                nbr_queue.push(edgeptr->to_node->node_id);
-            } else { // mark node as belonging to absorbing boundary (for now)
-                nodes_in_comm[edgeptr->to_node->node_id-1]=3;
+            if (exp(edgeptr->k)>adaptminrate && edgeptr->to_node->aorb!=-1) { // queue neighbouring node to be added into community
+                if (nodes_in_comm[edgeptr->to_node->node_id-1]==0) { // node is not already queued
+                    nbr_queue.push(edgeptr->to_node->node_id);
+                }
             }
+            // mark node as belonging to absorbing boundary (for now)
+            nodes_in_comm[edgeptr->to_node->node_id-1]=3;
             edgeptr=edgeptr->next_from;
         }
     }

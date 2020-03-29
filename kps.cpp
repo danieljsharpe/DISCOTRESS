@@ -83,11 +83,13 @@ void KPS::run_enhanced_kmc(const Network &ktn) {
         check_if_endpoint:
             if (alpha->aorb==-1 || alpha->aorb==1) { // traj has reached absorbing macrostate A or has returned to B
                 update_tp_stats(walker,alpha->aorb==-1,!adaptivecomms);
-                if (alpha->aorb==-1) {
+                if (alpha->aorb==-1) { // transition path, reset walker
                     walker.dump_walker_info(n_ab-1,true,false,true);
                     walker.reset_walker_info();
                     epsilon=nullptr; alpha=nullptr;
                     continue;
+                } else if (ktn.ncomms>0) {
+                    walker.visited[alpha->bin_id]=true;
                 }
             }
         if (epsilon->comm_id!=alpha->comm_id || adaptivecomms) { // escaped previous basin, write trajectory data
@@ -97,12 +99,14 @@ void KPS::run_enhanced_kmc(const Network &ktn) {
         }
         if (adaptivecomms) continue;
         epsilon=alpha; alpha=nullptr;
-        while (n_kmcit<kpskmcsteps) { // simulate a number of BKL steps to attempt to move away from the transition region of the community
+        while (n_kmcit<kpskmcsteps || ktn.comm_sizes[epsilon->comm_id]>nelim) { // quack // simulate a number of BKL steps to attempt to move away from the transition region of the community
             KMC_Standard_Methods::bkl(walker);
             alpha=walker.curr_node;
+            walker.visited[alpha->bin_id]=true;
+            n_kmcit++;
             if (alpha->aorb==-1 || alpha->aorb==1 || alpha->comm_id!=epsilon->comm_id) {
-                walker.visited[alpha->bin_id]=true; goto check_if_endpoint; }
-            n_kmcit++; epsilon=alpha;
+                goto check_if_endpoint; }
+            epsilon=alpha;
         }
     }
     cout << "\nkps> kPS simulation terminated after " << n_kpsit-1 << " kPS iterations. Simulated " \
@@ -457,9 +461,8 @@ Network *KPS::get_subnetwork(const Network& ktn, bool resize_edgevec) {
         }
     }
     if (debug) cout << "added " << n << " nodes and " << m << " edges to subnetwork" << endl;
-    reset_kmc_hop_counts(*ktnptr);
-    if (n!=N_B+N_c || m!=N_e) { cout << "n: " << n << "  m: " << m << endl;
-cout << "kps> something went wrong in get_subnetwork()" << endl; exit(EXIT_FAILURE); }
+    if (n!=N_B+N_c || m!=N_e) {
+        cout << "kps> something went wrong in get_subnetwork(). Nodes: " << n << " edges: " << m << endl; exit(EXIT_FAILURE); }
     return ktnptr;
 }
 
@@ -744,13 +747,6 @@ long double KPS::calc_gt_factor(Node *node_elim) {
         }
     } else { factor=1.-node_elim->t; }
     return factor;
-}
-
-/* reset the counts for the number of kMC hops, which appear in the Node and Edge data structures, for
-   the Network object passed as a pointer */
-void KPS::reset_kmc_hop_counts(Network &ktn) {
-    for (auto &node: ktn.nodes) node.h=0;
-    for (auto &edge: ktn.edges) edge.h=0;
 }
 
 /* Update path quantities along a trajectory, where the (unordered) path is specified by the kMC hop counts

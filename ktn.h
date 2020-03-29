@@ -106,6 +106,7 @@ struct Network {
     static void calc_k_esc(Node&);
     static void calc_t_selfloop(Node&);
     static void calc_net_flux(Edge&);
+    void dumpwaittimes(); // print mean waiting times of nodes to file
     void get_tmtx_lin(long double); // calculate the linearised transition probability matrix
     void get_tmtx_branch(); // calculate the branching transition probability matrix
     void get_cum_branchprobs(); // set transition probabilities to accumulated branching probability values (for optimisation in kMC)
@@ -130,6 +131,7 @@ struct Network {
     int nbins=0; // total number of bins
     set<Node*> nodesA, nodesB; // A and B endpoint nodes (A<-B)
     vector<double> init_probs; // initial probabilities for nodes in B
+    vector<int> comm_sizes; // number of nodes in each community
     bool branchprobs=false; // transition probabilities of Edges are branching probabilities (Y/N)
     bool accumprobs=false; // transition probabilities are accumulated values (Y/N)
     bool initcond=false; // nodes in set B have initial probabilities different to their equilibrium values (Y/N)
