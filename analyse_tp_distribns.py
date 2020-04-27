@@ -8,6 +8,7 @@ Jan 2020
 import numpy as np
 import matplotlib.pyplot as plt
 from math import floor
+from math import sqrt
 
 class Analyse_tp_distribns(object):
 
@@ -42,18 +43,18 @@ class Analyse_tp_distribns(object):
     def plot_hist(self,hist_arr,nxticks,nyticks,ymax,figfmt="pdf"):
         hist_arr=hist_arr.astype(np.float64)*1./float(self.ntpaths) # normalise
         bins=[self.bin_min+(i*self.binw) for i in range(self.nbins)]
-        plt.figure(figsize=(10,6)) # size in inches
+        plt.figure(figsize=(10.,7.)) # size in inches
         plt.bar(bins,hist_arr,self.binw,color='blue')
-        if self.logtime:
-            plt.xlabel("$\log_{10} t_\mathrm{FPT}$",fontsize=24)
-            plt.ylabel("$p ( \log_{10} t_\mathrm{FPT} )$",fontsize=24)
+        if self.logvals:
+            plt.xlabel("$\log_{10}(t_\mathrm{FPT}\ /\ \mathrm{s})$",fontsize=42)
+            plt.ylabel("$p ( \log_{10} t_\mathrm{FPT} )$",fontsize=42)
         else:
-            plt.xlabel("$t_\mathrm{FPT}$",fontsize=24)
-            plt.ylabel("p(t_\mahtrm{FPT})$",fontsize=24)
+            plt.xlabel("$t_\mathrm{FPT}$",fontsize=42)
+            plt.ylabel("p(t_\mahtrm{FPT})$",fontsize=42)
         ax = plt.gca()
         ax.set_xlim([self.bin_min,self.bin_max])
         ax.set_ylim([0.,ymax])
-        ax.tick_params(direction="out",labelsize=18)
+        ax.tick_params(direction="out",labelsize=24)
         xtick_intvl=float(self.bin_max-self.bin_min)/float(nxticks)
         ytick_intvl=float(ymax)/float(nyticks)
         xtick_vals=[self.bin_min+(float(i)*xtick_intvl) for i in range(nxticks+1)]
@@ -65,12 +66,20 @@ class Analyse_tp_distribns(object):
         yticklabels=["$"+str(ytick_val)+"$" for ytick_val in ytick_vals]
         ax.set_xticklabels(xticklabels)
         ax.set_yticklabels(yticklabels)
-        plt.savefig("fpt_distribn."+figfmt,format=figfmt)
+        plt.tight_layout()
+        plt.savefig("fpt_distribn."+figfmt,format=figfmt,bbox_inches="tight")
         plt.show()
 
     def calc_mfpt(self):
         if not self.logvals: return np.sum(self.vals)/float(self.ntpaths)
         else: return np.sum([10**val for val in self.vals])/float(self.ntpaths)
+
+    def calc_stderr(self,mfpt):
+        stderr=0.
+        for val in self.vals:
+            if not self.logvals: stderr+=(val-mfpt)**2
+            else: stderr+=(10**val-mfpt)**2
+        return sqrt((1./float(self.ntpaths-1))*stderr)/sqrt(float(self.ntpaths))
 
 if __name__=="__main__":
     ### CHOOSE PARAMS ###
@@ -87,8 +96,8 @@ if __name__=="__main__":
     logvals=True # take log_10 of values
     # plot params
     nxticks=15 # no. of ticks on x axis
-    nyticks=10 # no. of ticks on y axis
-    ymax=0.1 # max value for y (prob) axis
+    nyticks=12 # no. of ticks on y axis
+    ymax=0.12 # max value for y (prob) axis
 
     # run
     calc_hist_obj=Analyse_tp_distribns(stat,nbins,binw,bin_min,binall,logvals)
@@ -96,6 +105,8 @@ if __name__=="__main__":
     print hist_arr
     print "total number of observed A<-B transition paths: ", calc_hist_obj.ntpaths
     print "total number of binned A<-B transition paths: ", np.sum(hist_arr)
-    print "MFPT: ", calc_hist_obj.calc_mfpt()
+    mfpt = calc_hist_obj.calc_mfpt()
+    print "MFPT: ", mfpt
+    print "standard error: ", calc_hist_obj.calc_stderr(mfpt)
     # plot
     calc_hist_obj.plot_hist(hist_arr,nxticks,nyticks,ymax)

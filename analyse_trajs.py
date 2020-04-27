@@ -27,7 +27,7 @@ class Analyse_trajs(object):
         # colours etc for plotting
         self.pltcolors=["royalblue","salmon","springgreen","gold","fuchsia","aqua","blueviolet", \
                         "seagreen","orange","lightgray"]
-        self.pltlabels=["$\mathrm{I}$","$\mathrm{II}$","$\mathrm{III}$","$\mathrm{IV}$","$\mathrm{V}$", \
+        self.pltlabels=["$\mathrm{U}$","$\mathrm{I1}$","$\mathrm{I2}$","$\mathrm{F}$","$\mathrm{V}$", \
                         "$\mathrm{VI}$","$\mathrm{VII}$","$\mathrm{VIII}$","$\mathrm{XI}$","$\mathrm{X}$"]
 
     # read a single column of a file
@@ -112,7 +112,7 @@ class Analyse_trajs(object):
     # plot trajectories against a given order parameter
     def plot_trajs(self,nxticks,nyticks,op_fname,op_minval,op_maxval,figfmt="pdf"):
         op_vals=Analyse_trajs.read_single_col(op_fname,self.cwd,colidx=0,fmtfunc=float) # read order param values from file
-        plt.figure(figsize=(10,6)) # figure size in inches
+        plt.figure(figsize=(12,8.5)) # figure size in inches
         for i, wid in enumerate(range(self.first_wid,self.first_wid+self.nwalkers)):
             walkertdata=[] # time data for walker
             walkeropdata=[] # order param data for walker
@@ -128,13 +128,13 @@ class Analyse_trajs(object):
                 walkeropdata.append(op_val)
             walker_f.close()
             plt.plot(walkertdata,walkeropdata,linewidth=5,color=self.pltcolors[i])
-        if self.logtime: plt.xlabel("$\log_{10} t$",fontsize=24)
-        else: plt.xlabel("$t$",fontsize=24)
-        plt.ylabel("$\mathrm{Energy}\ /\ \mathrm{kcal\,mol}^{-1}$",fontsize=24)
+        if self.logtime: plt.xlabel("$\log_{10}(t\ /\ \mathrm{s})$",fontsize=42)
+        else: plt.xlabel("$t$",fontsize=42)
+        plt.ylabel("$\mathrm{Potential\ energy}\ /\ \mathrm{kcal\,mol}^{-1}$",fontsize=42)
         ax=plt.gca()
         ax.set_xlim([0.,self.tmax])
         ax.set_ylim([op_minval,op_maxval])
-        ax.tick_params(direction="out",labelsize=18)
+        ax.tick_params(direction="out",labelsize=24)
         xtick_intvl=self.tmax/float(nxticks)
         xtick_vals=[0.+(float(i)*xtick_intvl) for i in range(nxticks+1)]
         if xtick_intvl.is_integer(): xtick_vals = [int(xtick_val) for xtick_val in xtick_vals]
@@ -147,25 +147,29 @@ class Analyse_trajs(object):
         yticklabels=["$"+str(ytick_val)+"$" for ytick_val in ytick_vals]
         ax.set_xticklabels(xticklabels)
         ax.set_yticklabels(yticklabels)
-        plt.savefig("trajs_rep."+figfmt,format=figfmt)
+        plt.tight_layout()
+        plt.savefig("trajs_rep."+figfmt,format=figfmt,bbox_inches="tight")
         plt.show()
 
     # plot time-dependent occupation probability distribution for superstates
-    def plot_probdistribn(self,nxticks,figfmt="pdf"):
-        plt.figure(figsize=(10,6)) # figure size in inches
+    def plot_probdistribn(self,nxticks,figfmt="pdf",supstate_b=0,supstate_a=None):
+        if supstate_a is None: supstate_a=self.nsupstates-1
+        plt.figure(figsize=(12,8.5)) # figure size in inches
         for i in range(self.nsupstates):
             plt.plot(self.tbinvals,self.probdistribn[i,:],linewidth=5,color=self.pltcolors[i],label=self.pltlabels[i])
+            if i==supstate_b or i==supstate_a: # shade region under curves corresponding to initial and final states
+                plt.fill_between(self.tbinvals,self.probdistribn[i,:],facecolor=self.pltcolors[i],alpha=0.5)
         if self.logtime:
-            plt.xlabel("$\log_{10} t$",fontsize=24)
-            plt.ylabel("$\mathrm{Occupation\ probability}\ p(\log_{10} t)$",fontsize=24) # note "\" before space char
+            plt.xlabel("$\log_{10}(t\ /\ \mathrm{s})$",fontsize=42)
+            plt.ylabel("$\mathrm{Occupation\ probability}\ p(\log_{10} t)$",fontsize=42) # note "\" before space char
         else:
-            plt.xlabel("$t$",fontsize=24)
-            plt.ylabel("$\mathrm{Occupation\ probability}\ p(t)$",fontsize=24)
-        plt.legend(loc="upper right")
+            plt.xlabel("$t$",fontsize=42)
+            plt.ylabel("$\mathrm{Occupation\ probability}\ p(t)$",fontsize=42)
+        plt.legend(loc="center right",fontsize=24)
         ax=plt.gca()
         ax.set_xlim([0.,self.tmax])
         ax.set_ylim([0.,1.])
-        ax.tick_params(direction="out",labelsize=18)
+        ax.tick_params(direction="out",labelsize=24)
         xtick_intvl=self.tmax/float(nxticks)
         xtick_vals=[0.+(float(i)*xtick_intvl) for i in range(nxticks+1)]
         if xtick_intvl.is_integer(): xtick_vals = [int(xtick_val) for xtick_val in xtick_vals]
@@ -176,19 +180,20 @@ class Analyse_trajs(object):
         yticklabels=["$"+str(ytick_val)+"$" for ytick_val in ytick_vals]
         ax.set_xticklabels(xticklabels)
         ax.set_yticklabels(yticklabels)
-        plt.savefig("tprobdistribn."+figfmt,format=figfmt)
+        plt.tight_layout()
+        plt.savefig("tprobdistribn."+figfmt,format=figfmt,bbox_inches="tight")
         plt.show()
 
 if __name__=="__main__":
     ### CHOOSE PARAMS ###
     first_wid=0 # ID of first walker used in analysis
-    nwalkers=10 # total number of walkers used in analysis
+    nwalkers=2000 # total number of walkers used in analysis (assumed to be same for each of the nruns runs)
     nsupstates=4 # number of superstates (in file "superstates.dat", indexed from 0) to which nodes belong, used to calc p(t) for the superstates
     tmax=15. # maximum time (log_{10} if logtime). The minimum time is assumed to be zero (even on a log scale!)
     tintvl=0.1 # time interval for binning occupation probabilities
     logtime=True # use log_{10} of time. Note that values t<1. are rounded up to 1
-    dir_rootname=None # if not None, then assume traj info is stored in nruns dirs of the current dir, dir_rootname_x, x=1,...,nruns
-    nruns=1 # number of independent kMC runs (each assumed to be of length nwalkers)
+    dir_rootname="t616" # if not None, then assume traj info is stored in nruns dirs of the current dir, dir_rootname_x, x=1,...,nruns
+    nruns=8 # number of independent kMC runs (each assumed to be of length nwalkers)
     n_tpbins=68777 # number of bins in calculation of transition path statistics
     # plot params
     nxticks=15
@@ -200,7 +205,7 @@ if __name__=="__main__":
     analyse_trajs_obj=Analyse_trajs(first_wid,nwalkers,nsupstates,tmax,tintvl,logtime,dir_rootname,nruns)
 #    analyse_trajs_obj.calc_tp_stats(n_tpbins)
     # calc and plot time-dependent probability distribution for superstates
-#    analyse_trajs_obj.calc_timedepdistribn()
-#    analyse_trajs_obj.plot_probdistribn(nxticks)
+    analyse_trajs_obj.calc_timedepdistribn()
+    analyse_trajs_obj.plot_probdistribn(nxticks)
     # plot representative trajectories
-    analyse_trajs_obj.plot_trajs(nxticks,nyticks,op_fname,op_minval,op_maxval)
+#    analyse_trajs_obj.plot_trajs(nxticks,nyticks,op_fname,op_minval,op_maxval)
