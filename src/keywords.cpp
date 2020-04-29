@@ -1,3 +1,23 @@
+/*
+functions to read in keywords
+
+This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous time Markov chains (CTMCs).
+Copyright (C) 2020 Daniel J. Sharpe
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 #include "keywords.h"
 #include <string>
 #include <fstream>
@@ -55,11 +75,11 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.nabpaths=stoi(vecstr[1]);
         } else if (vecstr[0]=="MAXIT") {
             my_kws.maxit=stoi(vecstr[1]);
-        } else if (vecstr[0]=="MINAFILE") {
-            my_kws.minafile=vecstr[1];
+        } else if (vecstr[0]=="NODESAFILE") {
+            my_kws.nodesafile=vecstr[1];
             my_kws.nA=stoi(vecstr[2]);
-        } else if (vecstr[0]=="MINBFILE") {
-            my_kws.minbfile=vecstr[1];
+        } else if (vecstr[0]=="NODESBFILE") {
+            my_kws.nodesbfile=vecstr[1];
             my_kws.nB=stoi(vecstr[2]);
         } else if (vecstr[0]=="TAU") {
             my_kws.tau=stold(vecstr[1]);

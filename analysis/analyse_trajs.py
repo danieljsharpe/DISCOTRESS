@@ -187,13 +187,13 @@ class Analyse_trajs(object):
 if __name__=="__main__":
     ### CHOOSE PARAMS ###
     first_wid=0 # ID of first walker used in analysis
-    nwalkers=2000 # total number of walkers used in analysis (assumed to be same for each of the nruns runs)
+    nwalkers=3 # total number of walkers used in analysis (assumed to be same for each of the nruns runs)
     nsupstates=4 # number of superstates (in file "superstates.dat", indexed from 0) to which nodes belong, used to calc p(t) for the superstates
     tmax=15. # maximum time (log_{10} if logtime). The minimum time is assumed to be zero (even on a log scale!)
     tintvl=0.1 # time interval for binning occupation probabilities
     logtime=True # use log_{10} of time. Note that values t<1. are rounded up to 1
-    dir_rootname="t616" # if not None, then assume traj info is stored in nruns dirs of the current dir, dir_rootname_x, x=1,...,nruns
-    nruns=8 # number of independent kMC runs (each assumed to be of length nwalkers)
+    dir_rootname=None # if not None, then assume traj info is stored in nruns dirs of the current dir, dir_rootname_x, x=1,...,nruns
+    nruns=1 # number of independent kMC runs (each assumed to be of length nwalkers)
     n_tpbins=68777 # number of bins in calculation of transition path statistics
     # plot params
     nxticks=15
@@ -205,7 +205,7 @@ if __name__=="__main__":
     analyse_trajs_obj=Analyse_trajs(first_wid,nwalkers,nsupstates,tmax,tintvl,logtime,dir_rootname,nruns)
 #    analyse_trajs_obj.calc_tp_stats(n_tpbins)
     # calc and plot time-dependent probability distribution for superstates
-    analyse_trajs_obj.calc_timedepdistribn()
-    analyse_trajs_obj.plot_probdistribn(nxticks)
+#    analyse_trajs_obj.calc_timedepdistribn()
+#    analyse_trajs_obj.plot_probdistribn(nxticks)
     # plot representative trajectories
-#    analyse_trajs_obj.plot_trajs(nxticks,nyticks,op_fname,op_minval,op_maxval)
+    analyse_trajs_obj.plot_trajs(nxticks,nyticks,op_fname,op_minval,op_maxval)

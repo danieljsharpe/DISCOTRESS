@@ -1,5 +1,21 @@
 /*
 Read keywords from file "input.kmc", also read in information on KTN and communities from files
+
+This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous time Markov chains (CTMCs).
+Copyright (C) 2020 Daniel J. Sharpe
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #ifndef __KEYWORDS_H_INCLUDED__
@@ -33,7 +49,7 @@ struct Keywords {
     int kmc_method=-1;
     /* choice of enhanced sampling kinetic Monte Carlo method to accelerate the observation of rare events */
     int enh_method=-1; // note that there is no default, to run kMC with no enhanced sampling this must be set explicitly
-    string minafile, minbfile; // names of the files containing the IDs of the A and B nodes, respectively
+    string nodesafile, nodesbfile; // names of the files containing the IDs of the A and B nodes, respectively
     int nA=-1, nB=-1;          // number of nodes in A and B sets, respectively
 
     // optional arguments pertaining to enhanced sampling methods

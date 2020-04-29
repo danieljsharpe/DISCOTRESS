@@ -1,15 +1,38 @@
-##### DOCUMENTATION OF INPUT KEYWORDS AND ARGUMENTS FOR enhanced_kmc KINETIC MONTE CARLO SUITE #####
+##### DISCOTRESS USER INFORMATION #####
+
+### COMPILATION ###
+Compile with:
+g++ -std=c++17 discotress.cpp kmc_methods.cpp we_kmc.cpp kps.cpp ffs_kmc.cpp mcamc.cpp neus_kmc.cpp milestoning.cpp tps.cpp keywords.cpp ktn.cpp -o discotress
+
+### INPUT FILES ###
 
 these keywords appear in the input file named "input.kmc"
 
-mandatory input files containing the network information:
-  stat_prob.dat   - single col, ln stationary probabilities for nodes
-  ts_conns.dat    - double col, edge connecting node IDs (each is assumed to be bidirectional)
-  ts_weights.dat  - single col, ln transition rate for forward and reverse transitions (two lines per line in ts_conns.dat)
-  min.A           - single col, node IDs in the final set A (indexed from 1)
-  min.B           - single col, node IDs in the initial set B (indexed from 1)
-optional input files containing the network information:
-  communities.dat - single col, community IDs (indexed from 0) for nodes
+mandatory input files containing the network topology information:
+  stat_prob.dat   - single col, length NNODES: ln stationary probabilities for nodes
+  ts_conns.dat    - double col, length NEDGES: edge connecting node IDs (each is assumed to be bidirectional)
+  ts_weights.dat  - single col, length 2*NEDGES: ln transition rate for forward and reverse transitions (two lines per line in ts_conns.dat)
+  nodes.A         - single col, see NODESAFILE keyword: node IDs in the absorbing set A (indexed from 1)
+  nodes.B         - single col, see NODESBFILE keyword: node IDs in the initial set B (indexed from 1)
+optional input files relating to the simulation and calculating statistics:
+  communities.dat - single col, length NNODES: community IDs (indexed from 0) for nodes
+  bins.dat        - single col, length NNODES: bin IDs for nodes (indexed from 0), used for
+                                               calculating transition path statistics (defaults to communities.dat)
+  initcond.dat    - single col, length cf NODESBFILE, see INITCONDFILE keyword: initial probability distribution for nodes of the
+                                               initial set B. Defaults to be proportional to a local equilibrium within B
+  ntrajs.dat      - single col, length cf COMMSFILE, see NTRAJSFILE keywords: number of short trajectories to run from each community
+keyword file:
+  input.kmc       - see below for a list of keywords
+
+### OUTPUT FILES ###
+walker.0.x.dat    - trajectory information dumped at the specified time intervals (or when a trajectory escapes from a community,
+                    depending on options). x is the path number. Format:
+                    node ID (indexed from 1) / community ID (indexed from 0) / path length (no. of kMC moves) / path time / ln of path probability / path entropy flow
+tp_distribns.dat  - properties of A<-B transition paths, from which the distributions can be analysed. Format:
+                    transition path no. / path length / path time / ln of path probability / path entropy flow
+tp_stats.dat      - bin statistics, written if communities were specified. Format:
+                    bin ID (indexed from 0) / no. of direct A<-B paths for which bin is visited / no. of paths for which bin is visited and trajectory returned to initial set B /
+                    transition path probability / committor probability
 
 ### MAIN KEYWORDS ###
 
@@ -32,20 +55,20 @@ ENHANCED <str>
     WE - weighted ensemble sampling
     KPS - kinetic path sampling
     FFS - forward flux sampling
-    ASKMC - accelerated superbasin kMC
+    MCAMC - Monte Carlo with absorbing Markov chains
     NEUS - non-equilibrium umbrella sampling
     MILES - milestoning
     TPS - transition path sampling
     NONE - no enhanced sampling strategy employed
 
-MINAFILE <str> <int>
-  mandatory, name of the file containing the node ID's (indexed from 1) belonging to the A (final) set and no. of nodes in A
+NODESAFILE <str> <int>
+  mandatory, name of the file containing the node ID's (indexed from 1) belonging to the A (absorbing) set and no. of nodes in A
 
-MINBFILE <str> <int>
+NODESBFILE <str> <int>
   mandatory, name of the file containing the node ID's (indexed from 1) belonging to the B (initial) set and no. of nodes in B
 
 NABPATHS <int>
-  mandatory, the simulation is terminated when this number of A-B paths have been successfully sampled
+  mandatory, the simulation is terminated when this number of A<-B paths have been successfully sampled
 
 ### OPTIONAL KEYWORDS RELATING TO ENHANCED SAMPLING ###
 
@@ -97,7 +120,7 @@ NELIM <int>
 
 MAXIT <int>
   default is inf. The maximum number of iterations of the relevant algorithm to run before the simulation is terminated (if the
-  target number of A-B paths to simulate is not reached). The interpretation of this option depends on the chosen enhanced
+  target number of A<-B paths to simulate is not reached). The interpretation of this option depends on the chosen enhanced
   sampling method.
     WE - number of iterations of the resampling procedure
     KPS - number of basin escape trajectories simulated
@@ -114,9 +137,10 @@ PFOLD
   when used in conjunction with ENHANCED KPS, specifies that a committor function calculation is performed instead of a kPS simulation
   the communities.dat file must specify precisely three communities; the A set, the B set, and the set of all other nodes
   the committor functions are written to the files "committor_AB.dat" and "committor_BA.dat" (for A<-B and B<-A directions, respectively)
+  set NABPATHS to any number >0
 
 TINTVL <double>
-  ignored if ENHANCED KPS. Time interval for dumping trajectory information
+  ignored if ENHANCED KPS (in which case trajectory data is written after every basin escape). Time interval for dumping trajectory information
   negative value (default) indicates that trajectory data is not written
   zero value specifies that all trajectory information is written
 

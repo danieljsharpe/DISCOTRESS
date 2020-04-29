@@ -1,15 +1,28 @@
 /*
+
 DISCOTRESS
 DIscrete State COntinuous Time Rare Event Simulation Suite
+Author: Daniel J. Sharpe (daniel.j.sharpe@gmail.com; github.com/danieljsharpe)
 
-C++ code providing a suite for kinetic Monte Carlo simulations, including various advanced sampling strategies,
-applicable to any generic kinetic transition network
+DISCOTRESS is a software package to simulate the dynamics on arbitrary continuous time Markov chains (CTMCs).
+DISCOTRESS is designed to enable simulation of the dynamics even for CTMCs that exhibit strong metastability
+(ie rare event dynamics), where standard simulation methods fail.
 
-Compile with:
-g++ -std=c++17 kmc_suite.cpp kmc_methods.cpp we_kmc.cpp kps.cpp ffs_kmc.cpp as_kmc.cpp neus_kmc.cpp milestoning.cpp tps.cpp keywords.cpp ktn.cpp -o kmc_suite
+Copyright (C) 2020 Daniel J. Sharpe
 
-Daniel J. Sharpe
-May 2019
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 */
 
 #include "kmc_methods.h"
@@ -53,8 +66,8 @@ KMC_Suite::KMC_Suite () {
         if (my_kws.binfile!=nullptr) { bins = Read_files::read_one_col<int>(my_kws.binfile);
         } else { bins = communities; } // copy community vector to bin vector
     }
-    vector<int> nodesA = Read_files::read_one_col<int>(my_kws.minafile.c_str());
-    vector<int> nodesB = Read_files::read_one_col<int>(my_kws.minbfile.c_str());
+    vector<int> nodesA = Read_files::read_one_col<int>(my_kws.nodesafile.c_str());
+    vector<int> nodesB = Read_files::read_one_col<int>(my_kws.nodesbfile.c_str());
     if (!((nodesA.size()==my_kws.nA) || (nodesB.size()==my_kws.nB))) throw exception();
     vector<double> init_probs;
     if (my_kws.initcond) init_probs = Read_files::read_one_col<double>(my_kws.initcondfile);
@@ -87,7 +100,7 @@ KMC_Suite::KMC_Suite () {
                     my_kws.adaptivecomms,my_kws.adaptminrate,my_kws.pfold,my_kws.seed,my_kws.debug);
         enh_method = kps_ptr;
     } else if (my_kws.enh_method==3) { // FFS simulation
-    } else if (my_kws.enh_method==4) { // AS-kMC simulation
+    } else if (my_kws.enh_method==4) { // MCAMC simulation
     } else if (my_kws.enh_method==5) { // NEUS-kMC simulation
     } else if (my_kws.enh_method==6) { // milestoning simulation
     } else if (my_kws.enh_method==7) { // TPS simulation

@@ -181,13 +181,13 @@ class FFS_KMC : public KMC_Enhanced_Methods {
     void run_enhanced_kmc(const Network&);
 };
 
-/* accelerated superbasin kMC */
-class AS_KMC : public KMC_Enhanced_Methods {
+/* Monte Carlo with absorbing Markov chains (MCAMC) */
+class MCAMC : public KMC_Enhanced_Methods {
 
     public:
 
-    AS_KMC(const Network&);
-    ~AS_KMC();
+    MCAMC(const Network&);
+    ~MCAMC();
     void run_enhanced_kmc(const Network&);
 };
 
