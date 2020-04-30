@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <vector>
 #include <cstring>
 #include <iostream>
+#include <assert.h>
 
 using namespace std;
 
@@ -58,7 +59,7 @@ Keywords read_keywords(const char *kw_file) {
                 my_kws.enh_method=2;
             } else if (vecstr[2]=="FFS") {
                 my_kws.enh_method=3;
-            } else if (vecstr[3]=="ASKMC") {
+            } else if (vecstr[3]=="MCAMC") {
                 my_kws.enh_method=4;
             } else if (vecstr[4]=="NEUS") {
                 my_kws.enh_method=5;
@@ -81,6 +82,11 @@ Keywords read_keywords(const char *kw_file) {
         } else if (vecstr[0]=="NODESBFILE") {
             my_kws.nodesbfile=vecstr[1];
             my_kws.nB=stoi(vecstr[2]);
+        } else if (vecstr[0]=="DIMREDUCTION") {
+            my_kws.ntrajsfile = new char[vecstr[1].size()+1];
+            copy(vecstr[1].begin(),vecstr[1].end(),my_kws.ntrajsfile);
+            my_kws.ntrajsfile[vecstr[1].size()]='\0';
+            my_kws.dt=stod(vecstr[2]);
         } else if (vecstr[0]=="TAU") {
             my_kws.tau=stold(vecstr[1]);
         } else if (vecstr[0]=="TINTVL") {
@@ -109,6 +115,8 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.adaptminrate=stod(vecstr[1]);
         } else if (vecstr[0]=="KPSKMCSTEPS") {
             my_kws.kpskmcsteps=stoi(vecstr[1]);
+        } else if (vecstr[0]=="MEANRATE") {
+            my_kws.meanrate=true;
         } else if (vecstr[0]=="NELIM") {
             my_kws.nelim=stoi(vecstr[1]);
         } else if (vecstr[0]=="PFOLD") {
@@ -117,6 +125,9 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.transnprobs=true;
         } else if (vecstr[0]=="BRANCHPROBS") {
             my_kws.branchprobs=true;
+        } else if (vecstr[0]=="NTHREADS") {
+            my_kws.nthreads=stoi(vecstr[1]);
+            assert(my_kws.nthreads>0);
         } else if (vecstr[0]=="DEBUG") {
             my_kws.debug=true;
         } else if (vecstr[0]=="SEED") {
@@ -132,9 +143,9 @@ Keywords read_keywords(const char *kw_file) {
     cout << "keywords> finished reading keywords" << endl;
 
     // check necessary keywords and compatability
-    if (my_kws.n_nodes<=0 || my_kws.n_edges<=0 || my_kws.nA<=0 || my_kws.nB<=0) {
+    if (my_kws.n_nodes<=0 || my_kws.n_edges<=0 || ((my_kws.nA<=0 || my_kws.nB<=0) && my_kws.ntrajsfile==nullptr)) {
         cout << "keywords> error: transition network parameters not set correctly" << endl; exit(EXIT_FAILURE); }
-    if (my_kws.nabpaths<=0 || my_kws.maxit<=0) {
+    if ((my_kws.nabpaths<=0 && my_kws.ntrajsfile==nullptr) || (my_kws.dt<=0. && my_kws.ntrajsfile!=nullptr) || my_kws.maxit<=0) {
         cout << "keywords> error: termination condition not specified correctly" << endl; exit(EXIT_FAILURE); }
     if (my_kws.commsfile!=nullptr && my_kws.ncomms<=1) {
         cout << "keywords> error: there must be at least two communities in the specified partitioning" << endl; exit(EXIT_FAILURE); }
@@ -152,6 +163,9 @@ Keywords read_keywords(const char *kw_file) {
         if ((!(my_kws.tau>0.) && !my_kws.branchprobs) || (my_kws.commsfile==nullptr && !my_kws.adaptivecomms) || my_kws.nelim<=0 || \
             (my_kws.kpskmcsteps>0 && !my_kws.branchprobs) || (my_kws.pfold && my_kws.ncomms!=3)) {
             cout << "keywords> error: kPS simulation not set up correctly" << endl; exit(EXIT_FAILURE); } }
+    if (my_kws.ntrajsfile!=nullptr && (my_kws.commsfile==nullptr || my_kws.meanrate || my_kws.initcondfile || \
+        (my_kws.enh_method!=2 && my_kws.enh_method!=4))) {
+        cout << "keywords> error: dimensionality reduction simulation not set up correctly" << endl; exit(EXIT_FAILURE); }
 
     return my_kws;
 }

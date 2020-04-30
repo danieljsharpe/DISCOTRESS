@@ -91,7 +91,7 @@ Node *KMC_Enhanced_Methods::get_initial_node(const Network &ktn, Walker &walker)
         }
     }
     if (node_b==nullptr) { // if there was more than one node in B, sample the initial node
-        double rand_no = KMC_Standard_Methods::rand_unif_met(seed);
+        double rand_no = KMC_Enhanced_Methods::rand_unif_met(seed);
         vector<pair<Node*,double>>::iterator it_vec = b_probs.begin();
         while (it_vec!=b_probs.end()) {
             if ((*it_vec).second>=rand_no) { node_b=(*it_vec).first; break; }
@@ -179,6 +179,13 @@ void KMC_Enhanced_Methods::write_tp_stats(int nbins) {
     }
 }
 
+/* draw a uniform random number between 0 and 1, used in Metropolis conditions etc. */
+long double KMC_Enhanced_Methods::rand_unif_met(int seed) {
+    static default_random_engine generator(seed);
+    static uniform_real_distribution<long double> unif_real_distrib(0.,1.);
+    return unif_real_distrib(generator);
+}
+
 STD_KMC::STD_KMC(const Network& ktn, int maxn_abpaths, int maxit, double tintvl, int seed) {
     // quack move this somewhere more general
     this->walker.accumprobs=ktn.accumprobs;
@@ -195,7 +202,7 @@ STD_KMC::~STD_KMC() {}
 /* main loop to drive a standard kMC simulation (no enhanced sampling) */
 void STD_KMC::run_enhanced_kmc(const Network &ktn) {
     cout << "\nstd_kmc> beginning standard kMC simulation" << endl;
-    long double dummy_randno = KMC_Standard_Methods::rand_unif_met(seed); // seed generator
+    long double dummy_randno = KMC_Enhanced_Methods::rand_unif_met(seed); // seed generator
     Node *dummy_node = get_initial_node(ktn,walker);
     walker.dump_walker_info(0,false,true,tintvl>=0.);
     n_ab=0; n_traj=0; int n_kmcit=1;
@@ -231,7 +238,7 @@ KMC_Standard_Methods::~KMC_Standard_Methods() {}
 /* function to take a single kMC step using the BKL algorithm */
 void KMC_Standard_Methods::bkl(Walker &walker) {
     // propagate trajectory
-    double rand_no = KMC_Standard_Methods::rand_unif_met(); // random number used to select transition
+    double rand_no = KMC_Enhanced_Methods::rand_unif_met(); // random number used to select transition
     Edge *edgeptr = walker.curr_node->top_from;
     const Node *old_node = walker.curr_node;
     long double prev_cum_p = 0.; // previous accumulated branching probability
@@ -250,21 +257,6 @@ void KMC_Standard_Methods::bkl(Walker &walker) {
     // update path quantities
     walker.k++; // dynamical activity (no. of steps)
     walker.p += log(p); // log path probability
-    walker.t += -(1./exp(old_node->k_esc))*log(KMC_Standard_Methods::rand_unif_met()); // sample transition time
+    walker.t += -(1./exp(old_node->k_esc))*log(KMC_Enhanced_Methods::rand_unif_met()); // sample transition time
     walker.s += edgeptr->rev_edge->k-edgeptr->k; // entropy flow
-}
-
-void KMC_Standard_Methods::rejection_kmc(Walker &walker) {
-
-}
-
-void KMC_Standard_Methods::leapfrog(Walker &walker) {
-
-}
-
-/* draw a uniform random number between 0 and 1, used in Metropolis conditions etc. */
-long double KMC_Standard_Methods::rand_unif_met(int seed) {
-    static default_random_engine generator(seed);
-    static uniform_real_distribution<long double> unif_real_distrib(0.,1.);
-    return unif_real_distrib(generator);
 }

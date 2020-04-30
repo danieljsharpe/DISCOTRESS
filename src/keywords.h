@@ -30,6 +30,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <iterator>
 #include <typeinfo>
 #include <iostream>
+#include <omp.h>
 
 using namespace std;
 
@@ -40,6 +41,7 @@ struct Keywords {
         if (commsfile) delete[] commsfile;
         if (commstargfile) delete[] commstargfile;
         if (binfile) delete[] binfile;
+        if (ntrajsfile) delete[] ntrajsfile;
     }
 
     /* main keywords (see documentation). Here, -1 represents a value that must be set if the parameter is mandatory given
@@ -56,12 +58,15 @@ struct Keywords {
     long double tau=-1.;     // "TAU" time interval between checking communities (WE-kMC)
                              //       lag time at which transition probability matrix is evaluated (kPS)
     double tintvl=-1.;       // "TINTVL" time interval for writing trajectory data
+    double dt=-1.;           // cf "DIMREDUCTION" time length for all trajectories, initialised from each community in turn
     int ncomms=-1;           // number of communities on the network, eg no. of communities for resampling (WE-kMC) or trapping basins (kPS)
     int nbins=-1;            // number of bins on the network, used to calculate transition path statistics
+    int nthreads=omp_get_max_threads(); // number of threads to use in parallel calculations
     char *initcondfile=nullptr; // "INITCOND" name of file where nonequilibrium initial probs of nodes in B are specified
     char *commsfile=nullptr; // "COMMSFILE" name of file where communities are defined (WE-kMC, kPS)
     char *commstargfile=nullptr; // "COMMSTARGFILE" name of file where target number of trajectories in each community is defined (WE-kMC)
     char *binfile=nullptr;   // "BINFILE" name of file where bins are defined (for calculating TP statistics)
+    char *ntrajsfile=nullptr; // cf "DIMREDUCTION" name of file where number of short trajectories to be ran from each community are defined
     bool adaptivecomms=false; // "ADAPTIVECOMMS" communities for resampling (WE-kMC) or trapping basins (kPS) are determined on-the-fly
     int kpskmcsteps=0;       // "KPSKMCSTEPS" number of BKL kMC steps after a trapping basin escape (kPS)
     int nelim=-1;            // "NELIM" maximum number of states to be eliminated from any trapping basin (kPS)
@@ -73,6 +78,7 @@ struct Keywords {
     bool transnprobs=false;  // "TRANSNPROBS" edge weights are read in as transition probabilities (not as weights)
     bool branchprobs=false;  // "BRANCHPROBS" transition probabilities are calculated as branching probabilities
     bool pfold=false;        // "PFOLD" specifies that a committor function calculation is to be performed instead of a kPS simulation
+    bool meanrate=false;     // "MEANRATE" use the approximate mean rate method in MCAMC, instead of the exact FPTA method (default)
     bool debug=false;
     int seed=17;
     bool dumpwaittimes=false; // "DUMPWAITTIMES" print waiting times for nodes to file "meanwaitingtimes.dat"

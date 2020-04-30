@@ -2,7 +2,7 @@
 
 ### COMPILATION ###
 Compile with:
-g++ -std=c++17 discotress.cpp kmc_methods.cpp we_kmc.cpp kps.cpp ffs_kmc.cpp mcamc.cpp neus_kmc.cpp milestoning.cpp tps.cpp keywords.cpp ktn.cpp -o discotress
+g++ -std=c++17 discotress.cpp kmc_methods.cpp we_kmc.cpp kps.cpp ffs_kmc.cpp mcamc.cpp neus_kmc.cpp milestoning.cpp tps.cpp keywords.cpp ktn.cpp -o discotress -fopenmp
 
 ### INPUT FILES ###
 
@@ -110,6 +110,10 @@ KPSKMCSTEPS <int>
   optional, if ENHANCED KPS, the number of standard BKL kMC steps to be performed after a kPS escape from
     a trapping basin. Default 0 (pure kPS, no kMC steps). Requires BRANCHPROBS to be set. Ignored if ADAPTIVECOMMS
 
+MEANRATE
+  optional, if ENHANCED MCAMC, the calculation uses the approximate mean rate method, as opposed to the default exact first
+    passage time analysis (FPTA) method
+
 NELIM <int>
   mandatory if ENHANCED KPS, the maximum number of nodes that can be eliminated from the current trapping basin. If
     NELIM exceeds the number of nodes in the largest community, then all states of any trapping basin are always eliminated.
@@ -118,6 +122,19 @@ NELIM <int>
 
 ### OTHER OPTIONAL KEYWORDS ###
 
+DIMREDUCTION <str> <double>
+  use of this keyword overrides the default simulation setup, which is to simulate A<-B tranition paths, and instead instructs the
+  program to simulate many short trajectories starting from each community, each of length in time equal to the float argument. These
+  trajectories are printed to files walker.x.y.dat, where x is the ID of the community, and y is the iteration number for that community.
+  Trajectory information is written to files whenever a trajectory transitions to a new community.
+  The total number of trajectories that are to be simulated starting from each community is listed in the file given as the string arg.
+  This calculation is parallelised, using a number of threads equal to NTHREADS (defaults to maximum number of threads available).
+  This calculation is only compatible with two sampling algorithms: ENHANCED KPS, and ENHANCED MCAMC (without MEANRATE).
+  The communities of nodes must be specified (COMMSFILE keyword).
+  NODESAFILE, NODESBFILE, NABPATHS, MAXIT, INITCONDFILE and BINFILE keywords are ignored.
+  This setup is incompatible with specification of an initial condition via the INITCONDFILE keyword. Instead, a local equilibrium
+  within the starting community is assumed as the initial probability distribution for each trajectory
+
 MAXIT <int>
   default is inf. The maximum number of iterations of the relevant algorithm to run before the simulation is terminated (if the
   target number of A<-B paths to simulate is not reached). The interpretation of this option depends on the chosen enhanced
@@ -125,6 +142,9 @@ MAXIT <int>
     WE - number of iterations of the resampling procedure
     KPS - number of basin escape trajectories simulated
     NONE - number of iterations of the standard kMC algorithm
+
+NTHREADS <int>
+  number of threads to use in parallel calculations. Defaults to max no of threads available
 
 BRANCHPROBS
   the transition probabilities are calculated as the branching probabilities

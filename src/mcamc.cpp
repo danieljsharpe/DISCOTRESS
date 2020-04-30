@@ -25,9 +25,27 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace std;
 
-MCAMC::MCAMC(const Network &ktn) {}
+MCAMC::MCAMC(const Network &ktn, int maxn_abpaths, int maxit, double tintvl, bool meanrate) {
+
+    if (maxn_abpaths>0) {
+        cout << "mcamc> simulating the A<-B transition path ensemble with MCAMC (FPTA) algorithm:\n" \
+             << "  max. no. of A<-B paths: " << maxn_abpaths << " \tmax. iterations: " << maxit \
+             << "\n  time interval for dumping trajectory data: " << tintvl << endl;
+    } else {
+        cout << "mcamc> simulating many short trajectories with MCAMC (FPTA) algorithm" << endl;
+    }
+    cout << "kps> MCAMC parameters:\n  FPTA (0) or mean rate method (1)?: " << meanrate << endl;
+    this->meanrate=meanrate;
+}
+
 MCAMC::~MCAMC() {}
 
 void MCAMC::run_enhanced_kmc(const Network &ktn) {
 
+    cout << "mcamc> beginning MCAMC simulation to sample the A<-B TPE" << endl;
+}
+
+void MCAMC::run_dimreduction(const Network &ktn, vector<int> ntrajsvec) {
+
+    cout << "mcamc> beginning MCAMC simulation to obtain trajectory data for dimensionality reduction" << endl;
 }

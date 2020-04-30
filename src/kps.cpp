@@ -34,7 +34,14 @@ using namespace std;
 KPS::KPS(const Network &ktn, int maxn_abpaths, int maxit, int nelim, long double tau, double tintvl, int kpskmcsteps, \
          bool adaptivecomms, double adaptminrate, bool pfold, int seed, bool debug) {
 
-    cout << "kps> running kPS with parameters:\n  lag time: " << tau << " \tmax. no. of eliminated nodes: " \
+    if (maxn_abpaths>0) {
+        cout << "kps> simulating the A<-B transition path ensemble with kinetic path sampling:\n" \
+             << "  max. no. of A<-B paths: " << maxn_abpaths << " \tmax. iterations: " << maxit \
+             << "\n  time interval for dumping trajectory data: " << tintvl << endl;
+    } else {
+        cout << "kps> simulating many short trajectories with kinetic path sampling" << endl;
+    }
+    cout << "kps> kPS parameters:\n  lag time: " << tau << " \tmax. no. of eliminated nodes: " \
          << nelim << "\n  no. of basins: " << ktn.ncomms << " \tno. of kMC steps after kPS iteration: " << kpskmcsteps \
          << "\n  adaptive definition of communities (y/n): " << adaptivecomms \
          << "\n  random seed: " << seed << " \tdebug printing: " << debug << endl;
@@ -75,7 +82,7 @@ void KPS::test_ktn(const Network &ktn) {
 
 /* main loop of the kinetic path sampling algorithm */
 void KPS::run_enhanced_kmc(const Network &ktn) {
-    cout << "\nkps> beginning kPS simulation" << endl;
+    cout << "\nkps> beginning kPS simulation to sample the A<-B TPE" << endl;
     n_ab=0; n_traj=0; int n_kpsit=1;
     while ((n_ab<maxn_abpaths) && (n_kpsit<=maxit)) { // algo terminates when max no of kPS basin escapes have been simulated
         if (!(!adaptivecomms && ktn.ncomms==2 && n_kpsit!=1)) { // for a two-state problem, only need to setup basin and do GT once
@@ -132,6 +139,13 @@ void KPS::run_enhanced_kmc(const Network &ktn) {
     cout << "\nkps> kPS simulation terminated after " << n_kpsit-1 << " kPS iterations. Simulated " \
          << n_ab << " transition paths" << endl;
     if (!adaptivecomms) calc_tp_stats(ktn.nbins); // calc committors and transn path densities for communities and write to file
+}
+
+void KPS::run_dimreduction(const Network &ktn, vector<int> ntrajsvec) {
+
+    cout << "\nkps> beginning kPS simulation to obtain trajectory data for dimensionality reduction" << endl;
+    for (int i=0;i<ntrajsvec.size();i++) {
+        cout << "i: " << ntrajsvec[i] << endl; }
 }
 
 /* Reset data of previous kPS iteration and find the microstates of the current trapping basin */
@@ -336,7 +350,7 @@ Node *KPS::sample_absorbing_node() {
     curr_node = &ktn_kps->nodes[nodemap[epsilon->node_id]-1];
     do {
         if (debug) cout << "curr_node is: " << curr_node->node_id << endl;
-        double rand_no = KMC_Standard_Methods::rand_unif_met(seed);
+        double rand_no = KMC_Enhanced_Methods::rand_unif_met(seed);
         long double cum_t = 0.; // accumulated transition probability
         bool nonelimd = false; // flag indicates if the current node is transient noneliminated
         long double factor = 0.;

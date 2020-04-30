@@ -103,7 +103,7 @@ void Network::get_tmtx_branch() {
             if (!edgeptr->deadts) { cum_t += edgeptr->t; }
             edgeptr=edgeptr->next_from;
         }
-        if (abs(cum_t-1.)>1.E-16) throw Ktn_exception(); // transition probabilities do not give stochastic matrix
+        if (abs(cum_t-1.)>1.E-14) throw Ktn_exception(); // transition probabilities do not give stochastic matrix
     }
 }
 
@@ -419,7 +419,7 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         ktn.nodes[nodesinB[i]-1].aorb = 1;
         ktn.nodesB.insert(&ktn.nodes[nodesinB[i]-1]);
     }
-    if (!comms.empty()) {
+    if (!comms.empty() && !nodesinA.empty()) { // community IDs of A (and of B) nodes should be consistent
 //        if (ktn.nodesA.size()!=ktn.comm_sizes[(*ktn.nodesA.begin())->comm_id] || \
             ktn.nodesB.size()!=ktn.comm_sizes[(*ktn.nodesB.begin())->comm_id]) throw Ktn_exception();
         int commA=(*ktn.nodesA.begin())->comm_id;

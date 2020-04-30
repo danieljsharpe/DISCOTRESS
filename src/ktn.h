@@ -28,7 +28,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace std;
 
-class KMC_Suite;
+class Discotress;
 
 struct Node;
 
@@ -102,7 +102,7 @@ struct Node {
 // structure containing the kinetic transition network
 struct Network {
 
-    friend class KMC_Suite;
+    friend class Discotress;
 
     public:
 

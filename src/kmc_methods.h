@@ -61,12 +61,15 @@ class KMC_Enhanced_Methods {
     KMC_Enhanced_Methods();
     virtual ~KMC_Enhanced_Methods();
     virtual void run_enhanced_kmc(const Network&)=0; // pure virtual function
+    /* run_dimreduction() is a dummy function, it is only ever called in the KPS and MCAMC derived classes, where it is overridden */
+    virtual void run_dimreduction(const Network&, vector<int>) {};
     Node *get_initial_node(const Network&, Walker&); // sample an initial node
     void set_standard_kmc(void(*)(Walker&)); // function to set the kmc_std_method
     static vector<int> find_comm_onthefly(const Network&,const Node*,double,int); // find a community on-the-fly based on max allowed rate and size
     void update_tp_stats(Walker&,bool,bool); // update the transition path statistics, depends on if the path is a transn path or is unreactive
     void calc_tp_stats(int);    // calculate the transition path statistics from the observed counts
     void write_tp_stats(int);   // write transition path statistics to file
+    static long double rand_unif_met(int=19); // draw random number between 0 and 1
 
     template <typename T>
     static void write_vec(const vector<T>& vec, string fname) {
@@ -158,6 +161,7 @@ class KPS : public KMC_Enhanced_Methods {
     KPS(const Network&,int,int,int,long double,double,int,bool,double,bool,int,bool);
     ~KPS();
     void run_enhanced_kmc(const Network&);
+    void run_dimreduction(const Network&,vector<int>);
     static long double calc_gt_factor(Node*);
     static void reset_kmc_hop_counts(Network&);
     static long double gamma_distribn(unsigned long long int,long double,int);
@@ -186,9 +190,12 @@ class MCAMC : public KMC_Enhanced_Methods {
 
     public:
 
-    MCAMC(const Network&);
+    MCAMC(const Network&,int,int,double,bool);
     ~MCAMC();
     void run_enhanced_kmc(const Network&);
+    void run_dimreduction(const Network&,vector<int>);
+
+    bool meanrate; // if True, use (approximate) mean rate method, else use (exact) FPTA method
 };
 
 /* non-equilibrium umbrella sampling kMC */
@@ -229,11 +236,6 @@ class KMC_Standard_Methods {
     KMC_Standard_Methods();
     ~KMC_Standard_Methods();
     static void bkl(Walker&); // rejection-free algorithm of Bortz, Kalos and Lebowitz (aka n-fold way algorithm)
-    static void rejection_kmc(Walker&); // kMC algorithm where some moves are rejected
-    static void leapfrog(Walker&); // leapfrog algorithm of Trygubenko & Wales
-    static long double rand_unif_met(int=19); // draw random number between 0 and 1
-    static vector<double> calc_committors(const Network&,int); // calculate committor functions from counts in Node structures of Network obj
-    static vector<double> calc_tp_density(const Network&,int); // calculate transn path density from counts in Node structures of Network obj
 };
 
 #endif
