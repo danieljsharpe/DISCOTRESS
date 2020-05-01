@@ -44,29 +44,25 @@ Keywords read_keywords(const char *kw_file) {
         // PROCESS KEYWORDS
         if (vecstr[0]=="TRAJ") {
             if (vecstr[1]=="BKL") {
-                my_kws.kmc_method=1;
-            } else if (vecstr[1]=="REJ") {
-                my_kws.kmc_method=2;
-            } else if (vecstr[2]=="LEAPFROG") {
-                my_kws.kmc_method=3;
-            } else { exit(EXIT_FAILURE); }
-        } else if (vecstr[0]=="ENHANCED") {
-            if (vecstr[1]=="NONE") {
-                my_kws.enh_method=0;
-            } else if (vecstr[1]=="WE") {
-                my_kws.enh_method=1;
+                my_kws.traj_method=1;
             } else if (vecstr[1]=="KPS") {
-                my_kws.enh_method=2;
+                my_kws.traj_method=2;
+            } else if (vecstr[2]=="MCAMC") {
+                my_kws.traj_method=3;
+            } else { exit(EXIT_FAILURE); }
+        } else if (vecstr[0]=="WRAPPER") {
+            if (vecstr[1]=="DIMREDN") {
+                my_kws.wrapper_method=0;
+            } else if (vecstr[1]=="NONE") {
+                my_kws.wrapper_method=1;
+            } else if (vecstr[1]=="WE") {
+                my_kws.wrapper_method=2;
             } else if (vecstr[2]=="FFS") {
-                my_kws.enh_method=3;
-            } else if (vecstr[3]=="MCAMC") {
-                my_kws.enh_method=4;
-            } else if (vecstr[4]=="NEUS") {
-                my_kws.enh_method=5;
-            } else if (vecstr[5]=="MILES") {
-                my_kws.enh_method=6;
-            } else if (vecstr[6]=="TPS") {
-                my_kws.enh_method=7;
+                my_kws.wrapper_method=3;
+            } else if (vecstr[3]=="NEUS") {
+                my_kws.wrapper_method=4;
+            } else if (vecstr[4]=="MILES") {
+                my_kws.wrapper_method=5;
             } else { exit(EXIT_FAILURE); }
         } else if (vecstr[0]=="NNODES") {
             my_kws.n_nodes=stoi(vecstr[1]);
@@ -149,23 +145,42 @@ Keywords read_keywords(const char *kw_file) {
         cout << "keywords> error: termination condition not specified correctly" << endl; exit(EXIT_FAILURE); }
     if (my_kws.commsfile!=nullptr && my_kws.ncomms<=1) {
         cout << "keywords> error: there must be at least two communities in the specified partitioning" << endl; exit(EXIT_FAILURE); }
-    if (my_kws.kmc_method<=0 && my_kws.enh_method!=2) {
-        cout << "keywords> error: must choose a kMC trajectory method except with kPS" << endl; exit(EXIT_FAILURE); }
-    if (my_kws.enh_method==-1) {
-        cout << "keywords> error: Enhanced kMC method not chosen correctly" << endl; exit(EXIT_FAILURE); }
-    if (my_kws.transnprobs && my_kws.enh_method!=2) {
+    if (my_kws.traj_method<=0 || my_kws.wrapper_method<=0) {
+        cout << "keywords> error: must specify both a wrapper method and a trajectory method" << endl; exit(EXIT_FAILURE); }
+    if (my_kws.transnprobs && my_kws.traj_method!=2) {
         cout << "keywords> error: edge weights must be read in as transition rates if not using kPS" << endl; exit(EXIT_FAILURE); }
-    if (my_kws.enh_method==1) { // WE simulation
-        if (!(my_kws.tau>0.) || (my_kws.commsfile!=nullptr && !my_kws.adaptivecomms) || \
-            (my_kws.commstargfile!=nullptr && !my_kws.adaptivecomms) ) {
-            cout << "keywords> error: WE simulation not set up correctly" << endl; exit(EXIT_FAILURE); } }
-    if (my_kws.enh_method==2) { // kPS simulation
+    // check specification of wrapper method is valid
+    if (my_kws.wrapper_method==0) { // special wrapper method to propagate trajectories required for dimensionality reduction
+        if (my_kws.ntrajsfile==nullptr || my_kws.commsfile==nullptr || my_kws.meanrate || my_kws.initcondfile || \
+            my_kws.traj_method==1) {
+            cout << "keywords> error: dimensionality reduction simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
+    } else if (my_kws.wrapper_method==1) { // standard simulation of A<-B transition paths
+
+    } else if (my_kws.wrapper_method==2) { // WE simulation
+        if (my_kws.tau<=0. || (my_kws.commsfile!=nullptr && !my_kws.adaptivecomms) || \
+            (my_kws.commstargfile!=nullptr && !my_kws.adaptivecomms) || my_kws.traj_method!=1) {
+            cout << "keywords> error: WE simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
+    } else if (my_kws.wrapper_method==3) { // FFS simulation
+        if (my_kws.commsfile==nullptr) {
+            cout << "keywords> error: FFS simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
+    } else if (my_kws.wrapper_method==4) { // NEUS simulation
+        if (my_kws.commsfile==nullptr || my_kws.traj_method!=1) {
+            cout << "keywords> error: NEUS simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
+    } else if (my_kws.wrapper_method==5) { // milestoning simulation
+        if (my_kws.commsfile==nullptr) {
+            cout << "keywords> error: milestoning simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
+    }
+    // check specification of trajectory method is valid
+    if (my_kws.traj_method==1) { // BKL algorithm
+        if (!my_kws.branchprobs) {
+            cout << "keywords> error: BKL algorithm not specified correctly" << endl; exit(EXIT_FAILURE); }
+    } else if (my_kws.traj_method==2) { // kPS algorithm
         if ((!(my_kws.tau>0.) && !my_kws.branchprobs) || (my_kws.commsfile==nullptr && !my_kws.adaptivecomms) || my_kws.nelim<=0 || \
             (my_kws.kpskmcsteps>0 && !my_kws.branchprobs) || (my_kws.pfold && my_kws.ncomms!=3)) {
-            cout << "keywords> error: kPS simulation not set up correctly" << endl; exit(EXIT_FAILURE); } }
-    if (my_kws.ntrajsfile!=nullptr && (my_kws.commsfile==nullptr || my_kws.meanrate || my_kws.initcondfile || \
-        (my_kws.enh_method!=2 && my_kws.enh_method!=4))) {
-        cout << "keywords> error: dimensionality reduction simulation not set up correctly" << endl; exit(EXIT_FAILURE); }
+            cout << "keywords> error: kPS algorithm not specified correctly" << endl; exit(EXIT_FAILURE); }
+    } else if (my_kws.traj_method==3) { // MCAMC algorithm
+
+    }
 
     return my_kws;
 }

@@ -31,6 +31,6 @@ using namespace std;
 NEUS_KMC::NEUS_KMC(const Network &ktn) {}
 NEUS_KMC::~NEUS_KMC() {}
 
-void NEUS_KMC::run_enhanced_kmc(const Network &ktn) {
+void NEUS_KMC::run_enhanced_kmc(const Network &ktn, Traj_Method &traj_method_obj) {
 
 }

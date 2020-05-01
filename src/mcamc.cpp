@@ -25,27 +25,26 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace std;
 
-MCAMC::MCAMC(const Network &ktn, int maxn_abpaths, int maxit, double tintvl, bool meanrate) {
+MCAMC::MCAMC(const Network &ktn, int kpskmcsteps, bool meanrate) {
 
-    if (maxn_abpaths>0) {
-        cout << "mcamc> simulating the A<-B transition path ensemble with MCAMC (FPTA) algorithm:\n" \
-             << "  max. no. of A<-B paths: " << maxn_abpaths << " \tmax. iterations: " << maxit \
-             << "\n  time interval for dumping trajectory data: " << tintvl << endl;
-    } else {
-        cout << "mcamc> simulating many short trajectories with MCAMC (FPTA) algorithm" << endl;
-    }
-    cout << "kps> MCAMC parameters:\n  FPTA (0) or mean rate method (1)?: " << meanrate << endl;
-    this->meanrate=meanrate;
+    cout << "kps> MCAMC parameters:\n  FPTA (0) or mean rate method (1)?: " << meanrate \
+         << "\n  no. of kMC steps after MCAMC iteration: " << kpskmcsteps << endl;
+    this->kpskmcsteps=kpskmcsteps; this->meanrate=meanrate;
 }
 
 MCAMC::~MCAMC() {}
 
-void MCAMC::run_enhanced_kmc(const Network &ktn) {
+void MCAMC::kmc_iteration(const Network &ktn, Walker &walker) {
 
-    cout << "mcamc> beginning MCAMC simulation to sample the A<-B TPE" << endl;
+    cout << "mcamc> running a single iteration of MCAMC" << endl;
 }
 
-void MCAMC::run_dimreduction(const Network &ktn, vector<int> ntrajsvec) {
+/* perform specified number of BKL iterations after a basin escape */
+void MCAMC::do_bkl_steps(const Network &ktn, Walker &walker) {
 
-    cout << "mcamc> beginning MCAMC simulation to obtain trajectory data for dimensionality reduction" << endl;
+    cout << "mcamc> doing BKL steps after a basin escape" << endl;
+}
+
+void MCAMC::reset_nodeptrs() {
+
 }

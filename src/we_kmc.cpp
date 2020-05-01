@@ -43,7 +43,7 @@ WE_KMC::WE_KMC(const Network &ktn, int maxn_abpaths, int maxit, long double tau,
 
 WE_KMC::~WE_KMC() {}
 
-void WE_KMC::run_enhanced_kmc(const Network &ktn) {
+void WE_KMC::run_enhanced_kmc(const Network &ktn, Traj_Method &traj_method_obj) {
 
     cout << "wekmc> beginning WE-kMC simulation" << endl;
     n_ab=0; int n_wekmcit=0;

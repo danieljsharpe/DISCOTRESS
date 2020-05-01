@@ -2,7 +2,7 @@
 
 ### COMPILATION ###
 Compile with:
-g++ -std=c++17 discotress.cpp kmc_methods.cpp we_kmc.cpp kps.cpp ffs_kmc.cpp mcamc.cpp neus_kmc.cpp milestoning.cpp tps.cpp keywords.cpp ktn.cpp -o discotress -fopenmp
+g++ -std=c++17 discotress.cpp kmc_methods.cpp std_kmc.cpp dimredn.cpp we_kmc.cpp ffs_kmc.cpp neus_kmc.cpp milestoning.cpp kps.cpp mcamc.cpp keywords.cpp ktn.cpp -o discotress -fopenmp
 
 ### INPUT FILES ###
 
@@ -42,24 +42,24 @@ NNODES <int>
 NEDGES <int>
   mandatory, number of (bidirectional) edges in the transition network
 
-TRAJ <str>
-  mandatory if not ENHANCED KPS, method for propagating individual kMC trajectories
+WRAPPER <str>
+  mandatory, employ a `wrapping' enhanced sampling strategy for accelerating the observation of rare events
   OPTIONS
-    BKL - Bortz-Kalos-Lebowitz (aka n-fold way) rejection-free algorithm
-    REJ - rejection algorithm
-    LEAPFROG - kMC employing leapfrog moves
+    NONE    - no enhanced sampling strategy employed
+    DIMREDN - special class to simulate many short nonequilibrium trajectories starting from each community in turn
+              used for estimation of a coarse-grained transition network. See DIMREDUCTION keyword for more detail 
+    WE      - weighted ensemble sampling
+    FFS     - forward flux sampling
+    NEUS    - non-equilibrium umbrella sampling
+    MILES   - milestoning
 
-ENHANCED <str>
-  mandatory, employ an enhanced sampling strategy for accelerating the observation of rare events
+TRAJ <str>
+  mandatory, method for propagating individual kMC trajectories
   OPTIONS
-    WE - weighted ensemble sampling
-    KPS - kinetic path sampling
-    FFS - forward flux sampling
-    MCAMC - Monte Carlo with absorbing Markov chains
-    NEUS - non-equilibrium umbrella sampling
-    MILES - milestoning
-    TPS - transition path sampling
-    NONE - no enhanced sampling strategy employed
+    BKL     - Bortz-Kalos-Lebowitz (aka n-fold way) rejection-free algorithm (ie standard kMC)
+    KPS     - kinetic path sampling algorithm
+    MCAMC   - Monte Carlo with Absorbing Markov Chains algorithm
+  Note the following excluded combinations of WRAPPER / TRAJ options: WE / KPS, WE / MCAMC, NEUS / KPS, NEUS / MCAMC, DIMREDN / BKL
 
 NODESAFILE <str> <int>
   mandatory, name of the file containing the node ID's (indexed from 1) belonging to the A (absorbing) set and no. of nodes in A
@@ -70,7 +70,7 @@ NODESBFILE <str> <int>
 NABPATHS <int>
   mandatory, the simulation is terminated when this number of A<-B paths have been successfully sampled
 
-### OPTIONAL KEYWORDS RELATING TO ENHANCED SAMPLING ###
+### OPTIONAL KEYWORDS RELATING TO WRAPPER SAMPLING ###
 
 INITCONDFILE <str>
   optional. Name of the file containing initial occupation probabilities for nodes in B that are alternative to the
@@ -78,7 +78,7 @@ INITCONDFILE <str>
     and the specified order is assumed to be the same also (cf MINBFILE). Values must sum to unity
 
 COMMSFILE <str> <int>
-  mandatory if ENHANCED WE or ENHANCED KPS and not ADAPTIVECOMMS
+  mandatory if WRAPPER WE or TRAJ KPS and not ADAPTIVECOMMS
     name of the file containing the definitions of communities (single-column, indexed from zero, number of entries equal
     to the number of nodes in the network) and no. of communities. Is overridden by ADAPTIVECOMMS
     the communities are used in the calculation of transition path statistics (ie committor functions and
@@ -88,13 +88,13 @@ COMMSFILE <str> <int>
     if the number of communities is 2, in which case the initial set B can be a subset of the relevant community
 
 ADAPTIVECOMMS <double>
-  mandatory if ENHANCED WE or ENHANCED KPS and not COMMSFILE, default False
+  mandatory if WRAPPER WE or TRAJ KPS and not COMMSFILE, default False
     set the partitioning of the state space leveraged in WE-kMC and in kPS to be defined on-the-fly
     argument is the minimum transition rate for a node to be included in the community being built up
-    if set with ENHANCED KPS, KPSKMCSTEPS is ignored
+    if set with TRAJ KPS, KPSKMCSTEPS is ignored
 
 COMMSTARGFILE <str>
-  mandatory if ENHANCED WE and not ADAPTIVECOMMS, name of the file containing the target number of trajectories in each bin
+  mandatory if WRAPPER WE and not ADAPTIVECOMMS, name of the file containing the target number of trajectories in each bin
     (single-column, number of entries equal to the number of communities in the network)
 
 BINFILE <str> <int>
@@ -102,38 +102,39 @@ BINFILE <str> <int>
     name of the file containing the definition of bins (indexed from 0) for calculating transition path statistics, and no. of bins
 
 TAU <long double>
-  mandatory if ENHANCED WE or if ENHANCED KPS and not BRANCHPROBS
+  mandatory if WRAPPER WE or if TRAJ KPS and not BRANCHPROBS
     If WE, tau is the time between resampling trajectories
     If KPS, tau is the lag time at which the linear transition probability matrices are estimated (or provided, if TRANSNPROBS)
 
 KPSKMCSTEPS <int>
-  optional, if ENHANCED KPS, the number of standard BKL kMC steps to be performed after a kPS escape from
-    a trapping basin. Default 0 (pure kPS, no kMC steps). Requires BRANCHPROBS to be set. Ignored if ADAPTIVECOMMS
+  optional, if TRAJ KPS or TRAJ MCAMC, the number of standard BKL kMC steps to be performed after a kPS or MCAMC escape from
+    a trapping basin. Default 0 (pure kPS (or MCAMC), no kMC steps). Requires BRANCHPROBS to be set. Ignored if ADAPTIVECOMMS
 
 MEANRATE
-  optional, if ENHANCED MCAMC, the calculation uses the approximate mean rate method, as opposed to the default exact first
+  optional, if TRAJ MCAMC, the calculation uses the approximate mean rate method, as opposed to the default exact first
     passage time analysis (FPTA) method
 
 NELIM <int>
-  mandatory if ENHANCED KPS, the maximum number of nodes that can be eliminated from the current trapping basin. If
+  mandatory if TRAJ KPS, the maximum number of nodes that can be eliminated from the current trapping basin. If
     NELIM exceeds the number of nodes in the largest community, then all states of any trapping basin are always eliminated.
     Note that NELIM is equal to the maximum number of transition matrices stored for the active sub-network, and therefore
     the choice of this keyword (along with the sizes of communities) can strongly affect memory usage.
 
-### OTHER OPTIONAL KEYWORDS ###
-
 DIMREDUCTION <str> <double>
-  use of this keyword overrides the default simulation setup, which is to simulate A<-B tranition paths, and instead instructs the
-  program to simulate many short trajectories starting from each community, each of length in time equal to the float argument. These
-  trajectories are printed to files walker.x.y.dat, where x is the ID of the community, and y is the iteration number for that community.
+  this keyword is mandatory if WRAPPER DIMREDN, which initialises a special class that does not perform the usual code function,
+  which is to simulate A<-B tranition paths, and instead instructs the program to simulate many short trajectories starting from
+  each community, each of length in time equal to the float argument. These trajectories are printed to files walker.x.y.dat, where
+  x is the ID of the community, and y is the iteration number for that community.
   Trajectory information is written to files whenever a trajectory transitions to a new community.
   The total number of trajectories that are to be simulated starting from each community is listed in the file given as the string arg.
   This calculation is parallelised, using a number of threads equal to NTHREADS (defaults to maximum number of threads available).
-  This calculation is only compatible with two sampling algorithms: ENHANCED KPS, and ENHANCED MCAMC (without MEANRATE).
+  This calculation is compatible with two algorithms to propagate individual trajectories: TRAJ KPS, and TRAJ MCAMC (without MEANRATE).
   The communities of nodes must be specified (COMMSFILE keyword).
-  NODESAFILE, NODESBFILE, NABPATHS, MAXIT, INITCONDFILE and BINFILE keywords are ignored.
+  NODESAFILE, NODESBFILE, NABPATHS, MAXIT, and BINFILE keywords are ignored.
   This setup is incompatible with specification of an initial condition via the INITCONDFILE keyword. Instead, a local equilibrium
   within the starting community is assumed as the initial probability distribution for each trajectory
+
+## OTHER OPTIOAL KEYWORDS ###
 
 MAXIT <int>
   default is inf. The maximum number of iterations of the relevant algorithm to run before the simulation is terminated (if the
@@ -150,17 +151,17 @@ BRANCHPROBS
   the transition probabilities are calculated as the branching probabilities
 
 TRANSNPROBS
-  the weights to read in are transition probabilities, not rates (compatible with ENHANCED KPS only)
+  the weights to read in are transition probabilities, not rates (compatible with TRAJ KPS only)
   the self-loop transition probabilities for nodes are inferred to be the remainders
 
 PFOLD
-  when used in conjunction with ENHANCED KPS, specifies that a committor function calculation is performed instead of a kPS simulation
+  when used in conjunction with TRAJ KPS, specifies that a committor function calculation is performed instead of a kPS simulation
   the communities.dat file must specify precisely three communities; the A set, the B set, and the set of all other nodes
   the committor functions are written to the files "committor_AB.dat" and "committor_BA.dat" (for A<-B and B<-A directions, respectively)
   set NABPATHS to any number >0
 
 TINTVL <double>
-  ignored if ENHANCED KPS (in which case trajectory data is written after every basin escape). Time interval for dumping trajectory information
+  ignored if TRAJ KPS (in which case trajectory data is written after every basin escape). Time interval for dumping trajectory information
   negative value (default) indicates that trajectory data is not written
   zero value specifies that all trajectory information is written
 

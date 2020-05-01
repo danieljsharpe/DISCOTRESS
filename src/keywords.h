@@ -48,9 +48,9 @@ struct Keywords {
        the combination of chosen keywords. Values of 0 are default values that are valid in any case */
     int n_nodes=0, n_edges=0;
     /* choice of kinetic Monte Carlo method to propagate individual trajectories */
-    int kmc_method=-1;
-    /* choice of enhanced sampling kinetic Monte Carlo method to accelerate the observation of rare events */
-    int enh_method=-1; // note that there is no default, to run kMC with no enhanced sampling this must be set explicitly
+    int traj_method=-1;
+    /* choice of enhanced sampling kinetic Monte Carlo method to wrap simulation of a trajectory ensemble */
+    int wrapper_method=-1; // note that there is no default, to run kMC with no enhanced sampling this must be set explicitly
     string nodesafile, nodesbfile; // names of the files containing the IDs of the A and B nodes, respectively
     int nA=-1, nB=-1;          // number of nodes in A and B sets, respectively
 

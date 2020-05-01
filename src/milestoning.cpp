@@ -31,6 +31,6 @@ using namespace std;
 MILES_KMC::MILES_KMC(const Network &ktn) {}
 MILES_KMC::~MILES_KMC() {}
 
-void MILES_KMC::run_enhanced_kmc(const Network &ktn) {
+void MILES_KMC::run_enhanced_kmc(const Network &ktn, Traj_Method &traj_method_obj) {
 
 }

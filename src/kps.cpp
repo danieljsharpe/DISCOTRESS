@@ -31,31 +31,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace std;
 
-KPS::KPS(const Network &ktn, int maxn_abpaths, int maxit, int nelim, long double tau, double tintvl, int kpskmcsteps, \
-         bool adaptivecomms, double adaptminrate, bool pfold, int seed, bool debug) {
+KPS::KPS(const Network &ktn, int nelim, long double tau, int kpskmcsteps, \
+         bool adaptivecomms, double adaptminrate, bool pfold, double tintvl, int seed, bool debug) {
 
-    if (maxn_abpaths>0) {
-        cout << "kps> simulating the A<-B transition path ensemble with kinetic path sampling:\n" \
-             << "  max. no. of A<-B paths: " << maxn_abpaths << " \tmax. iterations: " << maxit \
-             << "\n  time interval for dumping trajectory data: " << tintvl << endl;
-    } else {
-        cout << "kps> simulating many short trajectories with kinetic path sampling" << endl;
-    }
     cout << "kps> kPS parameters:\n  lag time: " << tau << " \tmax. no. of eliminated nodes: " \
          << nelim << "\n  no. of basins: " << ktn.ncomms << " \tno. of kMC steps after kPS iteration: " << kpskmcsteps \
          << "\n  adaptive definition of communities (y/n): " << adaptivecomms \
-         << "\n  random seed: " << seed << " \tdebug printing: " << debug << endl;
+         << "\tmin. allowed rate in adaptive communities: " << adaptminrate << endl;
     this->nelim=nelim; this->tau=tau; this->kpskmcsteps=kpskmcsteps;
     this->adaptivecomms=adaptivecomms; this->adaptminrate=adaptminrate; this->pfold=pfold;
+    this->tintvl=tintvl; this->seed=seed; this->debug=debug;
     basin_ids.resize(ktn.n_nodes);
-    // quack need to move this somewhere more general
-    this->walker.accumprobs=ktn.accumprobs;
-    this->maxn_abpaths=maxn_abpaths; this->maxit=maxit; this->tintvl=tintvl; this->seed=seed; this->debug=debug;
-    if (ktn.ncomms>0) {
-        walker.visited.resize(ktn.nbins); fill(walker.visited.begin(),walker.visited.end(),false);
-        tp_densities.resize(ktn.nbins); committors.resize(ktn.nbins);
-        ab_successes.resize(ktn.nbins); ab_failures.resize(ktn.nbins);
-    }
 }
 
 KPS::~KPS() {
@@ -80,76 +66,55 @@ void KPS::test_ktn(const Network &ktn) {
     cout << "\n" << endl;
 }
 
-/* main loop of the kinetic path sampling algorithm */
-void KPS::run_enhanced_kmc(const Network &ktn) {
-    cout << "\nkps> beginning kPS simulation to sample the A<-B TPE" << endl;
-    n_ab=0; n_traj=0; int n_kpsit=1;
-    while ((n_ab<maxn_abpaths) && (n_kpsit<=maxit)) { // algo terminates when max no of kPS basin escapes have been simulated
-        if (!(!adaptivecomms && ktn.ncomms==2 && n_kpsit!=1)) { // for a two-state problem, only need to setup basin and do GT once
-            setup_basin_sets(ktn,true);
-            graph_transformation(ktn);
-        } else {
-            setup_basin_sets(ktn,false); // get the new initial node without updating the definition of the basin
-        }
-        if (pfold) {
-            calc_pfold(ktn); break; }
-        Node *dummy_alpha = sample_absorbing_node();
-        alpha = &ktn.nodes[dummy_alpha->node_id-1];
-        walker.curr_node=&(*alpha);
-        long double t_esc = iterative_reverse_randomisation();
-        update_path_quantities(t_esc,alpha);
-        n_kpsit++;
-        delete ktn_kps; ktn_kps=nullptr;
-        if (!(!adaptivecomms && ktn.ncomms==2)) {
-            delete ktn_kps_orig; ktn_kps_orig=nullptr;
-            delete ktn_l; delete ktn_u; ktn_l=nullptr; ktn_u=nullptr;
-        } else { // restore the graph transformed subnetwork
-            ktn_kps = new Network(*ktn_kps_gt);
-        }
-        int n_kmcit=0;
-        check_if_endpoint:
-            if (alpha->aorb==-1 || alpha->aorb==1) { // traj has reached absorbing macrostate A or has returned to B
-                update_tp_stats(walker,alpha->aorb==-1,!adaptivecomms);
-                if (alpha->aorb==-1) { // transition path, reset walker
-                    walker.dump_walker_info(n_ab-1,true,false,true);
-                    walker.reset_walker_info();
-                    epsilon=nullptr; alpha=nullptr;
-                    continue;
-                } else if (ktn.ncomms>0) {
-                    walker.visited[alpha->bin_id]=true;
-                }
-            }
-        if (epsilon->comm_id!=alpha->comm_id || adaptivecomms) { // escaped previous basin, write trajectory data
-            walker.dump_walker_info(n_ab,false,false,tintvl==0. || (tintvl>0. && walker.t>=next_tintvl));
-            if (tintvl>0. && walker.t>=next_tintvl) { // reached time interval for dumping trajectory data, calc next interval
-                while (walker.t>=next_tintvl) next_tintvl+=tintvl; }
-        }
-        if (adaptivecomms) continue;
-        epsilon=alpha; alpha=nullptr;
-        while (n_kmcit<kpskmcsteps || ktn.comm_sizes[epsilon->comm_id]>nelim) { // quack // simulate a number of BKL steps to attempt to move away from the transition region of the community
-            KMC_Standard_Methods::bkl(walker);
-            alpha=walker.curr_node;
-            walker.visited[alpha->bin_id]=true;
-            n_kmcit++;
-            if (alpha->aorb==-1 || alpha->aorb==1 || alpha->comm_id!=epsilon->comm_id) {
-                goto check_if_endpoint; }
-            epsilon=alpha;
-        }
+/* perform a single kPS basin escape iteration */
+void KPS::kmc_iteration(const Network &ktn, Walker &walker) {
+
+    if (!(!adaptivecomms && ktn.ncomms==2 && ktn_kps_orig!=nullptr)) { // for a two-state problem, only need to setup basin and do GT once
+        setup_basin_sets(ktn,walker,true);
+        graph_transformation(ktn);
+    } else {
+        setup_basin_sets(ktn,walker,false); // get the new initial node without updating the definition of the basin
     }
-    cout << "\nkps> kPS simulation terminated after " << n_kpsit-1 << " kPS iterations. Simulated " \
-         << n_ab << " transition paths" << endl;
-    if (!adaptivecomms) calc_tp_stats(ktn.nbins); // calc committors and transn path densities for communities and write to file
+    if (pfold) {
+        calc_pfold(ktn); return; }
+    Node *dummy_alpha = sample_absorbing_node();
+    alpha = &ktn.nodes[dummy_alpha->node_id-1];
+    walker.curr_node=&(*alpha);
+    long double t_esc = iterative_reverse_randomisation();
+    update_path_quantities(walker,t_esc,alpha);
+    delete ktn_kps; ktn_kps=nullptr;
+    if (!(!adaptivecomms && ktn.ncomms==2)) {
+        delete ktn_kps_orig; ktn_kps_orig=nullptr;
+        delete ktn_l; delete ktn_u; ktn_l=nullptr; ktn_u=nullptr;
+    } else { // restore the graph transformed subnetwork
+        ktn_kps = new Network(*ktn_kps_gt);
+    }
 }
 
-void KPS::run_dimreduction(const Network &ktn, vector<int> ntrajsvec) {
+/* perform the specified number of kMC iterations, to be executed after a basin escape. The idea is to attempt
+   to move away from the transition boundary region of a communtiy before simulating another basin escape */
+void KPS::do_bkl_steps(const Network &ktn, Walker &walker) {
 
-    cout << "\nkps> beginning kPS simulation to obtain trajectory data for dimensionality reduction" << endl;
-    for (int i=0;i<ntrajsvec.size();i++) {
-        cout << "i: " << ntrajsvec[i] << endl; }
+    if (adaptivecomms) return;
+    int n_kmcit=0;
+    epsilon=alpha; alpha=nullptr;
+    while (n_kmcit<kpskmcsteps || ktn.comm_sizes[epsilon->comm_id]>nelim) { // quack
+        BKL::bkl(walker);
+        alpha=walker.curr_node;
+        walker.visited[alpha->bin_id]=true;
+        if (alpha->comm_id!=epsilon->comm_id) this->dump_traj(walker,walker.curr_node->aorb==-1,false);
+        if (alpha->aorb==-1 || alpha->aorb==1) return; // note that the BKL iterations are terminated if the simulation returns to B
+        epsilon=alpha;
+        n_kmcit++;
+    }
+}
+
+void KPS::reset_nodeptrs() {
+    epsilon=nullptr; alpha=nullptr;
 }
 
 /* Reset data of previous kPS iteration and find the microstates of the current trapping basin */
-void KPS::setup_basin_sets(const Network &ktn, bool get_new_basin) {
+void KPS::setup_basin_sets(const Network &ktn, Walker &walker, bool get_new_basin) {
 
     if (debug) cout << "\nkps> setting up basin sets" << endl;
     bool newpath=false;
@@ -159,8 +124,8 @@ void KPS::setup_basin_sets(const Network &ktn, bool get_new_basin) {
             epsilon=&node; break;
         }
     } else if (!epsilon) { // first iteration of A<-B path, need to set starting node
-        epsilon = get_initial_node(ktn,walker);
-        walker.dump_walker_info(n_ab,false,true,true);
+        epsilon = Wrapper_Method::get_initial_node(ktn,walker,seed);
+        walker.dump_walker_info(false,true,true);
         next_tintvl=tintvl;
     }
     if (!get_new_basin) return; // the basin is not to be updated
@@ -192,7 +157,7 @@ void KPS::setup_basin_sets(const Network &ktn, bool get_new_basin) {
         }
         if (debug) cout << endl;
     } else {
-        vector<int> nodes_in_comm = KMC_Enhanced_Methods::find_comm_onthefly(ktn,epsilon,adaptminrate,nelim);
+        vector<int> nodes_in_comm = Wrapper_Method::find_comm_onthefly(ktn,epsilon,adaptminrate,nelim);
         basin_ids=nodes_in_comm;
         for (int i=0;i<ktn.n_nodes;i++) {
             if (basin_ids[i]==2) {
@@ -350,7 +315,7 @@ Node *KPS::sample_absorbing_node() {
     curr_node = &ktn_kps->nodes[nodemap[epsilon->node_id]-1];
     do {
         if (debug) cout << "curr_node is: " << curr_node->node_id << endl;
-        double rand_no = KMC_Enhanced_Methods::rand_unif_met(seed);
+        double rand_no = Wrapper_Method::rand_unif_met(seed);
         long double cum_t = 0.; // accumulated transition probability
         bool nonelimd = false; // flag indicates if the current node is transient noneliminated
         long double factor = 0.;
@@ -765,8 +730,8 @@ void KPS::calc_pfold(const Network& ktn) {
             throw exception();
         }
     }
-    KMC_Enhanced_Methods::write_vec<long double>(q_ab_vals,"committor_AB.dat");
-    KMC_Enhanced_Methods::write_vec<long double>(q_ba_vals,"committor_BA.dat");
+    Wrapper_Method::write_vec<long double>(q_ab_vals,"committor_AB.dat");
+    Wrapper_Method::write_vec<long double>(q_ba_vals,"committor_BA.dat");
 }
 
 /* calculate the factor (1-T_{nn}) needed in the elimination of the n-th node in graph transformation */
@@ -785,7 +750,7 @@ long double KPS::calc_gt_factor(Node *node_elim) {
 
 /* Update path quantities along a trajectory, where the (unordered) path is specified by the kMC hop counts
    ("h") in the Node and Edge members of the subnetwork pointed to by ktn_kps */
-void KPS::update_path_quantities(long double t_esc, const Node *curr_node) {
+void KPS::update_path_quantities(Walker &walker, long double t_esc, const Node *curr_node) {
 
     if (debug) cout << "kps> updating path quantities" << endl;
     if (ktn_kps==nullptr) throw exception();
