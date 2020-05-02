@@ -2,7 +2,7 @@
 
 ## Compilation
 Compile with:
-g++ -std=c++17 discotress.cpp kmc\_methods.cpp std\_kmc.cpp dimredn.cpp we\_kmc.cpp ffs\_kmc.cpp neus\_kmc.cpp milestoning.cpp kps.cpp mcamc.cpp keywords.cpp ktn.cpp -o discotress -fopenmp
+g++ -std=c++17 discotress.cpp kmc\_methods.cpp we\_kmc.cpp ffs\_kmc.cpp neus\_kmc.cpp milestoning.cpp kps.cpp mcamc.cpp keywords.cpp ktn.cpp -o discotress -fopenmp
 
 ## Input files 
 
@@ -48,7 +48,7 @@ Format: bin ID (indexed from 0) / no. of direct A<-B paths for which bin is visi
 -    **NEUS**    \- non-equilibrium umbrella sampling
 -    **MILES**   \- milestoning
 
-**TRAJ** _str_
+**TRAJ** _str_  
   mandatory, method for propagating individual kMC trajectories. Options:  
 -    **BKL**     \- Bortz-Kalos-Lebowitz \(aka n-fold way\) rejection-free algorithm \(ie standard kMC\)
 -    **KPS**     \- kinetic path sampling algorithm
@@ -119,7 +119,7 @@ Format: bin ID (indexed from 0) / no. of direct A<-B paths for which bin is visi
   when used in conjunction with TRAJ KPS, specifies that a committor function calculation is performed instead of a kPS simulation. The _communities.dat_ file must specify precisely three communities; the A set, the B set, and the set of all other nodes ("I"). The committor functions are written to the files "committor\_AB.dat" and "committor\_BA.dat" (for A<-B and B<-A directions, respectively). Note that the committor functions determined by this method are for each node, and the calculation is _exact_ and _deterministic_ (unlike calculation of the committor probabilities for the bins from simulation data, cf the **BINSFILE** keyword). **NABPATHS** must be set to some arbitrary number >0.
 
 **TINTVL** _double_  
-  ignored if **TRAJ KPS** (in which case trajectory data is written after every basin escape). Time interval for dumping trajectory information. Negative value (default) indicates that trajectory data is not written. Zero value specifies that all trajectory information is written.
+  ignored if **TRAJ KPS** (in which case trajectory data is written after every basin escape). Time interval for dumping trajectory information. Negative value (default) indicates that trajectory data is not written. In this case, start and end nodes are still written to files walker.0.y.dat. Zero value specifies that all trajectory information is written.
 
 **SEED** _int_  
   seed for the random number generators (default 19).

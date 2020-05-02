@@ -58,6 +58,7 @@ class Wrapper_Method {
     int maxit;                  // another termination condition; the maximum number of iterations of the enhanced kMC method
     int seed;                   // seed for random number generator
     bool debug;                 // debug printing on/off
+    vector<Walker> walkers;     // list of active trajectories (walkers) on the network
     void (*kmc_func)(Walker&);  // function pointer to kMC algorithm for propagating the trajectory   
 
     public:
@@ -117,7 +118,6 @@ class WE_KMC : public Wrapper_Method {
 
     private:
 
-    vector<Walker> walkers; // list of active trajectories (walkers) on the network
     int nwalkers;
     double tau; // time interval between checking communities and resampling trajectories
     double adaptminrate;
@@ -190,7 +190,7 @@ class BKL : public Traj_Method {
 
     public:
 
-    BKL();
+    BKL(const Network&,double,int);
     ~BKL();
     void kmc_iteration(const Network&,Walker&);
     static void bkl(Walker&);

@@ -101,7 +101,7 @@ void KPS::do_bkl_steps(const Network &ktn, Walker &walker) {
     while (n_kmcit<kpskmcsteps || ktn.comm_sizes[epsilon->comm_id]>nelim) { // quack
         BKL::bkl(walker);
         alpha=walker.curr_node;
-        walker.visited[alpha->bin_id]=true;
+        if (ktn.nbins>0) walker.visited[alpha->bin_id]=true;
         if (alpha->comm_id!=epsilon->comm_id) this->dump_traj(walker,walker.curr_node->aorb==-1,false);
         if (alpha->aorb==-1 || alpha->aorb==1) return; // note that the BKL iterations are terminated if the simulation returns to B
         epsilon=alpha;

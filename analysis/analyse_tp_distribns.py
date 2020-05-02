@@ -109,4 +109,4 @@ if __name__=="__main__":
     print "MFPT: ", mfpt
     print "standard error: ", calc_hist_obj.calc_stderr(mfpt)
     # plot
-    calc_hist_obj.plot_hist(hist_arr,nxticks,nyticks,ymax)
+#    calc_hist_obj.plot_hist(hist_arr,nxticks,nyticks,ymax)

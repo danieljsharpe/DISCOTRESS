@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <omp.h>
 
 using namespace std;
 
@@ -186,6 +187,7 @@ long double Wrapper_Method::rand_unif_met(int seed) {
     return unif_real_distrib(generator);
 }
 
+/* Wrapper_Method no enhanced sampling method (ie simulate A<-B transition paths using chosen trajectory propagation method */
 STD_KMC::STD_KMC(const Network& ktn, int maxn_abpaths, int maxit, double tintvl, bool adaptivecomms, int seed) {
     cout << "std_kmc> setting up kMC simulation with no enhanced sampling wrapper method" << endl;
     // quack move this somewhere more general
@@ -201,6 +203,59 @@ STD_KMC::STD_KMC(const Network& ktn, int maxn_abpaths, int maxit, double tintvl,
 
 STD_KMC::~STD_KMC() {}
 
+/* main loop to drive a standard kMC simulation (no enhanced sampling wrapper method) */
+void STD_KMC::run_enhanced_kmc(const Network &ktn, Traj_Method &traj_method_obj) {
+
+    cout << "\nstd_kmc> beginning kMC simulation with no enhanced sampling wrapper method" << endl;
+    long double dummy_randno = Wrapper_Method::rand_unif_met(seed); // seed the generator
+    n_ab=0; n_traj=0; int n_it=1;
+    while ((n_ab<maxn_abpaths) && (n_it<=maxit)) { // if using kPS or MCAMC, algo terminates when max no of basin escapes have been simulated
+        bool donebklsteps=false;
+        traj_method_obj.kmc_iteration(ktn,walker);
+        traj_method_obj.dump_traj(walker,walker.curr_node->aorb==-1,false);
+        n_it++;
+        check_if_endpoint:
+            if (walker.curr_node->aorb==-1 || walker.curr_node->aorb==1) { // traj has reached absorbing macrostate A or has returned to B
+                update_tp_stats(walker,walker.curr_node->aorb==-1,!adaptivecomms);
+                if (walker.curr_node->aorb==-1) { // transition path, reset walker
+                    walker.reset_walker_info();
+                    walker.path_no++;
+                    traj_method_obj.reset_nodeptrs();
+                    continue;
+                } else if (ktn.nbins>0) {
+                    walker.visited[walker.curr_node->bin_id]=true;
+                }
+            }
+            if (donebklsteps) continue;
+        traj_method_obj.do_bkl_steps(ktn,walker);
+        donebklsteps=true;
+        goto check_if_endpoint;
+    }
+    cout << "\nstd_kmc> simulation terminated after " << n_it-1 << " iterations. Simulated " \
+         << n_ab << " transition paths" << endl;
+    if (!adaptivecomms) calc_tp_stats(ktn.nbins); // calc committors and transn path densities for communities and write to file
+}
+
+/* Wrapper_Method handle simulation of many short nonequilibrium trajectories, used to obtain data required for coarse-graining
+   a transition network */
+DIMREDN::DIMREDN(const Network &ktn, vector<int> ntrajsvec, double dt, int seed) {
+
+    cout << "dimredn> constructing DIMREDN class" << endl;
+    this->ntrajsvec=ntrajsvec; this->dt=dt;
+    this->seed=seed;
+    walkers.resize(ktn.ncomms);
+}
+
+DIMREDN::~DIMREDN() {}
+
+/* main loop to simulate many short nonequilibrium trajectories of fixed length starting from each community in turn */
+void DIMREDN::run_enhanced_kmc(const Network &ktn, Traj_Method &traj_method_obj) {
+
+    cout << "dimredn> beginning simulation to obtain trajectory data for dimensionality reduction" << endl;
+    for (int i=0;i<ntrajsvec.size();i++) {
+        cout << "i: " << ntrajsvec[i] << endl; }
+}
+
 Traj_Method::Traj_Method() {}
 Traj_Method::~Traj_Method() {}
 
@@ -211,9 +266,21 @@ void Traj_Method::dump_traj(Walker &walker, bool transnpath, bool newpath) {
     }
 }
 
-/* dummy wrapper so that BKL class is consistent with other Traj_Method classes */
+BKL::BKL(const Network &ktn, double tintvl, int seed) {
+    this->tintvl=tintvl; this->seed=seed;
+}
+
+BKL::~BKL() {}
+
+/* effectively a dummy wrapper function to bkl() function so that BKL class is consistent with other Traj_Method classes */
 void BKL::kmc_iteration(const Network &ktn, Walker &walker) {
+    if (walker.curr_node==nullptr) {
+        Wrapper_Method::get_initial_node(ktn,walker,seed);
+        walker.dump_walker_info(false,true,true);
+        next_tintvl=tintvl;
+    }
     BKL::bkl(walker);
+    if (ktn.nbins>0) walker.visited[walker.curr_node->bin_id]=true;
 }
 
 /* function to take a single kMC step using the BKL algorithm */

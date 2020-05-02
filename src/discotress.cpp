@@ -88,8 +88,25 @@ Discotress::Discotress () {
     }
     if (my_kws.dumpwaittimes) ktn->dumpwaittimes();
     if (my_kws.initcond) ktn->set_initcond(init_probs);
-    cout << "discotress> setting up the simulator object..." << endl;
-    // set up wrapper enhanced sampling class
+    cout << "discotress> setting up the object to propagate individual trajectories..." << endl;
+    if (my_kws.traj_method==1) {            // BKL algorithm
+        ktn->get_cum_branchprobs();
+        // wrapper_method_obj->set_standard_kmc(&BKL::bkl);
+        BKL *bkl_ptr = new BKL(*ktn,my_kws.tintvl,my_kws.seed);
+        traj_method_obj = bkl_ptr;
+    } else if (my_kws.traj_method==2) {     // kPS algorithm
+        if (my_kws.branchprobs) { ktn->get_tmtx_branch();
+        } else if (!my_kws.transnprobs) { ktn->get_tmtx_lin(my_kws.tau); }
+        KPS *kps_ptr = new KPS(*ktn,my_kws.nelim,my_kws.tau,my_kws.kpskmcsteps, \
+                    my_kws.adaptivecomms,my_kws.adaptminrate,my_kws.pfold,my_kws.tintvl,my_kws.seed,my_kws.debug);
+        traj_method_obj = kps_ptr;
+    } else if (my_kws.traj_method==3) {     // MCAMC algorithm
+        MCAMC *mcamc_ptr = new MCAMC(*ktn,my_kws.kpskmcsteps,my_kws.meanrate);
+        traj_method_obj = mcamc_ptr;
+    } else {
+        throw exception(); // a trajectory method object must be set
+    }
+    cout << "discotress> setting up the enhanced sampling wrapper object..." << endl;
     if (my_kws.wrapper_method==0) {        // special wrapper to simulate many short nonequilibrium trajectories for dimensionality reduction
         DIMREDN *dimredn_ptr = new DIMREDN(*ktn,ntrajsvec,my_kws.dt,my_kws.seed);
         wrapper_method_obj = dimredn_ptr;
@@ -105,20 +122,6 @@ Discotress::Discotress () {
     } else if (my_kws.wrapper_method==5) { // milestoning simulation
     } else {
         throw exception(); // a wrapper method object must be set
-    }
-    // set up method to propagate individual trajectories
-    if (my_kws.traj_method==1) {            // BKL algorithm
-        ktn->get_cum_branchprobs();
-        wrapper_method_obj->set_standard_kmc(&BKL::bkl);
-    } else if (my_kws.traj_method==2) {     // kPS algorithm
-        if (my_kws.branchprobs) { ktn->get_tmtx_branch();
-        } else if (!my_kws.transnprobs) { ktn->get_tmtx_lin(my_kws.tau); }
-        KPS *kps_ptr = new KPS(*ktn,my_kws.nelim,my_kws.tau,my_kws.kpskmcsteps, \
-                    my_kws.adaptivecomms,my_kws.adaptminrate,my_kws.pfold,my_kws.tintvl,my_kws.seed,my_kws.debug);
-        traj_method_obj = kps_ptr;
-    } else if (my_kws.traj_method==3) {     // MCAMC algorithm
-        MCAMC *mcamc_ptr = new MCAMC(*ktn,my_kws.kpskmcsteps,my_kws.meanrate);
-        traj_method_obj = mcamc_ptr;
     }
     if (my_kws.debug) debug=true;
     cout << "discotress> finished setting up simulation" << endl;
