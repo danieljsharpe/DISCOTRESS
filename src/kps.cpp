@@ -50,6 +50,13 @@ KPS::~KPS() {
     if (ktn_l!=nullptr) delete ktn_l; if (ktn_u!=nullptr) delete ktn_u;
 }
 
+KPS::KPS(const KPS& kps_obj) {
+    this->nelim=kps_obj.nelim; this->tau=kps_obj.tau; this->kpskmcsteps=kps_obj.kpskmcsteps;
+    this->adaptivecomms=false; this->adaptminrate=-1.; this->pfold=false;
+    this->tintvl=kps_obj.tintvl; this->seed=kps_obj.seed; this->debug=false;
+    this->basin_ids.resize(kps_obj.basin_ids.size());
+}
+
 void KPS::test_ktn(const Network &ktn) {
     cout << "debug> ktn info: no. of nodes: " << ktn.n_nodes << " no. of edges: " << ktn.n_edges << endl;
     for (int i=0;i<ktn.n_nodes;i++) {
@@ -89,22 +96,24 @@ void KPS::kmc_iteration(const Network &ktn, Walker &walker) {
     } else { // restore the graph transformed subnetwork
         ktn_kps = new Network(*ktn_kps_gt);
     }
+    epsilon=alpha; alpha=nullptr;
 }
 
 /* perform the specified number of kMC iterations, to be executed after a basin escape. The idea is to attempt
-   to move away from the transition boundary region of a communtiy before simulating another basin escape */
-void KPS::do_bkl_steps(const Network &ktn, Walker &walker) {
+   to move away from the transition boundary region of a communtiy before simulating another basin escape.
+   Optional argument dt specifies a maximum time for the walker before the loop is forced to break (default value
+   infinity), used when the dimensionality reduction wrapper method simulates trajectories of fixed length */
+void KPS::do_bkl_steps(const Network &ktn, Walker &walker, double dt) {
 
     if (adaptivecomms) return;
     int n_kmcit=0;
-    epsilon=alpha; alpha=nullptr;
-    while (n_kmcit<kpskmcsteps || ktn.comm_sizes[epsilon->comm_id]>nelim) { // quack
+    while ((n_kmcit<kpskmcsteps || ktn.comm_sizes[epsilon->comm_id]>nelim) && walker.t<dt) { // quack force BKL simulation to continue if activecommunity is large
         BKL::bkl(walker);
         alpha=walker.curr_node;
         if (ktn.nbins>0) walker.visited[alpha->bin_id]=true;
-        if (alpha->comm_id!=epsilon->comm_id) this->dump_traj(walker,walker.curr_node->aorb==-1,false);
-        if (alpha->aorb==-1 || alpha->aorb==1) return; // note that the BKL iterations are terminated if the simulation returns to B
+        if (alpha->comm_id!=epsilon->comm_id) this->dump_traj(walker,walker.curr_node->aorb==-1,false); // note that traj data is not dumped unless comm changes, regardless of tintvl
         epsilon=alpha;
+        if (alpha->aorb==-1 || alpha->aorb==1) return; // note that the BKL iterations are terminated if the simulation returns to B
         n_kmcit++;
     }
 }

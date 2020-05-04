@@ -46,7 +46,7 @@ class Wrapper_Method {
 
     protected:
 
-    int maxn_abpaths;           // algorithm terminates when this number of A-B paths have been successfully sampled
+    int maxn_abpaths;           // algorithm terminates when this number of A<-B transition paths have been successfully sampled
     int n_ab;                   // number of successfully simulated A<-B transition paths
     int n_traj;                 // total number of B<-B or A<-B paths simulated
     double tintvl;              // time interval for dumping trajectory data
@@ -65,7 +65,7 @@ class Wrapper_Method {
 
     Wrapper_Method();
     virtual ~Wrapper_Method();
-    virtual void run_enhanced_kmc(const Network&,Traj_Method&)=0; // pure virtual function
+    virtual void run_enhanced_kmc(const Network&,Traj_Method*)=0; // pure virtual function
     static Node *get_initial_node(const Network&, Walker&,int); // sample an initial node
     void set_standard_kmc(void(*)(Walker&)); // function to set the kmc_std_method
     static vector<int> find_comm_onthefly(const Network&,const Node*,double,int); // find a community on-the-fly based on max allowed rate and size
@@ -95,7 +95,7 @@ class DIMREDN : public Wrapper_Method {
     
     DIMREDN(const Network&,vector<int>,double,int);
     ~DIMREDN();
-    void run_enhanced_kmc(const Network&,Traj_Method&);
+    void run_enhanced_kmc(const Network&,Traj_Method*);
 };
 
 /* no wrapper enhanced sampling class, simply propagates the dynamics of trajectories using the chosen method */
@@ -110,7 +110,7 @@ class STD_KMC : public Wrapper_Method {
 
     STD_KMC(const Network&,int,int,double,bool,int);
     ~STD_KMC();
-    void run_enhanced_kmc(const Network&,Traj_Method&);
+    void run_enhanced_kmc(const Network&,Traj_Method*);
 };
 
 /* Weighted ensemble kMC */
@@ -128,7 +128,7 @@ class WE_KMC : public Wrapper_Method {
 
     WE_KMC(const Network&,int,int,long double,double,bool,int,bool);
     ~WE_KMC();
-    void run_enhanced_kmc(const Network&,Traj_Method&);
+    void run_enhanced_kmc(const Network&,Traj_Method*);
 };
 
 /* Forward flux sampling kMC */
@@ -136,13 +136,12 @@ class FFS_KMC : public Wrapper_Method {
 
     private:
 
-    vector<Walker> walkers;
 
     public:
 
     FFS_KMC(const Network&);
     ~FFS_KMC();
-    void run_enhanced_kmc(const Network&,Traj_Method&);
+    void run_enhanced_kmc(const Network&,Traj_Method*);
 };
 
 /* non-equilibrium umbrella sampling kMC */
@@ -152,7 +151,7 @@ class NEUS_KMC : public Wrapper_Method {
 
     NEUS_KMC(const Network&);
     ~NEUS_KMC();
-    void run_enhanced_kmc(const Network&,Traj_Method&);
+    void run_enhanced_kmc(const Network&,Traj_Method*);
 };
 
 /* milestoning kMC */
@@ -162,7 +161,7 @@ class MILES_KMC : public Wrapper_Method {
 
     MILES_KMC(const Network&);
     ~MILES_KMC();
-    void run_enhanced_kmc(const Network&,Traj_Method&);
+    void run_enhanced_kmc(const Network&,Traj_Method*);
 };
 
 /* abstract class for methods to propagate individual trajectories */
@@ -170,18 +169,21 @@ class Traj_Method {
 
     protected:
 
-    double tintvl;              // time interval for dumping trajectory data
+//    double tintvl;              // time interval for dumping trajectory data
     double next_tintvl;         // next time for dumping trajectory data
     int seed;
     bool debug;
 
     public:
 
+    double tintvl;
+
     Traj_Method();
     virtual ~Traj_Method();
+    Traj_Method(const Traj_Method&);
     void dump_traj(Walker&,bool,bool); // call function to dump walker info and then update next_tintvl;
     virtual void kmc_iteration(const Network&,Walker&)=0;
-    virtual void do_bkl_steps(const Network&,Walker&) {} // dummy function overridden in KPS and MCAMC to do BKL steps after a basin escape
+    virtual void do_bkl_steps(const Network&,Walker&,double=numeric_limits<double>::infinity()) {} // dummy function overridden in KPS and MCAMC to do BKL steps after a basin escape
     virtual void reset_nodeptrs() {} // dummy function overridden in KPS and MCAMC to reset basin and absorbing node pointers when A is hit
 };
 
@@ -231,7 +233,7 @@ class KPS : public Traj_Method {
     vector<pair<Node*,Edge*>> undo_gt_iteration(Node*);
     void update_path_quantities(Walker&,long double,const Node*);
     Network *get_subnetwork(const Network&,bool);
-    void do_bkl_steps(const Network&,Walker&);
+    void do_bkl_steps(const Network&,Walker&,double=numeric_limits<double>::infinity());
     void reset_nodeptrs();
     void calc_pfold(const Network&);
 
@@ -239,6 +241,7 @@ class KPS : public Traj_Method {
 
     KPS(const Network&,int,long double,int,bool,double,bool,double,int,bool);
     ~KPS();
+    KPS(const KPS&);
     void kmc_iteration(const Network&,Walker&);
     static long double calc_gt_factor(Node*);
     static void reset_kmc_hop_counts(Network&);
@@ -256,13 +259,14 @@ class MCAMC : public Traj_Method {
 
     int kpskmcsteps; // number of kMC steps to run after each MCAMC trapping basin escape trajectory sampled
     bool meanrate; // if True, use (approximate) mean rate method, else use (exact) FPTA method
+    const Node *alpha=nullptr, *epsilon=nullptr; // final and initial microstates of current escape trajectory
 
     public:
 
     MCAMC(const Network&,int,bool);
     ~MCAMC();
     void kmc_iteration(const Network&,Walker&);
-    void do_bkl_steps(const Network&,Walker&);
+    void do_bkl_steps(const Network&,Walker&,double=numeric_limits<double>::infinity());
     void reset_nodeptrs();
 };
 

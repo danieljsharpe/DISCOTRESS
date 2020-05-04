@@ -52,7 +52,7 @@ struct Keywords {
     /* choice of enhanced sampling kinetic Monte Carlo method to wrap simulation of a trajectory ensemble */
     int wrapper_method=-1; // note that there is no default, to run kMC with no enhanced sampling this must be set explicitly
     string nodesafile, nodesbfile; // names of the files containing the IDs of the A and B nodes, respectively
-    int nA=-1, nB=-1;          // number of nodes in A and B sets, respectively
+    int nA=0, nB=0;          // number of nodes in A and B sets, respectively
 
     // optional arguments pertaining to enhanced sampling methods
     long double tau=-1.;     // "TAU" time interval between checking communities (WE-kMC)
