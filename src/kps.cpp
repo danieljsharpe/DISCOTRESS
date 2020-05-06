@@ -110,7 +110,7 @@ void KPS::do_bkl_steps(const Network &ktn, Walker &walker, double dt) {
     while ((n_kmcit<kpskmcsteps || ktn.comm_sizes[epsilon->comm_id]>nelim) && walker.t<dt) { // quack force BKL simulation to continue if activecommunity is large
         BKL::bkl(walker);
         alpha=walker.curr_node;
-        if (ktn.nbins>0) walker.visited[alpha->bin_id]=true;
+        if (ktn.nbins>0 && !ktn.nodesB.empty()) walker.visited[alpha->bin_id]=true;
         if (alpha->comm_id!=epsilon->comm_id) this->dump_traj(walker,walker.curr_node->aorb==-1,false); // note that traj data is not dumped unless comm changes, regardless of tintvl
         epsilon=alpha;
         if (alpha->aorb==-1 || alpha->aorb==1) return; // note that the BKL iterations are terminated if the simulation returns to B
@@ -186,11 +186,11 @@ void KPS::setup_basin_sets(const Network &ktn, Walker &walker, bool get_new_basi
     eliminated_nodes.clear(); nodemap.clear();
     eliminated_nodes.reserve(!(N_B>nelim)?N_B:nelim);
     if (debug) {
+        cout << "\nthread no.: " << omp_get_thread_num() << endl;
         cout << "number of eliminated nodes: " << (!(N_B>nelim)?N_B:nelim) << endl;
         cout << "number of nodes in basin: " << N_B << " number of absorbing boundary nodes: " << N_c << endl;
         cout << "number of edges of subnetwork: " << N_e << endl;
         cout << "epsilon: " << epsilon->node_id << endl;
-        cout << "currently occupied community id: " << epsilon->comm_id << endl;
     }
 }
 
@@ -769,14 +769,14 @@ void KPS::update_path_quantities(Walker &walker, long double t_esc, const Node *
         if ((!ktn_kps->branchprobs || basin_ids[node.node_id-1]==2) && node.h>0) {
             walker.k += node.h;
             walker.p += static_cast<long double>(node.h)*log(node.t);
-            if (ktn_kps->ncomms>0) walker.visited[node.bin_id]=true;
+            if (ktn_kps->ncomms>0 && !walker.visited.empty()) walker.visited[node.bin_id]=true;
         }
         Edge *edgeptr = node.top_from;
         while (edgeptr!=nullptr) {
             if (edgeptr->deadts || edgeptr->h==0) { edgeptr=edgeptr->next_from; continue; }
             walker.k += edgeptr->h;
             walker.p += static_cast<long double>(edgeptr->h)*log(edgeptr->t);
-            if (ktn_kps->ncomms>0) walker.visited[edgeptr->to_node->bin_id]=true;
+            if (ktn_kps->ncomms>0 && !walker.visited.empty()) walker.visited[edgeptr->to_node->bin_id]=true;
             if (ktn_kps->branchprobs) { // can also calculate contribution to the entropy flow
                 walker.s += static_cast<long double>(edgeptr->h)*(edgeptr->rev_edge->k-edgeptr->k); }
             edgeptr=edgeptr->next_from;

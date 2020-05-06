@@ -133,8 +133,7 @@ struct Network {
         const vector<int>& = {});
 
     vector<Node> nodes;
-    vector<Edge> edges; // note that this vector contains two entries for forward and reverse transitions for
-                        // each pair of nodes
+    vector<Edge> edges; // note that this vector contains two entries for forward and reverse transitions for each pair of nodes
 
     struct Ktn_exception {
         const char * what () const throw () { return "ktn> thrown Ktn exception, terminating"; }
@@ -145,7 +144,7 @@ struct Network {
     int n_dead=0; // number of dead/deleted edges
     int ncomms; // total number of communities
     int nbins=0; // total number of bins
-    set<Node*> nodesA, nodesB; // A and B endpoint nodes (A<-B)
+    set<const Node*> nodesA, nodesB; // A and B endpoint nodes (A<-B)
     vector<double> init_probs; // initial probabilities for nodes in B
     vector<int> comm_sizes; // number of nodes in each community
     bool branchprobs=false; // transition probabilities of Edges are branching probabilities (Y/N)
@@ -156,7 +155,7 @@ struct Network {
     inline Network& operator=(const Network& other_network) {
         cout << "called assignment operator for Network" << endl;
         n_nodes=other_network.n_nodes; n_edges=other_network.n_edges;
-        n_dead=other_network.n_dead; ncomms=other_network.ncomms;
+        n_dead=other_network.n_dead; ncomms=other_network.ncomms; nbins=other_network.nbins;
         branchprobs=other_network.branchprobs; tau=other_network.tau;
         return *this;
     }

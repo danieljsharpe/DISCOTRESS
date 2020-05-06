@@ -13,6 +13,7 @@ Classes and functions for handling enhanced kinetic Monte Carlo simulations and 
 #include <typeinfo>
 #include <iomanip>
 #include <fstream>
+#include <omp.h>
 
 using namespace std;
 
@@ -66,7 +67,7 @@ class Wrapper_Method {
     Wrapper_Method();
     virtual ~Wrapper_Method();
     virtual void run_enhanced_kmc(const Network&,Traj_Method*)=0; // pure virtual function
-    static Node *get_initial_node(const Network&, Walker&,int); // sample an initial node
+    static const Node *get_initial_node(const Network&, Walker&,int); // sample an initial node
     void set_standard_kmc(void(*)(Walker&)); // function to set the kmc_std_method
     static vector<int> find_comm_onthefly(const Network&,const Node*,double,int); // find a community on-the-fly based on max allowed rate and size
     void update_tp_stats(Walker&,bool,bool); // update the transition path statistics, depends on if the path is a transn path or is unreactive
@@ -169,18 +170,17 @@ class Traj_Method {
 
     protected:
 
-//    double tintvl;              // time interval for dumping trajectory data
+    double tintvl;              // time interval for dumping trajectory data
     double next_tintvl;         // next time for dumping trajectory data
     int seed;
     bool debug;
 
     public:
 
-    double tintvl;
-
     Traj_Method();
     virtual ~Traj_Method();
     Traj_Method(const Traj_Method&);
+    virtual Traj_Method* clone() {}
     void dump_traj(Walker&,bool,bool); // call function to dump walker info and then update next_tintvl;
     virtual void kmc_iteration(const Network&,Walker&)=0;
     virtual void do_bkl_steps(const Network&,Walker&,double=numeric_limits<double>::infinity()) {} // dummy function overridden in KPS and MCAMC to do BKL steps after a basin escape
@@ -194,6 +194,8 @@ class BKL : public Traj_Method {
 
     BKL(const Network&,double,int);
     ~BKL();
+    BKL(const BKL&);
+    BKL* clone() { return new BKL(*this); } // NB this calls copy constructor for BKL
     void kmc_iteration(const Network&,Walker&);
     static void bkl(Walker&);
 };
@@ -242,6 +244,7 @@ class KPS : public Traj_Method {
     KPS(const Network&,int,long double,int,bool,double,bool,double,int,bool);
     ~KPS();
     KPS(const KPS&);
+    KPS* clone() { return new KPS(*this); }
     void kmc_iteration(const Network&,Walker&);
     static long double calc_gt_factor(Node*);
     static void reset_kmc_hop_counts(Network&);
@@ -265,6 +268,8 @@ class MCAMC : public Traj_Method {
 
     MCAMC(const Network&,int,bool);
     ~MCAMC();
+    MCAMC(const MCAMC&);
+    MCAMC* clone() { return new MCAMC(*this); }
     void kmc_iteration(const Network&,Walker&);
     void do_bkl_steps(const Network&,Walker&,double=numeric_limits<double>::infinity());
     void reset_nodeptrs();

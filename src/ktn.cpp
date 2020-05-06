@@ -423,10 +423,10 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
 //        if (ktn.nodesA.size()!=ktn.comm_sizes[(*ktn.nodesA.begin())->comm_id] || \
             ktn.nodesB.size()!=ktn.comm_sizes[(*ktn.nodesB.begin())->comm_id]) throw Ktn_exception();
         int commA=(*ktn.nodesA.begin())->comm_id;
-        for (set<Node*>::iterator it_set=ktn.nodesA.begin();it_set!=ktn.nodesA.end();++it_set) {
+        for (set<const Node*>::iterator it_set=ktn.nodesA.begin();it_set!=ktn.nodesA.end();++it_set) {
             if ((*it_set)->comm_id!=commA) throw Ktn_exception(); }
         int commB=(*ktn.nodesB.begin())->comm_id;
-        for (set<Node*>::iterator it_set=ktn.nodesB.begin();it_set!=ktn.nodesB.end();++it_set) {
+        for (set<const Node*>::iterator it_set=ktn.nodesB.begin();it_set!=ktn.nodesB.end();++it_set) {
             if ((*it_set)->comm_id!=commB) throw Ktn_exception(); }
     }
     cout << "ktn> finished setting up transition network data structure" << endl;

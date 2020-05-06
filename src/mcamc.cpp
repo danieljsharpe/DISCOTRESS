@@ -39,6 +39,8 @@ void MCAMC::kmc_iteration(const Network &ktn, Walker &walker) {
     cout << "mcamc> running a single iteration of MCAMC" << endl;
 }
 
+MCAMC::MCAMC(const MCAMC& mcamc_obj) {}
+
 /* perform specified number of BKL iterations after a basin escape */
 void MCAMC::do_bkl_steps(const Network &ktn, Walker &walker, double dt) {
 

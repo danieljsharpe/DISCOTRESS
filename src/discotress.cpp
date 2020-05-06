@@ -66,31 +66,31 @@ Discotress::Discotress () {
         if (my_kws.binfile!=nullptr) { bins = Read_files::read_one_col<int>(my_kws.binfile);
         } else { bins = communities; } // copy community vector to bin vector
     }
-    vector<int> nodesA, nodesB;
+    vector<int> nodesAvec, nodesBvec;
     vector<int> ntrajsvec;
     if (my_kws.wrapper_method!=0) { // simulating the A<-B TPE, read in info on A and B sets
-        nodesA = Read_files::read_one_col<int>(my_kws.nodesafile.c_str());
-        nodesB = Read_files::read_one_col<int>(my_kws.nodesbfile.c_str());
-        if (!((nodesA.size()==my_kws.nA) || (nodesB.size()==my_kws.nB))) throw exception();
+        nodesAvec = Read_files::read_one_col<int>(my_kws.nodesafile.c_str());
+        nodesBvec = Read_files::read_one_col<int>(my_kws.nodesbfile.c_str());
+        if (!((nodesAvec.size()==my_kws.nA) || (nodesBvec.size()==my_kws.nB))) throw exception();
         cout << "discotress> simulating " << my_kws.nabpaths << " transition paths. Max. no. of iterations: " << my_kws.maxit << endl;
     } else { // simulating trajectories to obtain data for coarse-graining, read in info on number of trajs for each comm
         ntrajsvec = Read_files::read_one_col<int>(my_kws.ntrajsfile);
         if (ntrajsvec.size()!=my_kws.ncomms) throw exception();
-        cout << "discotress> simulating trajectories of time length: " << my_kws.dt << " for dimensionality reduction" << endl;
+        cout << "discotress> simulating trajectories of time length: " << my_kws.dt << "   for dimensionality reduction" << endl;
     }
-    cout << "discotress> no. of nodes in A: " << nodesA.size() << "  no. of nodes in B: " << nodesB.size() \
-         << "  no. of communities: " << my_kws.ncomms << endl;
     vector<double> init_probs;
     if (my_kws.initcond) init_probs = Read_files::read_one_col<double>(my_kws.initcondfile);
     omp_set_num_threads(my_kws.nthreads);
     cout << "discotress> setting up the transition network data structure..." << endl;
     ktn = new Network(my_kws.n_nodes,my_kws.n_edges);
     if (my_kws.commsfile!=nullptr) {
-        Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesA,nodesB,my_kws.transnprobs, \
+        Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesAvec,nodesBvec,my_kws.transnprobs, \
             my_kws.tau,my_kws.ncomms,communities,bins);
     } else {
-        Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesA,nodesB,my_kws.transnprobs,my_kws.tau,my_kws.ncomms);
+        Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesAvec,nodesBvec,my_kws.transnprobs,my_kws.tau,my_kws.ncomms);
     }
+    cout << "discotress> no. of nodes: " << ktn->n_nodes << "   in A: " << ktn->nodesA.size() << " in B: " << ktn->nodesB.size() << endl;
+    cout << "discotress> no. of edges: " << ktn->n_edges << "      no. of communities: " << ktn->ncomms << endl;
     if (my_kws.dumpwaittimes) ktn->dumpwaittimes();
     if (my_kws.initcond) ktn->set_initcond(init_probs);
     cout << "discotress> setting up the object to propagate individual trajectories..." << endl;

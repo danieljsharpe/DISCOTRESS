@@ -25,7 +25,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <iostream>
 #include <fstream>
 #include <iomanip>
-#include <omp.h>
 
 using namespace std;
 
@@ -65,21 +64,20 @@ Wrapper_Method::~Wrapper_Method() {}
 /* sample an initial node (from the B set) and set this node as the starting node of the walker.
    In dimensionality reduction calculations, the B set is not specified. Therefore, instead, a set of nodes constituting the
    community with the same ID as the walker ID is constructed. */
-Node *Wrapper_Method::get_initial_node(const Network &ktn, Walker &walker, int seed) {
+const Node *Wrapper_Method::get_initial_node(const Network &ktn, Walker &walker, int seed) {
 
-    Node *node_b=nullptr; // sampled starting node
+    const Node *node_b=nullptr; // sampled starting node
     double pi_B = -numeric_limits<double>::infinity(); // (log) occupation probability of all nodes in initial set B
-    vector<pair<Node*,double>> b_probs;
-    set<Node*> nodesinB;
+    vector<pair<const Node*,double>> b_probs;
+    set<const Node*> nodesinB;
     if (!ktn.nodesB.empty()) {
         nodesinB = ktn.nodesB;
     } else {
-        nodesinB = ktn.nodesB;
-//        for (int i=0;i<ktn.n_nodes;i++) {
-//            if (ktn.nodes[i].comm_id=walker.walker_id) nodesinB.insert(&ktn.nodes[i]); }
+        for (int i=0;i<ktn.n_nodes;i++) {
+            if (ktn.nodes[i].comm_id==walker.walker_id) nodesinB.insert(&ktn.nodes[i]); }
     }
     b_probs.resize(nodesinB.size()); // accumulated probs of selecting starting node
-    set<Node*>::iterator it_set = nodesinB.begin();
+    set<const Node*>::iterator it_set = nodesinB.begin();
     if (nodesinB.size()==1) { // there is only one node in the starting set
         node_b=*it_set;
         pi_B=(*it_set)->pi;
@@ -104,7 +102,7 @@ Node *Wrapper_Method::get_initial_node(const Network &ktn, Walker &walker, int s
     }
     if (node_b==nullptr) { // if there was more than one node in B, sample the initial node
         double rand_no = Wrapper_Method::rand_unif_met(seed);
-        vector<pair<Node*,double>>::iterator it_vec = b_probs.begin();
+        vector<pair<const Node*,double>>::iterator it_vec = b_probs.begin();
         while (it_vec!=b_probs.end()) {
             if ((*it_vec).second>=rand_no) { node_b=(*it_vec).first; break; }
             it_vec++; }
@@ -113,7 +111,7 @@ Node *Wrapper_Method::get_initial_node(const Network &ktn, Walker &walker, int s
     if (node_b==nullptr) throw exception();
     walker.curr_node=&(*node_b);
     walker.p=node_b->pi-pi_B; // factor in path probability corresponding to initial occupation of node
-    if (ktn.nbins>0) walker.visited[node_b->bin_id]=true;
+    if (ktn.nbins>0 && !ktn.nodesB.empty()) walker.visited[node_b->bin_id]=true;
     return node_b;
 }
 
@@ -266,33 +264,24 @@ DIMREDN::~DIMREDN() {}
 void DIMREDN::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {
 
     cout << "dimredn> beginning simulation to obtain trajectory data for dimensionality reduction" << endl;
-/*
-    for (Walker &walker: walkers) {
-        cout << walker.walker_id << endl;
-    }
-*/
-//    #pragma omp parallel for default(shared) firstprivate(traj_method_obj)
+    #pragma omp parallel for default(shared)
     for (int i=0;i<ktn.ncomms;i++) {
-//        #pragma omp critical
-        {
-        cout << "thread no.: " << omp_get_thread_num() << "  walker_id: " << walkers[i].walker_id << "  path_no: " << walkers[i].path_no \
-             << "  ktn.n_nodes: " << ktn.n_nodes << "  ID of 10th node: " << ktn.nodes[9].node_id << endl;
-        cout << "    tintvl: " << traj_method_obj->tintvl << endl;
-        }
+        Traj_Method *traj_method_local = traj_method_obj->clone(); // copy required within thread because reference types cannot be made firstprivate
+        #pragma omp critical
+        cout << "dimredn> thread no.: " << omp_get_thread_num() << "  handling walker: " << walkers[i].walker_id << endl;
         while (walkers[i].path_no<ntrajsvec[walkers[i].walker_id]) {
-            cout << "    path_no: " << walkers[i].path_no << endl;
             while (walkers[i].t<=dt) {
-                cout << "      t: " << walkers[i].t << endl;
-                traj_method_obj->kmc_iteration(ktn,walkers[i]);
-                cout << "        done kMC iteration" << endl;
-                traj_method_obj->dump_traj(walkers[i],walkers[i].curr_node->aorb==-1,false);
+                traj_method_local->kmc_iteration(ktn,walkers[i]);
+                traj_method_local->dump_traj(walkers[i],false,false);
                 if (walkers[i].t>dt) break;
-                traj_method_obj->do_bkl_steps(ktn,walkers[i]);
+                traj_method_local->do_bkl_steps(ktn,walkers[i]);
             }
             walkers[i].reset_walker_info();
             walkers[i].path_no++;
-            traj_method_obj->reset_nodeptrs();
+            traj_method_local->reset_nodeptrs();
         }
+        delete traj_method_local;
+        cout << "dimredn> thread no.: " << omp_get_thread_num() << " finished handling relevant walker" << endl;
     }
 }
 
@@ -313,15 +302,17 @@ BKL::BKL(const Network &ktn, double tintvl, int seed) {
 
 BKL::~BKL() {}
 
+BKL::BKL(const BKL& bkl_obj) {}
+
 /* effectively a dummy wrapper function to bkl() function so that BKL class is consistent with other Traj_Method classes */
 void BKL::kmc_iteration(const Network &ktn, Walker &walker) {
     if (walker.curr_node==nullptr) {
-        Wrapper_Method::get_initial_node(ktn,walker,seed);
+        const Node *dummy_node = Wrapper_Method::get_initial_node(ktn,walker,seed);
         walker.dump_walker_info(false,true,true);
         next_tintvl=tintvl;
     }
     BKL::bkl(walker);
-    if (ktn.nbins>0) walker.visited[walker.curr_node->bin_id]=true;
+    if (ktn.nbins>0 && !ktn.nodesB.empty()) walker.visited[walker.curr_node->bin_id]=true;
 }
 
 /* function to take a single kMC step using the BKL algorithm */

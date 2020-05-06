@@ -139,7 +139,7 @@ Keywords read_keywords(const char *kw_file) {
     cout << "keywords> finished reading keywords" << endl;
 
     // check necessary keywords and compatability
-    if (my_kws.n_nodes<=0 || my_kws.n_edges<=0 || ((my_kws.nA<=0 || my_kws.nB<=0) && my_kws.wrapper_method==0)) {
+    if (my_kws.n_nodes<=0 || my_kws.n_edges<=0 || ((my_kws.nA<=0 || my_kws.nB<=0) && my_kws.wrapper_method!=0)) {
         cout << "keywords> error: transition network parameters not set correctly" << endl; exit(EXIT_FAILURE); }
     if ((my_kws.nabpaths<=0 && my_kws.ntrajsfile==nullptr) || (my_kws.dt<=0. && my_kws.wrapper_method==0) || my_kws.maxit<=0) {
         cout << "keywords> error: termination condition not specified correctly" << endl; exit(EXIT_FAILURE); }
