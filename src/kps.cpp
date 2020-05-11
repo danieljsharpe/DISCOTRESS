@@ -32,7 +32,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 using namespace std;
 
 KPS::KPS(const Network &ktn, int nelim, long double tau, int kpskmcsteps, \
-         bool adaptivecomms, double adaptminrate, bool pfold, double tintvl, int seed, bool debug) {
+         bool adaptivecomms, double adaptminrate, bool pfold) {
 
     cout << "kps> kPS parameters:\n  lag time: " << tau << " \tmax. no. of eliminated nodes: " \
          << nelim << "\n  no. of basins: " << ktn.ncomms << " \tno. of kMC steps after kPS iteration: " << kpskmcsteps \
@@ -40,7 +40,6 @@ KPS::KPS(const Network &ktn, int nelim, long double tau, int kpskmcsteps, \
          << "\tmin. allowed rate in adaptive communities: " << adaptminrate << endl;
     this->nelim=nelim; this->tau=tau; this->kpskmcsteps=kpskmcsteps;
     this->adaptivecomms=adaptivecomms; this->adaptminrate=adaptminrate; this->pfold=pfold;
-    this->tintvl=tintvl; this->seed=seed; this->debug=debug;
     basin_ids.resize(ktn.n_nodes);
 }
 
@@ -53,7 +52,7 @@ KPS::~KPS() {
 KPS::KPS(const KPS& kps_obj) {
     this->nelim=kps_obj.nelim; this->tau=kps_obj.tau; this->kpskmcsteps=kps_obj.kpskmcsteps;
     this->adaptivecomms=false; this->adaptminrate=-1.; this->pfold=false;
-    this->tintvl=kps_obj.tintvl; this->seed=kps_obj.seed; this->debug=false;
+    this->tintvl=kps_obj.tintvl; this->dumpintvls=kps_obj.dumpintvls; this->seed=kps_obj.seed; this->debug=false;
     this->basin_ids.resize(kps_obj.basin_ids.size());
 }
 
@@ -86,7 +85,6 @@ void KPS::kmc_iteration(const Network &ktn, Walker &walker) {
         calc_pfold(ktn); return; }
     Node *dummy_alpha = sample_absorbing_node();
     alpha = &ktn.nodes[dummy_alpha->node_id-1];
-    walker.curr_node=&(*alpha);
     long double t_esc = iterative_reverse_randomisation();
     update_path_quantities(walker,t_esc,alpha);
     delete ktn_kps; ktn_kps=nullptr;
@@ -103,15 +101,16 @@ void KPS::kmc_iteration(const Network &ktn, Walker &walker) {
    to move away from the transition boundary region of a communtiy before simulating another basin escape.
    Optional argument dt specifies a maximum time for the walker before the loop is forced to break (default value
    infinity), used when the dimensionality reduction wrapper method simulates trajectories of fixed length */
-void KPS::do_bkl_steps(const Network &ktn, Walker &walker, double dt) {
+void KPS::do_bkl_steps(const Network &ktn, Walker &walker, long double maxtime) {
 
     if (adaptivecomms) return;
     int n_kmcit=0;
-    while ((n_kmcit<kpskmcsteps || ktn.comm_sizes[epsilon->comm_id]>nelim) && walker.t<dt) { // quack force BKL simulation to continue if activecommunity is large
-        BKL::bkl(walker);
+    while ((n_kmcit<kpskmcsteps || ktn.comm_sizes[epsilon->comm_id]>nelim) && walker.t<maxtime) { // quack force BKL simulation to continue if active community is large
+        BKL::bkl(walker,seed);
         alpha=walker.curr_node;
         if (ktn.nbins>0 && !ktn.nodesB.empty()) walker.visited[alpha->bin_id]=true;
-        if (alpha->comm_id!=epsilon->comm_id) this->dump_traj(walker,walker.curr_node->aorb==-1,false); // note that traj data is not dumped unless comm changes, regardless of tintvl
+        if (alpha->comm_id!=epsilon->comm_id || walker.t>maxtime) { // traj data is not dumped unless comm changes, regardless of tintvl, except if (DIMREDN) max time is exceeded
+            this->dump_traj(walker,walker.curr_node->aorb==-1,false,maxtime); }
         epsilon=alpha;
         if (alpha->aorb==-1 || alpha->aorb==1) return; // note that the BKL iterations are terminated if the simulation returns to B
         n_kmcit++;
@@ -134,7 +133,7 @@ void KPS::setup_basin_sets(const Network &ktn, Walker &walker, bool get_new_basi
         }
     } else if (!epsilon) { // first iteration of A<-B path, need to set starting node
         epsilon = Wrapper_Method::get_initial_node(ktn,walker,seed);
-        walker.dump_walker_info(false,true,true);
+        walker.dump_walker_info(true,0.,walker.curr_node,dumpintvls);
         next_tintvl=tintvl;
     }
     if (!get_new_basin) return; // the basin is not to be updated
@@ -763,6 +762,7 @@ void KPS::update_path_quantities(Walker &walker, long double t_esc, const Node *
 
     if (debug) cout << "kps> updating path quantities" << endl;
     if (ktn_kps==nullptr) throw exception();
+    walker.prev_node = walker.curr_node;
     walker.curr_node = &(*curr_node);
     walker.t += t_esc;
     for (const auto &node: ktn_kps->nodes) {

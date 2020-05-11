@@ -17,8 +17,8 @@ A host of simulation algorithms for the above purposes are built in to the softw
 
 ## How do I get started?
 
-**Requirements:** C++17
-**Dependencies:** None!
+**Requirements:** C++17  
+**Dependencies:** OpenMP
 
 Please see the "documentation" file for a list of keywords that may be included in the input file "input.kmc", a description of the other input/output files and their formats, and the compilation command.
 
@@ -30,6 +30,9 @@ Tutorials are forthcoming.
 
 If you use the DISCOTRESS software in your publication, please cite the following articles:
 - [1] D. J. Sharpe and D. J. Wales, _Efficient and exact sampling of transition path ensembles on Markovian networks_, J. Chem. Phys. (submitted).
+
+Please cite relevant articles describing particular functionality of DISCOTRESS if you use these features:
+- [2] D. J. Sharpe and D. J. Wales, _Dimensionality reduction of Markovian transition networks using efficient dynamical simulations_, (in preparation).
 
 More publications for DISCOTRESS are forthcoming.
 

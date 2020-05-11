@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <random>
 #include <queue>
 #include <string>
+#include <cmath>
 #include <iostream>
 #include <fstream>
 #include <iomanip>
@@ -30,20 +31,23 @@ using namespace std;
 
 Walker::~Walker() {}
 
-/* write trajectory and path quantities to file */
-void Walker::dump_walker_info(bool transnpath, bool newpath, bool writetraj) {
+/* write trajectory data to file */
+void Walker::dump_walker_info(bool newpath, long double time, const Node *the_node, bool intvl) {
     if (curr_node==nullptr) throw exception();
-    if (writetraj) {
     ofstream walker_f;
     string walker_fname="walker."+to_string(this->walker_id)+"."+to_string(this->path_no)+".dat";
     if (!newpath) { walker_f.open(walker_fname,ios_base::app);
     } else { walker_f.open(walker_fname,ios_base::trunc); }
     walker_f.setf(ios::right,ios::adjustfield); walker_f.setf(ios::fixed,ios::floatfield); // walker_f.fill('x');
-    walker_f << setw(7) << curr_node->node_id << setw(7) << curr_node->comm_id << setw(30) << k;
+    walker_f << setw(7) << the_node->node_id << setw(7) << the_node->comm_id << setw(30) << k;
     walker_f.precision(10); // walker_f.width(18);
-    walker_f << setw(60) << t << setw(35) << p << setw(20) << s << endl;
-    }
-    if (!transnpath) return;
+    walker_f << setw(60) << time;
+    if (!intvl) walker_f << setw(35) << p << setw(20) << s; // when printing walker info at current walker time, also print path prob and entropy flow
+    walker_f << endl;
+}
+
+/* append transition path quantities to file recording distributions */
+void Walker::dump_tp_distribn() {
     ofstream tpdistrib_f;
     tpdistrib_f.open("tp_distribns.dat",ios_base::app);
     tpdistrib_f.setf(ios::right,ios::adjustfield); tpdistrib_f.setf(ios::fixed,ios::floatfield);
@@ -54,7 +58,7 @@ void Walker::dump_walker_info(bool transnpath, bool newpath, bool writetraj) {
 /* reset path quantities */
 void Walker::reset_walker_info() {
     k=0; p=-numeric_limits<long double>::infinity(); t=0.; s=0.;
-    curr_node=nullptr;
+    prev_node=nullptr; curr_node=nullptr;
 }
 
 Wrapper_Method::Wrapper_Method() {}
@@ -110,6 +114,7 @@ const Node *Wrapper_Method::get_initial_node(const Network &ktn, Walker &walker,
     }
     if (node_b==nullptr) throw exception();
     walker.curr_node=&(*node_b);
+    walker.prev_node=walker.curr_node;
     walker.p=node_b->pi-pi_B; // factor in path probability corresponding to initial occupation of node
     if (ktn.nbins>0 && !ktn.nodesB.empty()) walker.visited[node_b->bin_id]=true;
     return node_b;
@@ -246,7 +251,7 @@ void STD_KMC::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj)
 
 /* Wrapper_Method handle simulation of many short nonequilibrium trajectories, used to obtain data required for coarse-graining
    a transition network */
-DIMREDN::DIMREDN(const Network &ktn, vector<int> ntrajsvec, double dt, int seed) {
+DIMREDN::DIMREDN(const Network &ktn, vector<int> ntrajsvec, long double dt, int seed) {
 
     cout << "dimredn> constructing DIMREDN class" << endl;
     this->ntrajsvec=ntrajsvec; this->dt=dt;
@@ -272,9 +277,9 @@ void DIMREDN::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj)
         while (walkers[i].path_no<ntrajsvec[walkers[i].walker_id]) {
             while (walkers[i].t<=dt) {
                 traj_method_local->kmc_iteration(ktn,walkers[i]);
-                traj_method_local->dump_traj(walkers[i],false,false);
+                traj_method_local->dump_traj(walkers[i],false,false,dt);
                 if (walkers[i].t>dt) break;
-                traj_method_local->do_bkl_steps(ktn,walkers[i]);
+                traj_method_local->do_bkl_steps(ktn,walkers[i],dt);
             }
             walkers[i].reset_walker_info();
             walkers[i].path_no++;
@@ -289,15 +294,27 @@ Traj_Method::Traj_Method() {}
 Traj_Method::~Traj_Method() {}
 Traj_Method::Traj_Method(const Traj_Method& traj_method_obj) {}
 
-void Traj_Method::dump_traj(Walker &walker, bool transnpath, bool newpath) {
-    walker.dump_walker_info(transnpath,newpath,transnpath || newpath || tintvl==0. || (tintvl>0. && walker.t>=next_tintvl));
+/* set protected members of Traj_Method class */
+void Traj_Method::setup_traj_method(double tintvl, bool dumpintvls, int seed, bool debug) {
+    this->tintvl=tintvl; this->dumpintvls=dumpintvls; this->seed=seed; this->debug=debug;
+}
+
+void Traj_Method::dump_traj(Walker &walker, bool transnpath, bool newpath, long double maxtime) {
+    if (!transnpath && !newpath && tintvl>0. && walker.t<next_tintvl && walker.t<maxtime) return;
+    if (dumpintvls && (walker.t>=next_tintvl || walker.t>maxtime)) {
+        walker.dump_walker_info(newpath,next_tintvl,walker.prev_node,true);
+    }
+    if (transnpath || !dumpintvls || walker.t>maxtime) {
+        walker.dump_walker_info(newpath,walker.t,walker.curr_node,dumpintvls);
+    }
+    if (transnpath) { walker.dump_tp_distribn(); return; }
+    if (walker.t>maxtime) return;
     if (tintvl>0. && walker.t>=next_tintvl) { // reached time interval for dumping trajectory data, calc next interval
         while (walker.t>=next_tintvl) next_tintvl+=tintvl;
     }
 }
 
-BKL::BKL(const Network &ktn, double tintvl, int seed) {
-    this->tintvl=tintvl; this->seed=seed;
+BKL::BKL(const Network &ktn) {
 }
 
 BKL::~BKL() {}
@@ -308,17 +325,17 @@ BKL::BKL(const BKL& bkl_obj) {}
 void BKL::kmc_iteration(const Network &ktn, Walker &walker) {
     if (walker.curr_node==nullptr) {
         const Node *dummy_node = Wrapper_Method::get_initial_node(ktn,walker,seed);
-        walker.dump_walker_info(false,true,true);
+        walker.dump_walker_info(true,0.,walker.curr_node,dumpintvls);
         next_tintvl=tintvl;
     }
-    BKL::bkl(walker);
+    BKL::bkl(walker,seed);
     if (ktn.nbins>0 && !ktn.nodesB.empty()) walker.visited[walker.curr_node->bin_id]=true;
 }
 
 /* function to take a single kMC step using the BKL algorithm */
-void BKL::bkl(Walker &walker) {
+void BKL::bkl(Walker &walker, int seed) {
     // propagate trajectory
-    double rand_no = Wrapper_Method::rand_unif_met(); // random number used to select transition
+    double rand_no = Wrapper_Method::rand_unif_met(seed); // random number used to select transition
     Edge *edgeptr = walker.curr_node->top_from;
     const Node *old_node = walker.curr_node;
     long double prev_cum_p = 0.; // previous accumulated branching probability
@@ -333,10 +350,11 @@ void BKL::bkl(Walker &walker) {
         }
         edgeptr = edgeptr->next_from;
     }
+    walker.prev_node = walker.curr_node;
     walker.curr_node = edgeptr->to_node; // advance trajectory
     // update path quantities
     walker.k++; // dynamical activity (no. of steps)
     walker.p += log(p); // log path probability
-    walker.t += -(1./exp(old_node->k_esc))*log(Wrapper_Method::rand_unif_met()); // sample transition time
+    walker.t += -(1./exp(old_node->k_esc))*log(Wrapper_Method::rand_unif_met(seed)); // sample transition time
     walker.s += edgeptr->rev_edge->k-edgeptr->k; // entropy flow
 }

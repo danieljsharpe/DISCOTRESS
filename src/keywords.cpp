@@ -82,7 +82,7 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.ntrajsfile = new char[vecstr[1].size()+1];
             copy(vecstr[1].begin(),vecstr[1].end(),my_kws.ntrajsfile);
             my_kws.ntrajsfile[vecstr[1].size()]='\0';
-            my_kws.dt=stod(vecstr[2]);
+            my_kws.dt=stold(vecstr[2]);
         } else if (vecstr[0]=="TAU") {
             my_kws.tau=stold(vecstr[1]);
         } else if (vecstr[0]=="TINTVL") {
@@ -124,6 +124,8 @@ Keywords read_keywords(const char *kw_file) {
         } else if (vecstr[0]=="NTHREADS") {
             my_kws.nthreads=stoi(vecstr[1]);
             assert(my_kws.nthreads>0);
+        } else if (vecstr[0]=="DUMPINTVLS") {
+            my_kws.dumpintvls=true;
         } else if (vecstr[0]=="DEBUG") {
             my_kws.debug=true;
         } else if (vecstr[0]=="SEED") {
@@ -145,6 +147,8 @@ Keywords read_keywords(const char *kw_file) {
         cout << "keywords> error: termination condition not specified correctly" << endl; exit(EXIT_FAILURE); }
     if (my_kws.commsfile!=nullptr && my_kws.ncomms<=1) {
         cout << "keywords> error: there must be at least two communities in the specified partitioning" << endl; exit(EXIT_FAILURE); }
+    if (my_kws.dumpintvls && my_kws.tintvl<=0.) {
+        cout << "keywords> error: must specify valid time interval for dumping trajectory data" << endl; exit(EXIT_FAILURE); }
     if (my_kws.traj_method<=0 || my_kws.wrapper_method<0) {
         cout << "keywords> error: must specify both a wrapper method and a trajectory method" << endl; exit(EXIT_FAILURE); }
     if (my_kws.transnprobs && my_kws.traj_method!=2) {
@@ -152,7 +156,7 @@ Keywords read_keywords(const char *kw_file) {
     // check specification of wrapper method is valid
     if (my_kws.wrapper_method==0) { // special wrapper method to propagate trajectories required for dimensionality reduction
         if (my_kws.ntrajsfile==nullptr || my_kws.commsfile==nullptr || my_kws.meanrate || my_kws.initcondfile || \
-            my_kws.traj_method==1 || my_kws.nA!=0 || my_kws.nB!=0 ) {
+            my_kws.traj_method==1 || my_kws.nA!=0 || my_kws.nB!=0 || !my_kws.dumpintvls) {
             cout << "keywords> error: dimensionality reduction simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
     } else if (my_kws.wrapper_method==1) { // standard simulation of A<-B transition paths
 

@@ -58,7 +58,7 @@ struct Keywords {
     long double tau=-1.;     // "TAU" time interval between checking communities (WE-kMC)
                              //       lag time at which transition probability matrix is evaluated (kPS)
     double tintvl=-1.;       // "TINTVL" time interval for writing trajectory data
-    double dt=-1.;           // cf "DIMREDUCTION" time length for all trajectories, initialised from each community in turn
+    long double dt=-1.;      // cf "DIMREDUCTION" time length for all trajectories, initialised from each community in turn
     int ncomms=-1;           // number of communities on the network, eg no. of communities for resampling (WE-kMC) or trapping basins (kPS)
     int nbins=-1;            // number of bins on the network, used to calculate transition path statistics
     int nthreads=omp_get_max_threads(); // number of threads to use in parallel calculations
@@ -79,6 +79,7 @@ struct Keywords {
     bool branchprobs=false;  // "BRANCHPROBS" transition probabilities are calculated as branching probabilities
     bool pfold=false;        // "PFOLD" specifies that a committor function calculation is to be performed instead of a kPS simulation
     bool meanrate=false;     // "MEANRATE" use the approximate mean rate method in MCAMC, instead of the exact FPTA method (default)
+    bool dumpintvls=false;   // "DUMPINTVLS" trajectory data is dumped at fixed time intervals
     bool debug=false;
     int seed=17;
     bool dumpwaittimes=false; // "DUMPWAITTIMES" print waiting times for nodes to file "meanwaitingtimes.dat"

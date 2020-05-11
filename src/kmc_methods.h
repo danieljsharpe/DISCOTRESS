@@ -26,7 +26,8 @@ struct Walker {
 
     explicit Walker()=default;
     ~Walker();
-    void dump_walker_info(bool,bool,bool=true); // write path quantities to files
+    void dump_walker_info(bool,long double,const Node*,bool=false); // write trajectory data to file
+    void dump_tp_distribn(); // append transition path quantities to distributions file
     void reset_walker_info();
 
     int walker_id; // ID of walker in set of trajectories
@@ -38,7 +39,7 @@ struct Walker {
     long double p; // (log) path probability
     long double t; // path time (stochastically sampled)
     long double s; // entropy flow along path
-    const Node *curr_node; // pointer to node currently occupied by the walker
+    const Node *prev_node, *curr_node; // pointers to nodes previously and currently occupied by the walker
     vector<bool> visited;  // element is true when the corresponding bin has been visited along the trajectory
 };
 
@@ -90,11 +91,11 @@ class DIMREDN : public Wrapper_Method {
     private:
 
     vector<int> ntrajsvec; // vector containing number of trajectories to simulate starting from each community in turn
-    double dt;             // length in time of each trajectory
+    long double dt;        // length in time of each trajectory
 
     public:
     
-    DIMREDN(const Network&,vector<int>,double,int);
+    DIMREDN(const Network&,vector<int>,long double,int);
     ~DIMREDN();
     void run_enhanced_kmc(const Network&,Traj_Method*);
 };
@@ -172,6 +173,7 @@ class Traj_Method {
 
     double tintvl;              // time interval for dumping trajectory data
     double next_tintvl;         // next time for dumping trajectory data
+    bool dumpintvls;            // specifies that trajectory data is to be dumped at the time intervals
     int seed;
     bool debug;
 
@@ -181,9 +183,10 @@ class Traj_Method {
     virtual ~Traj_Method();
     Traj_Method(const Traj_Method&);
     virtual Traj_Method* clone() {}
-    void dump_traj(Walker&,bool,bool); // call function to dump walker info and then update next_tintvl;
+    void setup_traj_method(double,bool,int,bool) ; // set the protected members of the Traj_Method class
+    void dump_traj(Walker&,bool,bool,long double=numeric_limits<long double>::infinity()); // call function to dump walker info and then update next_tintvl;
     virtual void kmc_iteration(const Network&,Walker&)=0;
-    virtual void do_bkl_steps(const Network&,Walker&,double=numeric_limits<double>::infinity()) {} // dummy function overridden in KPS and MCAMC to do BKL steps after a basin escape
+    virtual void do_bkl_steps(const Network&,Walker&,long double=numeric_limits<long double>::infinity()) {} // dummy function overridden in KPS and MCAMC to do BKL steps after a basin escape
     virtual void reset_nodeptrs() {} // dummy function overridden in KPS and MCAMC to reset basin and absorbing node pointers when A is hit
 };
 
@@ -192,12 +195,12 @@ class BKL : public Traj_Method {
 
     public:
 
-    BKL(const Network&,double,int);
+    BKL(const Network&);
     ~BKL();
     BKL(const BKL&);
     BKL* clone() { return new BKL(*this); } // NB this calls copy constructor for BKL
     void kmc_iteration(const Network&,Walker&);
-    static void bkl(Walker&);
+    static void bkl(Walker&,int);
 };
 
 /* kinetic path sampling (kPS)
@@ -235,13 +238,13 @@ class KPS : public Traj_Method {
     vector<pair<Node*,Edge*>> undo_gt_iteration(Node*);
     void update_path_quantities(Walker&,long double,const Node*);
     Network *get_subnetwork(const Network&,bool);
-    void do_bkl_steps(const Network&,Walker&,double=numeric_limits<double>::infinity());
+    void do_bkl_steps(const Network&,Walker&,long double=numeric_limits<long double>::infinity());
     void reset_nodeptrs();
     void calc_pfold(const Network&);
 
     public:
 
-    KPS(const Network&,int,long double,int,bool,double,bool,double,int,bool);
+    KPS(const Network&,int,long double,int,bool,double,bool);
     ~KPS();
     KPS(const KPS&);
     KPS* clone() { return new KPS(*this); }
@@ -271,7 +274,7 @@ class MCAMC : public Traj_Method {
     MCAMC(const MCAMC&);
     MCAMC* clone() { return new MCAMC(*this); }
     void kmc_iteration(const Network&,Walker&);
-    void do_bkl_steps(const Network&,Walker&,double=numeric_limits<double>::infinity());
+    void do_bkl_steps(const Network&,Walker&,long double=numeric_limits<long double>::infinity());
     void reset_nodeptrs();
 };
 

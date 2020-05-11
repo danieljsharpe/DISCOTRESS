@@ -42,7 +42,7 @@ void MCAMC::kmc_iteration(const Network &ktn, Walker &walker) {
 MCAMC::MCAMC(const MCAMC& mcamc_obj) {}
 
 /* perform specified number of BKL iterations after a basin escape */
-void MCAMC::do_bkl_steps(const Network &ktn, Walker &walker, double dt) {
+void MCAMC::do_bkl_steps(const Network &ktn, Walker &walker, long double maxtime) {
 
     cout << "mcamc> doing BKL steps after a basin escape" << endl;
 }
