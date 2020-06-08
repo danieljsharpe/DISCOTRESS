@@ -86,17 +86,20 @@ Format: bin ID (indexed from 0) / no. of direct A<-B paths for which bin is visi
   Name of the file containing the definition of bins (indexed from 0) for calculating transition path statistics (ie committor functions and transition path probability densities), and no. of bins.
 
 **TAU** _long double_  
-  mandatory if **WRAPPER WE** or if **TRAJ KPS** and not **BRANCHPROBS**.
-  If WE, tau is the time between resampling trajectories. If KPS, tau is the lag time at which the linear transition probability matrices are estimated (or provided, if **TRANSNPROBS**).
+  mandatory if not **BRANCHPROBS**.
+  **TAU** is the lag time at which the linear transition probability matrices are estimated (or provided, if **TRANSNPROBS**). If **TRANSPROBS** and **DISCRETETIME** are specified, then **TAU** is the lag time of the discrete-time Markov chain.
 
 **KPSKMCSTEPS** _int_  
-  optional. If **TRAJ** is **KPS** or **MCAMC**, specifies the number of standard BKL steps to be performed after a kPS or MCAMC escape from a trapping basin. Default is 0 (pure kPS (or MCAMC), no kMC steps). However, this is not the recommended value. If using **TRAJ KPS** or **MCAMC**, for most systems, great gains in simulation efficiency will be achieved by setting **KPSKMCSTEPS** to an appropriate nonzero value. This is because many metastable systems will feature transition regions between metastable states. Therefore, after each basin escape, the trajectory will likely flicker between the two basins. Rather than simulate expensive kPS or MCAMC basin escape iterations for these trivial recrossings, it is much more efficient to perform standard BKL steps. Requires **BRANCHPROBS** to be set. Ignored if **ADAPTIVECOMMS**.
+  optional. If **TRAJ** is **KPS** or **MCAMC**, specifies the number of standard BKL steps to be performed after a kPS or MCAMC escape from a trapping basin. Default is 0 (pure kPS (or MCAMC), no kMC steps). However, this is not the recommended value. If using **TRAJ KPS** or **TRAJ MCAMC**, for most systems, great gains in simulation efficiency will be achieved by setting **KPSKMCSTEPS** to an appropriate nonzero value. This is because many metastable systems will feature transition regions between metastable states. Therefore, after each basin escape, the trajectory will likely flicker between the two basins. Rather than simulate expensive kPS or MCAMC basin escape iterations for these trivial recrossings, it is much more efficient to perform standard BKL steps. Note that this keyword does not require **BRANCHPROBS** to be set, and can also be used with **DISCRETETIME**. Ignored if **ADAPTIVECOMMS**.
 
 **MEANRATE**  
-  optional. If **TRAJ MCAMC**, the calculation uses the approximate mean rate method, as opposed to the default exact first passage time analysis (FPTA) method
+  optional. If **TRAJ MCAMC**, the calculation uses the approximate mean rate method, as opposed to the default exact first passage time analysis (FPTA) method.
 
 **NELIM** _int_  
   mandatory if **TRAJ KPS**. The maximum number of nodes that are to be eliminated from the current trapping basin. If **NELIM** exceeds the number of nodes in the largest community, then all states of any trapping basin are always eliminated. Note that **NELIM** determines the number of transition matrices stored for the active subnetwork, and therefore the choice of this keyword (along with the sizes of communities) can strongly affect memory usage.
+
+**TAURE** _double_
+  mandatory if **WRAPPER WE**, the time between resampling trajectories
 
 **DIMREDUCTION** _str_ _long double_  
   mandatory if **WRAPPER DIMREDN**, which initialises a special wrapper class that does not perform the usual code function, which is to simulate A<-B transition paths, and instead instructs the program to simulate many short trajectories starting from each community, each of length in time equal to the float argument. These trajectories are printed to files _walker.x.y.dat_, where _x_ is the ID of the community, and _y_ is the iteration number for that community. Trajectory information is written to files whenever a trajectory transitions to a new community. The total number of trajectories that are to be simulated starting from each community is listed in the file given as the string arg. This calculation is parallelised, using a number of threads equal to **NTHREADS** (defaults to maximum number of threads available). This calculation is compatible with two algorithms to propagate individual trajectories: **TRAJ KPS**, and **TRAJ MCAMC** (without **MEANRATE**). The communities of nodes must be specified (**COMMSFILE** keyword). **NABPATHS**, **MAXIT**, and **BINFILE** keywords are ignored. This setup is incompatible with specification of an initial condition via the **INITCONDFILE** keyword, and with the **NODESAFILE** and **NODESBFILE** keywords. Instead, a local equilibrium within the starting community is assumed as the initial probability distribution for each trajectory. Note that **WRAPPER DIMREDN** requires both this keyword and **DUMPINTVLS** to be set.
@@ -109,14 +112,17 @@ Format: bin ID (indexed from 0) / no. of direct A<-B paths for which bin is visi
 **NTHREADS** _int_  
   number of threads to use in parallel calculations. Defaults to max. no. of threads available.
 
-**BRANCHPROBS**  
-  the transition probabilities are calculated as the branching probabilities. Mandatory if **TRAJ** is **BKL**, or is **KPS** or **MCAMC** and **KPSKMCSTEPS** is specified.
+**BRANCHPROBS**
+  indicates that the transition probabilities in **TRAJ BKL** or **TRAJ KPS** are branching probabilities (ie continuous-time, and with non-uniform waiting times for nodes) calculated from the transition rates. Not compatible with **TRAJ MCAMC**. If **BRANCHPROBS** is not specified, then the default setup is that the linearised transition probability matrix at lag time **TAU** will be calculated (ie continuous-time, with uniform waiting times for all nodes). Alternatively, transition probabilities can be read in with the **TRANSNPROBS** keyword.
 
 **TRANSNPROBS**  
-  the edge weights read in from the file *ts_weights.dat* are transition probabilities, not rates (compatible with **TRAJ KPS** only). The self-loop transition probabilities for nodes are inferred to be the remainders from unity for transitions from each node.
+  the edge weights read in from the file *ts_weights.dat* are transition probabilities at lag time **TAU** (ie the waiting times of all nodes are uniform), not rates. Note that this keyword is compatible with all **TRAJ** options. The self-loop transition probabilities for nodes are inferred to be the remainders from unity for transitions from each node. The transition probability matrix is taken to be linearised (ie continuous-time, with uniform waiting times [equal to **TAU**] for all nodes) by default. To simulate a discrete-time Markov chain, specify the **DISCRETETIME** keyword.
+
+**DISCRETETIME**
+  when set with the **TRANSNPROBS** keyword, the edge weights read from *ts_weights.dat* are taken to be the transition probabilities of a discrete-time Markov chain (by default, the transition probabilities are assumed to be continuous-time). **TAU** is then the constant lag time (ie all transitions are associated with time **TAU**, rather than sampling from an exponential distribution). Note that this keyword is compatible with all **TRAJ** options.
 
 **PFOLD**  
-  when used in conjunction with TRAJ KPS, specifies that a committor function calculation is performed instead of a kPS simulation. The _communities.dat_ file must specify precisely three communities; the A set, the B set, and the set of all other nodes ("I"). The committor functions are written to the files "committor\_AB.dat" and "committor\_BA.dat" (for A<-B and B<-A directions, respectively). Note that the committor functions determined by this method are for each node, and the calculation is _exact_ and _deterministic_ (unlike calculation of the committor probabilities for the bins from simulation data, cf the **BINSFILE** keyword). **NABPATHS** must be set to some arbitrary number >0.
+  when used in conjunction with **TRAJ KPS**, specifies that a committor function calculation is performed instead of a kPS simulation. The _communities.dat_ file must specify precisely three communities; the A set, the B set, and the set of all other nodes ("I"). The committor functions are written to the files "committor\_AB.dat" and "committor\_BA.dat" (for A<-B and B<-A directions, respectively). Note that the committor functions determined by this method are for each node, and the calculation is _exact_ and _deterministic_ (unlike calculation of the committor probabilities for the bins from simulation data, cf the **BINSFILE** keyword). **NABPATHS** must be set to some arbitrary number >0.
 
 **TINTVL** _double_  
   ignored if **TRAJ KPS** (in which case trajectory data is written after every basin escape). Time interval for dumping trajectory information. Negative value (default) indicates that trajectory data is not written. In this case, start and end nodes are still written to files walker.0.y.dat. Zero value specifies that all trajectory information is written.
@@ -128,7 +134,7 @@ Format: bin ID (indexed from 0) / no. of direct A<-B paths for which bin is visi
   seed for the random number generators (default 19).
 
 **DEBUG**  
-  enable extra printing and tests to aid debugging
+  enable extra printing and tests to aid debugging.
 
 **DUMPWAITTIMES**  
   dump the mean waiting times for nodes to the file _meanwaitingtimes.dat_

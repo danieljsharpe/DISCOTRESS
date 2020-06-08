@@ -1,5 +1,22 @@
 /*
-Classes and functions for handling enhanced kinetic Monte Carlo simulations and propagating the trajectories
+File containing classes and functions for handling enhanced kinetic Monte Carlo simulations and propagating the trajectories
+
+This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous- and discrete-time Markov chains (CTMCs and DTMCs).
+Copyright (C) 2020 Daniel J. Sharpe
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 */
 
 #ifndef __KMC_METHODS_H_INCLUDED__
@@ -67,6 +84,7 @@ class Wrapper_Method {
 
     Wrapper_Method();
     virtual ~Wrapper_Method();
+    void setup_wrapper_method(int,double,int,int,bool); // set the protected members of the Wrapper_Method class
     virtual void run_enhanced_kmc(const Network&,Traj_Method*)=0; // pure virtual function
     static const Node *get_initial_node(const Network&, Walker&,int); // sample an initial node
     void set_standard_kmc(void(*)(Walker&)); // function to set the kmc_std_method
@@ -95,7 +113,7 @@ class DIMREDN : public Wrapper_Method {
 
     public:
     
-    DIMREDN(const Network&,vector<int>,long double,int);
+    DIMREDN(const Network&,vector<int>,long double);
     ~DIMREDN();
     void run_enhanced_kmc(const Network&,Traj_Method*);
 };
@@ -110,7 +128,7 @@ class STD_KMC : public Wrapper_Method {
 
     public:
 
-    STD_KMC(const Network&,int,int,double,bool,int);
+    STD_KMC(const Network&,bool);
     ~STD_KMC();
     void run_enhanced_kmc(const Network&,Traj_Method*);
 };
@@ -121,14 +139,14 @@ class WE_KMC : public Wrapper_Method {
     private:
 
     int nwalkers;
-    double tau; // time interval between checking communities and resampling trajectories
+    double taure; // time interval between checking communities and resampling trajectories
     double adaptminrate;
 
     void we_resampling();
 
     public:
 
-    WE_KMC(const Network&,int,int,long double,double,bool,int,bool);
+    WE_KMC(const Network&,double,bool);
     ~WE_KMC();
     void run_enhanced_kmc(const Network&,Traj_Method*);
 };
@@ -171,6 +189,7 @@ class Traj_Method {
 
     protected:
 
+    bool discretetime;          // transition probabilities represent a discrete-time Markov chain
     double tintvl;              // time interval for dumping trajectory data
     double next_tintvl;         // next time for dumping trajectory data
     bool dumpintvls;            // specifies that trajectory data is to be dumped at the time intervals
@@ -195,12 +214,12 @@ class BKL : public Traj_Method {
 
     public:
 
-    BKL(const Network&);
+    BKL(const Network&,bool);
     ~BKL();
     BKL(const BKL&);
     BKL* clone() { return new BKL(*this); } // NB this calls copy constructor for BKL
     void kmc_iteration(const Network&,Walker&);
-    static void bkl(Walker&,int);
+    static void bkl(Walker&,bool,int);
 };
 
 /* kinetic path sampling (kPS)
@@ -244,7 +263,7 @@ class KPS : public Traj_Method {
 
     public:
 
-    KPS(const Network&,int,long double,int,bool,double,bool);
+    KPS(const Network&,bool,int,long double,int,bool,double,bool);
     ~KPS();
     KPS(const KPS&);
     KPS* clone() { return new KPS(*this); }
@@ -269,7 +288,7 @@ class MCAMC : public Traj_Method {
 
     public:
 
-    MCAMC(const Network&,int,bool);
+    MCAMC(const Network&,bool,int,bool);
     ~MCAMC();
     MCAMC(const MCAMC&);
     MCAMC* clone() { return new MCAMC(*this); }

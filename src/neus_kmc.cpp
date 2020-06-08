@@ -7,7 +7,7 @@ A. Dickson and A. Warmflash and A. R. Dinner, J. Chem. Phys. 131, 154104 (2009).
 A. Dickson and A. R. Dinner, Annu. Rev. Phys. Chem. 61, 441-459 (2010).
 E. Vanden-Eijnden and M. Venturoli, J. Chem. Phys. 131, 044120 (2009).
 
-This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous time Markov chains (CTMCs).
+This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous- and discrete-time Markov chains (CTMCs and DTMCs).
 Copyright (C) 2020 Daniel J. Sharpe
 
 This program is free software: you can redistribute it and/or modify

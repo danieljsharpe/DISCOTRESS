@@ -1,7 +1,7 @@
 /*
 Custom data structure for representing a Markovian transition network
 
-This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous time Markov chains (CTMCs).
+This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous- and discrete-time Markov chains (CTMCs and DTMCs).
 Copyright (C) 2020 Daniel J. Sharpe
 
 This program is free software: you can redistribute it and/or modify
@@ -41,7 +41,7 @@ struct Edge {
     long double t; // transition probability
     double j; // net flux
     long double dt; // change in transition probability (used in kPS)
-    bool deadts=false; // indicates TS only linked to one minimum or is otherwise deleted
+    bool deadts=false; // indicates TS only linked to one node ("dangling TS") or is otherwise deleted
     Node *to_node=nullptr;
     Node *from_node=nullptr;
     Edge *next_to=nullptr;

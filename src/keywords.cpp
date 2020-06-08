@@ -1,7 +1,7 @@
 /*
 functions to read in keywords
 
-This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous time Markov chains (CTMCs).
+This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous- and discrete-time Markov chains (CTMCs and DTMCs).
 Copyright (C) 2020 Daniel J. Sharpe
 
 This program is free software: you can redistribute it and/or modify
@@ -115,10 +115,14 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.meanrate=true;
         } else if (vecstr[0]=="NELIM") {
             my_kws.nelim=stoi(vecstr[1]);
+        } else if (vecstr[0]=="TAURE") {
+            my_kws.taure=stod(vecstr[1]);
         } else if (vecstr[0]=="PFOLD") {
             my_kws.pfold=true;
         } else if (vecstr[0]=="TRANSNPROBS") {
             my_kws.transnprobs=true;
+        } else if (vecstr[0]=="DISCRETETIME") {
+            my_kws.discretetime=true;
         } else if (vecstr[0]=="BRANCHPROBS") {
             my_kws.branchprobs=true;
         } else if (vecstr[0]=="NTHREADS") {
@@ -151,8 +155,11 @@ Keywords read_keywords(const char *kw_file) {
         cout << "keywords> error: must specify valid time interval for dumping trajectory data" << endl; exit(EXIT_FAILURE); }
     if (my_kws.traj_method<=0 || my_kws.wrapper_method<0) {
         cout << "keywords> error: must specify both a wrapper method and a trajectory method" << endl; exit(EXIT_FAILURE); }
-    if (my_kws.transnprobs && my_kws.traj_method!=2) {
-        cout << "keywords> error: edge weights must be read in as transition rates if not using kPS" << endl; exit(EXIT_FAILURE); }
+    if ((!my_kws.branchprobs && my_kws.tau<=0.) || (my_kws.transnprobs && (my_kws.branchprobs || my_kws.tau<=0.))) {
+        cout << "keywords> error: if reading in transition probs or otherwise not using branching probs, must specify tau as lag time" << endl;
+        exit(EXIT_FAILURE); }
+    if (my_kws.discretetime && !my_kws.transnprobs) {
+        cout << "keywords> error: to simulate a DTMC, must read in weights as transition probs and set lag time" << endl; exit(EXIT_FAILURE); }
     // check specification of wrapper method is valid
     if (my_kws.wrapper_method==0) { // special wrapper method to propagate trajectories required for dimensionality reduction
         if (my_kws.ntrajsfile==nullptr || my_kws.commsfile==nullptr || my_kws.meanrate || my_kws.initcondfile || \
@@ -161,7 +168,7 @@ Keywords read_keywords(const char *kw_file) {
     } else if (my_kws.wrapper_method==1) { // standard simulation of A<-B transition paths
 
     } else if (my_kws.wrapper_method==2) { // WE simulation
-        if (my_kws.tau<=0. || (my_kws.commsfile!=nullptr && !my_kws.adaptivecomms) || \
+        if (my_kws.taure<=0. || (my_kws.commsfile!=nullptr && !my_kws.adaptivecomms) || \
             (my_kws.commstargfile!=nullptr && !my_kws.adaptivecomms) || my_kws.traj_method!=1) {
             cout << "keywords> error: WE simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
     } else if (my_kws.wrapper_method==3) { // FFS simulation
@@ -176,14 +183,14 @@ Keywords read_keywords(const char *kw_file) {
     }
     // check specification of trajectory method is valid
     if (my_kws.traj_method==1) { // BKL algorithm
-        if (!my_kws.branchprobs) {
-            cout << "keywords> error: BKL algorithm not specified correctly" << endl; exit(EXIT_FAILURE); }
+        // ...
     } else if (my_kws.traj_method==2) { // kPS algorithm
-        if ((!(my_kws.tau>0.) && !my_kws.branchprobs) || (my_kws.commsfile==nullptr && !my_kws.adaptivecomms) || my_kws.nelim<=0 || \
-            (my_kws.kpskmcsteps>0 && !my_kws.branchprobs) || (my_kws.pfold && my_kws.ncomms!=3)) {
+        if ((my_kws.commsfile==nullptr && !my_kws.adaptivecomms) || my_kws.nelim<=0 || \
+            (my_kws.pfold && my_kws.ncomms!=3)) {
             cout << "keywords> error: kPS algorithm not specified correctly" << endl; exit(EXIT_FAILURE); }
     } else if (my_kws.traj_method==3) { // MCAMC algorithm
-
+        if (my_kws.branchprobs) {
+            cout << "keywords> error: MCAMC algorithm not specified correctly" << endl; exit(EXIT_FAILURE); }
     }
 
     return my_kws;

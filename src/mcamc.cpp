@@ -4,7 +4,7 @@ M. A. Novotny, Phys. Rev. Lett. 74, 1-5 (1995).
 M. A. Novotny, Comput. Phys. Commun. 147, 659-664 (2002).
 B. Puchala, M. L. Falk and K. Garikipati, J. Chem. Phys. 132, 134104 (2010).
 
-This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous time Markov chains (CTMCs).
+This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous- and discrete-time Markov chains (CTMCs and DTMCs).
 Copyright (C) 2020 Daniel J. Sharpe
 
 This program is free software: you can redistribute it and/or modify
@@ -25,10 +25,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace std;
 
-MCAMC::MCAMC(const Network &ktn, int kpskmcsteps, bool meanrate) {
+MCAMC::MCAMC(const Network &ktn, bool discretetime, int kpskmcsteps, bool meanrate) {
 
     cout << "kps> MCAMC parameters:\n  FPTA (0) or mean rate method (1)?: " << meanrate \
          << "\n  no. of kMC steps after MCAMC iteration: " << kpskmcsteps << endl;
+    this->discretetime=discretetime;
     this->kpskmcsteps=kpskmcsteps; this->meanrate=meanrate;
 }
 

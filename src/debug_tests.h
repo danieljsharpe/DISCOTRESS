@@ -1,7 +1,7 @@
 /*
 tests and sanity checks to aid debugging
 
-This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous time Markov chains (CTMCs).
+This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous- and discrete-time Markov chains (CTMCs and DTMCs).
 Copyright (C) 2020 Daniel J. Sharpe
 
 This program is free software: you can redistribute it and/or modify

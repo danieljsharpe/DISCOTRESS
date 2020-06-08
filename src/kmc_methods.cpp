@@ -1,7 +1,7 @@
 /*
 File containing kinetic Monte Carlo simulation algorithms to propagate individual trajectories
 
-This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous time Markov chains (CTMCs).
+This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous- and discrete-time Markov chains (CTMCs and DTMCs).
 Copyright (C) 2020 Daniel J. Sharpe
 
 This program is free software: you can redistribute it and/or modify
@@ -120,6 +120,12 @@ const Node *Wrapper_Method::get_initial_node(const Network &ktn, Walker &walker,
     return node_b;
 }
 
+/* function to set the protected members of the Wrapper_Method class */
+void Wrapper_Method::setup_wrapper_method(int maxn_abpaths, double tintvl, int maxit, int seed, bool debug) {
+    this->maxn_abpaths=maxn_abpaths; this->tintvl=tintvl; this->maxit=maxit;
+    this->seed=seed; this->debug=debug;
+}
+
 /* function to set the Traj_Method member function to propagate individual trajectories */
 void Wrapper_Method::set_standard_kmc(void(*kmcfuncptr)(Walker&)) {
     kmc_func = kmcfuncptr;
@@ -202,12 +208,11 @@ long double Wrapper_Method::rand_unif_met(int seed) {
 }
 
 /* Wrapper_Method no enhanced sampling method (ie simulate A<-B transition paths using chosen trajectory propagation method */
-STD_KMC::STD_KMC(const Network& ktn, int maxn_abpaths, int maxit, double tintvl, bool adaptivecomms, int seed) {
+STD_KMC::STD_KMC(const Network& ktn, bool adaptivecomms) {
     cout << "std_kmc> setting up kMC simulation with no enhanced sampling wrapper method" << endl;
     // quack move this somewhere more general
     this->walker.accumprobs=ktn.accumprobs;
     this->adaptivecomms=adaptivecomms;
-    this->maxn_abpaths=maxn_abpaths; this->maxit=maxit; this->tintvl=tintvl; this->seed=seed;
     if (ktn.ncomms>0) {
         walker.visited.resize(ktn.nbins); fill(walker.visited.begin(),walker.visited.end(),false);
         tp_densities.resize(ktn.nbins); committors.resize(ktn.nbins);
@@ -251,7 +256,7 @@ void STD_KMC::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj)
 
 /* Wrapper_Method handle simulation of many short nonequilibrium trajectories, used to obtain data required for coarse-graining
    a transition network */
-DIMREDN::DIMREDN(const Network &ktn, vector<int> ntrajsvec, long double dt, int seed) {
+DIMREDN::DIMREDN(const Network &ktn, vector<int> ntrajsvec, long double dt) {
 
     cout << "dimredn> constructing DIMREDN class" << endl;
     this->ntrajsvec=ntrajsvec; this->dt=dt;
@@ -314,7 +319,8 @@ void Traj_Method::dump_traj(Walker &walker, bool transnpath, bool newpath, long 
     }
 }
 
-BKL::BKL(const Network &ktn) {
+BKL::BKL(const Network &ktn, bool discretetime) {
+    this->discretetime=discretetime;
 }
 
 BKL::~BKL() {}
@@ -328,33 +334,43 @@ void BKL::kmc_iteration(const Network &ktn, Walker &walker) {
         walker.dump_walker_info(true,0.,walker.curr_node,dumpintvls);
         next_tintvl=tintvl;
     }
-    BKL::bkl(walker,seed);
+    BKL::bkl(walker,discretetime,seed);
     if (ktn.nbins>0 && !ktn.nodesB.empty()) walker.visited[walker.curr_node->bin_id]=true;
 }
 
 /* function to take a single kMC step using the BKL algorithm */
-void BKL::bkl(Walker &walker, int seed) {
+void BKL::bkl(Walker &walker, bool discretetime, int seed) {
     // propagate trajectory
     double rand_no = Wrapper_Method::rand_unif_met(seed); // random number used to select transition
     Edge *edgeptr = walker.curr_node->top_from;
     const Node *old_node = walker.curr_node;
-    long double prev_cum_p = 0.; // previous accumulated branching probability
-    long double p; // branching probability of accepted move
-    while (edgeptr!=nullptr) { // loop over FROM edges and check random number against accumulated branching probability
+    long double prev_cum_p = 0.; // previous accumulated branching / transition probability
+    long double p; // branching / transition probability of accepted move
+    while (edgeptr!=nullptr) { // loop over FROM edges and check random number against accumulated transition probability
         if (walker.accumprobs) { // branching probability values are cumulative
             if (edgeptr->t > rand_no) { p = edgeptr->t-prev_cum_p; break; }
             prev_cum_p = edgeptr->t;
-        } else {
+        } else { // branching / transition probability values are not accumulative
             if (edgeptr->t+prev_cum_p > rand_no) { p = edgeptr->t; break; }
             prev_cum_p += edgeptr->t;
         }
         edgeptr = edgeptr->next_from;
     }
     walker.prev_node = walker.curr_node;
-    walker.curr_node = edgeptr->to_node; // advance trajectory
+    if (edgeptr!=nullptr) { // advance trajectory
+        walker.curr_node = edgeptr->to_node;
+    } else { // (for non-branching matrix) self-loop transition, node remains same
+        walker.curr_node = walker.prev_node;
+        p = walker.curr_node->t;
+    }
     // update path quantities
     walker.k++; // dynamical activity (no. of steps)
     walker.p += log(p); // log path probability
-    walker.t += -(1./exp(old_node->k_esc))*log(Wrapper_Method::rand_unif_met(seed)); // sample transition time
-    walker.s += edgeptr->rev_edge->k-edgeptr->k; // entropy flow
+    if (edgeptr!=nullptr) walker.s += edgeptr->rev_edge->k-edgeptr->k; // entropy flow
+    // sample transition time
+    if (!discretetime) { // continuous-time with non-uniform (branching) or uniform (linearised transn prob mtx) waiting times for nodes
+        walker.t += -(1./exp(old_node->k_esc))*log(Wrapper_Method::rand_unif_met(seed)); // recall for linearised transn prob mtx, exp(k_esc) should have been set to 1./tau
+    } else { // discrete-time
+        walker.t += exp(old_node->k_esc); // recall for discrete-time transn prob mtx, exp(k_esc) should have been set to 1./tau
+    }
 }

@@ -1,7 +1,7 @@
 /*
 File containing functions to construct and handle a Network (transition network) object
 
-This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous time Markov chains (CTMCs).
+This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous- and discrete-time Markov chains (CTMCs and DTMCs).
 Copyright (C) 2020 Daniel J. Sharpe
 
 This program is free software: you can redistribute it and/or modify
@@ -360,7 +360,7 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
     }
     tot_pi = exp(tot_pi);
     if (abs(tot_pi-1.)>1.E-10) {
-        cout << "ktn> Error: total equilibrium probabilities of minima is: " << tot_pi << " =/= 1." << endl;
+        cout << "ktn> Error: total equilibrium probabilities of nodes is: " << tot_pi << " =/= 1." << endl;
         throw Network::Ktn_exception(); }
     for (int i=0;i<ktn.n_edges;i++) {
         ktn.edges[2*i].ts_id = i+1;
@@ -381,7 +381,7 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
             ktn.edges[2*i].k = ts_wts[2*i];
             ktn.edges[(2*i)+1].k = ts_wts[(2*i)+1];
         } else { // ts_wts are transition probabilities
-            ktn.edges[2*i].k = 0.; ktn.edges[(2*i)+1].k = 0.; // dummy values
+            ktn.edges[2*i].k = 0.; ktn.edges[(2*i)+1].k = 0.; // dummy values for transition rates
             ktn.edges[2*i].t = ts_wts[2*i];
             ktn.edges[(2*i)+1].t = ts_wts[(2*i)+1];
         }
@@ -402,11 +402,11 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         } else { ktn.edges[2*i].j = 0.; ktn.edges[(2*i)+1].j = 0.; } // dummy values
     }
     for (int i=0;i<ktn.n_nodes;i++) {
-        if (!transnprobs) {
+        if (!transnprobs) { // continuous-time, in general, nodes have different waiting times (escape rates)
             calc_k_esc(ktn.nodes[i]);
         } else {
             calc_t_selfloop(ktn.nodes[i]);
-            ktn.nodes[i].k_esc = log(1./tau); // all nodes have same escape rate
+            ktn.nodes[i].k_esc = log(1./tau); // continuous- or discrete-time, all nodes have same escape rate
         }
     }
     for (int i=0;i<nodesinA.size();i++) {

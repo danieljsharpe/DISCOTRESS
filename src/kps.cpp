@@ -5,7 +5,7 @@ M. Athenes, S. Kaur, G. Adjanor, T. Vanacker and T. Jourdan, Phys. Rev. Material
 D. J. Wales, J. Chem. Phys. 130, 204111 (2009).
 
 
-This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous time Markov chains (CTMCs).
+This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous- and discrete-time Markov chains (CTMCs).
 Copyright (C) 2020 Daniel J. Sharpe
 
 This program is free software: you can redistribute it and/or modify
@@ -31,13 +31,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace std;
 
-KPS::KPS(const Network &ktn, int nelim, long double tau, int kpskmcsteps, \
+KPS::KPS(const Network &ktn, bool discretetime, int nelim, long double tau, int kpskmcsteps, \
          bool adaptivecomms, double adaptminrate, bool pfold) {
 
     cout << "kps> kPS parameters:\n  lag time: " << tau << " \tmax. no. of eliminated nodes: " \
          << nelim << "\n  no. of basins: " << ktn.ncomms << " \tno. of kMC steps after kPS iteration: " << kpskmcsteps \
          << "\n  adaptive definition of communities (y/n): " << adaptivecomms \
          << "\tmin. allowed rate in adaptive communities: " << adaptminrate << endl;
+    this->discretetime=discretetime;
     this->nelim=nelim; this->tau=tau; this->kpskmcsteps=kpskmcsteps;
     this->adaptivecomms=adaptivecomms; this->adaptminrate=adaptminrate; this->pfold=pfold;
     basin_ids.resize(ktn.n_nodes);
@@ -106,7 +107,7 @@ void KPS::do_bkl_steps(const Network &ktn, Walker &walker, long double maxtime) 
     if (adaptivecomms) return;
     int n_kmcit=0;
     while ((n_kmcit<kpskmcsteps || ktn.comm_sizes[epsilon->comm_id]>nelim) && walker.t<maxtime) { // quack force BKL simulation to continue if active community is large
-        BKL::bkl(walker,seed);
+        BKL::bkl(walker,discretetime,seed);
         alpha=walker.curr_node;
         if (ktn.nbins>0 && !ktn.nodesB.empty()) walker.visited[alpha->bin_id]=true;
         if (alpha->comm_id!=epsilon->comm_id || walker.t>maxtime) { // traj data is not dumped unless comm changes, regardless of tintvl, except if (DIMREDN) max time is exceeded
@@ -289,15 +290,16 @@ long double KPS::iterative_reverse_randomisation() {
     long double t_esc=0.; // sampled time for basin escape trajectory
     if (!ktn_kps->branchprobs) { // transitions from all nodes are associated with the same waiting time
         unsigned long long int nhops=0; // total number of kMC hops
-        for (const auto &node: ktn_kps->nodes) nhops += node.h;
+        for (const auto &node: ktn_kps->nodes) nhops += node.h; // linearised or discrete-time prob matrix has self-loops
         for (const auto &edge: ktn_kps->edges) {
             if (edge.deadts) continue; nhops += edge.h; }
-        t_esc = KPS::gamma_distribn(nhops,tau,seed);
-    } else { // the waiting times are different between nodes
+        if (!discretetime) { t_esc = KPS::gamma_distribn(nhops,tau,seed); // continuous-time Markov chain
+        } else { t_esc = static_cast<long double>(nhops)*tau; } // discrete-time Markov chain
+    } else { // continuous-time, the waiting times are different between nodes
         for (const auto &node: ktn_kps->nodes) {
             unsigned long long int nhops=0;
             Edge *edgeptr = node.top_from;
-            while (edgeptr!=nullptr) {
+            while (edgeptr!=nullptr) { // there are no self-loops in the branching probability matrix
                 if (!edgeptr->deadts) nhops += edgeptr->h;
                 edgeptr = edgeptr->next_from;
             }

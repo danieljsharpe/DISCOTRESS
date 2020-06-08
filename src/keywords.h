@@ -1,7 +1,7 @@
 /*
 Read keywords from file "input.kmc", also read in information on KTN and communities from files
 
-This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous time Markov chains (CTMCs).
+This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous- and discrete-time Markov chains (CTMCs and DTMCs).
 Copyright (C) 2020 Daniel J. Sharpe
 
 This program is free software: you can redistribute it and/or modify
@@ -70,12 +70,14 @@ struct Keywords {
     bool adaptivecomms=false; // "ADAPTIVECOMMS" communities for resampling (WE-kMC) or trapping basins (kPS) are determined on-the-fly
     int kpskmcsteps=0;       // "KPSKMCSTEPS" number of BKL kMC steps after a trapping basin escape (kPS)
     int nelim=-1;            // "NELIM" maximum number of states to be eliminated from any trapping basin (kPS)
+    double taure=0.;         // "TAURE" time between resampling ensemble of trajectories (WE)
     int nabpaths=-1;         // "NABPATHS" target number of complete A-B paths to simulate
     int maxit=numeric_limits<int>::max(); // "MAXIT" maximum number of iterations of the relevant standard or enhanced kMC algorithm
     double adaptminrate=0.;  // "ADAPTIVECOMMS" minimum transition rate to include in the BFS procedure to define a community on-the-fly
 
     // other keywords
     bool transnprobs=false;  // "TRANSNPROBS" edge weights are read in as transition probabilities (not as weights)
+    bool discretetime=false; // "DISCRETETIME" edge weights read in as trans probs represent a DTMC at lag time tau
     bool branchprobs=false;  // "BRANCHPROBS" transition probabilities are calculated as branching probabilities
     bool pfold=false;        // "PFOLD" specifies that a committor function calculation is to be performed instead of a kPS simulation
     bool meanrate=false;     // "MEANRATE" use the approximate mean rate method in MCAMC, instead of the exact FPTA method (default)
