@@ -33,16 +33,16 @@ Format: bin ID (indexed from 0) / no. of direct A<-B paths for which bin is visi
 ## Main keywords
 
 **NNODES** _int_  
-  mandatory, number of nodes in the transition network
+  mandatory, number of nodes in the Markov chain
 
 **NEDGES** _int_   
-  mandatory, number of (bidirectional) edges in the transition network
+  mandatory, number of (bidirectional) edges in the Markov chain
 
 **WRAPPER** _str_  
   mandatory, employ a \`wrapping' enhanced sampling strategy for accelerating the observation of rare events. Options:  
 -    **NONE**    \- no enhanced sampling strategy employed
 -    **DIMREDN** \- special class to simulate many short nonequilibrium trajectories starting from each community in turn
-               used for estimation of a coarse-grained transition network. See **DIMREDUCTION** keyword for more detail 
+               used for estimation of a coarse-grained Markov chain. See **DIMREDUCTION** keyword for more detail 
 -    **WE**      \- weighted ensemble sampling
 -    **FFS**     \- forward flux sampling
 -    **NEUS**    \- non-equilibrium umbrella sampling
@@ -104,6 +104,28 @@ Format: bin ID (indexed from 0) / no. of direct A<-B paths for which bin is visi
 **DIMREDUCTION** _str_ _long double_  
   mandatory if **WRAPPER DIMREDN**, which initialises a special wrapper class that does not perform the usual code function, which is to simulate A<-B transition paths, and instead instructs the program to simulate many short trajectories starting from each community, each of length in time equal to the float argument. These trajectories are printed to files _walker.x.y.dat_, where _x_ is the ID of the community, and _y_ is the iteration number for that community. Trajectory information is written to files whenever a trajectory transitions to a new community. The total number of trajectories that are to be simulated starting from each community is listed in the file given as the string arg. This calculation is parallelised, using a number of threads equal to **NTHREADS** (defaults to maximum number of threads available). This calculation is compatible with two algorithms to propagate individual trajectories: **TRAJ KPS**, and **TRAJ MCAMC** (without **MEANRATE**). The communities of nodes must be specified (**COMMSFILE** keyword). **NABPATHS**, **MAXIT**, and **BINFILE** keywords are ignored. This setup is incompatible with specification of an initial condition via the **INITCONDFILE** keyword, and with the **NODESAFILE** and **NODESBFILE** keywords. Instead, a local equilibrium within the starting community is assumed as the initial probability distribution for each trajectory. Note that **WRAPPER DIMREDN** requires both this keyword and **DUMPINTVLS** to be set.
 
+## Optional keywords related to exact numerical analysis of the dynamics by state reduction methods
+
+The following keywords are used in combination with the keywords **WRAPPER NONE** and **TRAJ KPS**. Use of any of the following keywords overrides the default functionality of DISCOTRESS, which is to simulate dynamical paths, and instead instructs the program to perform a state reduction procedure to exactly compute one or more dynamical quantities associated with nodes, in a numerically stable manner. **NABPATHS** must be set to some arbitrary number >0. The **COMMITTOR**, **ABSORPTION**, **MFPT** and **GTH** keywords can be used together in any combination. The computations performed with the **FUNDAMENTALRED** and **FUNDAMENTALIRRED** keywords are standalone operations.
+
+**COMMITTOR**  
+  specifies that a state reduction procedure is performed to compute the committor probabilities for all nodes. The _communities.dat_ file must specify precisely three communities; the A set, the B set, and the set of all other nodes ("I"). The committor probabilities are written to the files *committor\_AB.dat* and *committor\_BA.dat* (for A<-B and B<-A directions, respectively). Note that the committor probabilities determined by this method are for each node, and the calculation is exact and deterministic (unlike calculation of the committor probabilities for the bins from simulation data, cf the **BINSFILE** keyword).
+
+**ABSORPTION**  
+  specifies that a state reduction procedure is performed to compute the absorption probabilities. The probabilities b\_ij that a trajectory initialised from the non-absorbing node i is absorbed at node j are written to the file *absorption.dat* in the format "i / j / b\_ij". Given an initial occupation probability distribution (which, by default, is assumed to be a local equilibrium within the initial set B), the absorption probabilities for each absorbing node are printed in the output.
+
+**FUNDAMENTALRED**  
+  specifies that a state reduction algorithm is used to compute the fundamental matrix of an absorbing (i.e. reducible) Markov chain. The (i,j) edge weights n\_ij of the renormalised network resulting from this procedure are the expected numbers of times that the j-th node is visited along first passage paths initialised from the i-th node. These values are written to the file *fundamentalred.dat* in the format "i / j / n\_ij". The node visitation probabilities can be computed from this information if the committor probabilities are also known.
+
+**FUNDAMENTALIRRED**  
+  specifies that a state reduction algorithm is used to compute the fundamental matrix of an irreducible Markov chain. The (i,j) edge weights z\_ij of the renormalised network resulting from this procedure are the elements of the fundamental matrix, the trace of which gives the Kemeny constant (average mixing time) for the Markov chain. These values are written to the file *fundamentalirred.dat* in the format "i / j / z\_ij", and the Kemeny constant is printed in the output.
+
+**MFPT**  
+  specifies that a state reduction procedure is performed to compute mean first passage times (MFPT). The MFPTs m\_iA for transitions from non-absorbing nodes i to the set of absorbing nodes A are written to the file *mfpt.dat* in the format "i / m\_iA". Given an initial occupation probability distribution (which, by default, is assumed to be a local equilibrium within the initial set B), the A<-B MFPT is printed in the output. If the initial mean waiting times of nodes are set to the initial mean number of steps to exit (i.e. equal to unity for all nodes), then the MFPTs are in fact the mean first passage path lengths.
+
+**GTH**  
+  specifies that the stationary probability distribution (which exists if the Markov chain is irreducible) is computed using the Grassmann-Taksar-Heyman (GTH) algorithm. The input file *stat_prob.dat* must be provided, but its contents are not used. The stationary probabilities determined by the GTH algorithm are written to the file *stat_prob_gth.dat*.
+
 ## Other optional keywords
 
 **MAXIT** _int_  
@@ -112,22 +134,19 @@ Format: bin ID (indexed from 0) / no. of direct A<-B paths for which bin is visi
 **NTHREADS** _int_  
   number of threads to use in parallel calculations. Defaults to max. no. of threads available.
 
-**BRANCHPROBS**
+**BRANCHPROBS**  
   indicates that the transition probabilities in **TRAJ BKL** or **TRAJ KPS** are branching probabilities (ie continuous-time, and with non-uniform waiting times for nodes) calculated from the transition rates. Not compatible with **TRAJ MCAMC**. If **BRANCHPROBS** is not specified, then the default setup is that the linearised transition probability matrix at lag time **TAU** will be calculated (ie continuous-time, with uniform waiting times for all nodes). Alternatively, transition probabilities can be read in with the **TRANSNPROBS** keyword.
 
 **TRANSNPROBS**  
   the edge weights read in from the file *ts_weights.dat* are transition probabilities at lag time **TAU** (ie the waiting times of all nodes are uniform), not rates. Note that this keyword is compatible with all **TRAJ** options. The self-loop transition probabilities for nodes are inferred to be the remainders from unity for transitions from each node. The transition probability matrix is taken to be linearised (ie continuous-time, with uniform waiting times [equal to **TAU**] for all nodes) by default. To simulate a discrete-time Markov chain, specify the **DISCRETETIME** keyword.
 
-**DISCRETETIME**
+**DISCRETETIME**  
   when set with the **TRANSNPROBS** keyword, the edge weights read from *ts_weights.dat* are taken to be the transition probabilities of a discrete-time Markov chain (by default, the transition probabilities are assumed to be continuous-time). **TAU** is then the constant lag time (ie all transitions are associated with time **TAU**, rather than sampling from an exponential distribution). Note that this keyword is compatible with all **TRAJ** options.
-
-**PFOLD**  
-  when used in conjunction with **TRAJ KPS**, specifies that a committor function calculation is performed instead of a kPS simulation. The _communities.dat_ file must specify precisely three communities; the A set, the B set, and the set of all other nodes ("I"). The committor functions are written to the files "committor\_AB.dat" and "committor\_BA.dat" (for A<-B and B<-A directions, respectively). Note that the committor functions determined by this method are for each node, and the calculation is _exact_ and _deterministic_ (unlike calculation of the committor probabilities for the bins from simulation data, cf the **BINSFILE** keyword). **NABPATHS** must be set to some arbitrary number >0.
 
 **TINTVL** _double_  
   ignored if **TRAJ KPS** (in which case trajectory data is written after every basin escape). Time interval for dumping trajectory information. Negative value (default) indicates that trajectory data is not written. In this case, start and end nodes are still written to files walker.0.y.dat. Zero value specifies that all trajectory information is written.
 
-**DUMPINTVLS**
+**DUMPINTVLS**  
   if set, then trajectory data is dumped at precisely the time intervals specified by **TINTVL** (which must therefore be >0.). Otherwise, trajectory data written when the next time interval is exceeded is precisely for the current time of the walker. Path probability and entropy flow are not written in the walker files if this keyword is set, but are still dumped to the *tp_distribns.dat* file. This keyword is required with **WRAPPER DIMREDN**, since the trajectory information required to construct a coarse-grained Markov chain is otherwise not printed.
 
 **SEED** _int_  
@@ -138,10 +157,3 @@ Format: bin ID (indexed from 0) / no. of direct A<-B paths for which bin is visi
 
 **DUMPWAITTIMES**  
   dump the mean waiting times for nodes to the file _meanwaitingtimes.dat_
-
-## Keywords relating to nonlinear master equations
-
-**DISCOTRESS** can be used to interpret a set of rules relating to a nonlinear master equation and map the system to a linear transition network.
-Additional files are needed for this purpose:
-
-  _changevecs.dat_  - ...

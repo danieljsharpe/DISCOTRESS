@@ -46,7 +46,7 @@ class Analyse_tp_distribns(object):
         plt.figure(figsize=(10.,7.)) # size in inches
         plt.bar(bins,hist_arr,self.binw,color='blue')
         if self.logvals:
-            plt.xlabel("$\log_{10}(t_\mathrm{FPT}\ /\ \mathrm{s})$",fontsize=42)
+            plt.xlabel("$\log_{10}(t_\mathrm{FPT}\ /\ \mathrm{ns})$",fontsize=42)
             plt.ylabel("$p ( \log_{10} t_\mathrm{FPT} )$",fontsize=42)
         else:
             plt.xlabel("$t_\mathrm{FPT}$",fontsize=42)

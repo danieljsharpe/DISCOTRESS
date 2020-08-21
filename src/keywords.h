@@ -75,11 +75,18 @@ struct Keywords {
     int maxit=numeric_limits<int>::max(); // "MAXIT" maximum number of iterations of the relevant standard or enhanced kMC algorithm
     double adaptminrate=0.;  // "ADAPTIVECOMMS" minimum transition rate to include in the BFS procedure to define a community on-the-fly
 
+    // keywords for state reduction methods
+    bool committor=false;    // "COMMITTOR" specifies that a committor probability calculation is to be performed instead of a kPS simulation
+    bool absorption=false;   // "ABSORPTION" specifies that an absorption probability calculation is to be performed
+    bool fundamentalred=false; // "FUNDAMENTALRED" specifies that the fundamental matrix of an absorbing (reducible) Markov chain is to be computed
+    bool fundamentalirred=false; // "FUNDAMENTALIRRED" specifies that the fundamental matrix of an irreducible Markov chain is to be computed
+    bool mfpt=false;         // "MFPT" specifies that the MFPTs for transitions from all non-target nodes are to be computed
+    bool gth=false;          // "GTH" specifies that the Grassmann-Taksar-Heyman algorithm for computation of the stationary distribution is to be performed
+
     // other keywords
     bool transnprobs=false;  // "TRANSNPROBS" edge weights are read in as transition probabilities (not as weights)
     bool discretetime=false; // "DISCRETETIME" edge weights read in as trans probs represent a DTMC at lag time tau
     bool branchprobs=false;  // "BRANCHPROBS" transition probabilities are calculated as branching probabilities
-    bool pfold=false;        // "PFOLD" specifies that a committor function calculation is to be performed instead of a kPS simulation
     bool meanrate=false;     // "MEANRATE" use the approximate mean rate method in MCAMC, instead of the exact FPTA method (default)
     bool dumpintvls=false;   // "DUMPINTVLS" trajectory data is dumped at fixed time intervals
     bool debug=false;
@@ -88,6 +95,7 @@ struct Keywords {
 
     // implicitly set switches
     bool initcond=false;     // "INITCOND" specifies if a nonequilibrium initial condition for the nodes in set B has been set
+    bool statereduction=false; // is true when the purpose of the computation is to perform a state reduction procedure
 };
 
 Keywords read_keywords(const char *);

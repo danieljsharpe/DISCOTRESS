@@ -109,7 +109,7 @@ Discotress::Discotress () {
         if (my_kws.branchprobs) { ktn->get_tmtx_branch();
         } else if (!my_kws.transnprobs) { ktn->get_tmtx_lin(my_kws.tau); }
         KPS *kps_ptr = new KPS(*ktn,my_kws.discretetime,my_kws.nelim,my_kws.tau,my_kws.kpskmcsteps, \
-                    my_kws.adaptivecomms,my_kws.adaptminrate,my_kws.pfold);
+                    my_kws.adaptivecomms,my_kws.adaptminrate,my_kws.committor);
         traj_method_obj = kps_ptr;
     } else if (my_kws.traj_method==3) {     // MCAMC algorithm
         MCAMC *mcamc_ptr = new MCAMC(*ktn,my_kws.discretetime,my_kws.kpskmcsteps,my_kws.meanrate);
@@ -117,7 +117,7 @@ Discotress::Discotress () {
     } else {
         throw exception(); // a trajectory method object must be set
     }
-    traj_method_obj->setup_traj_method(my_kws.tintvl,my_kws.dumpintvls,my_kws.seed,my_kws.debug);
+    traj_method_obj->setup_traj_method(my_kws.tintvl,my_kws.dumpintvls,my_kws.statereduction,my_kws.seed,my_kws.debug);
     cout << "discotress> setting up the enhanced sampling wrapper object..." << endl;
     if (my_kws.wrapper_method==0) {        // special wrapper to simulate many short nonequilibrium trajectories for dimensionality reduction
         DIMREDN *dimredn_ptr = new DIMREDN(*ktn,ntrajsvec,my_kws.dt);

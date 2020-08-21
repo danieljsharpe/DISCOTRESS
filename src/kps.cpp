@@ -4,6 +4,21 @@ M. Athenes and V. V. Bulatov, Phys. Rev. Lett. 113, 230601 (2014).
 M. Athenes, S. Kaur, G. Adjanor, T. Vanacker and T. Jourdan, Phys. Rev. Materials 3, 103802 (2019).
 D. J. Wales, J. Chem. Phys. 130, 204111 (2009).
 
+The functions in this routine are also used as the basis for the state reduction algorithms to compute MFPTs, mean path lengths, committor and
+absorption probabilities, stationary probabilities, the average numbers of node visits and the node visitation probabilities. See:
+W. K. Grassmann, M. I. Taksar, and D. P. Heyman, Oper. Res. 33, 1107-1116 (1985).
+T. J. Sheskin, Oper. Res. 33, 228-235 (1985).
+J. Kohlas, Zeit. Oper. Res. 30, 197-207 (1986).
+D. P. Heyman, SIAM J. Matrix Anal. Appl. 16, 954-963 (1995).
+D. P. Heyman and D. P. O'Leary, SIAM J. Matrix Anal. Appl. 19, 534-540 (1998).
+E. Seneta, SIAM. J. Matrix Anal. Appl. 19, 556-563 (1998).
+I. Sonin, Adv. Math. 145, 159-188 (1999).
+I. Sonin and J. Thornton, SIAM J. Matrix Anal. Appl. 23, 209-224 (2001).
+T. Dayar and N. Akar, SIAM J. Matrix. Anal. Appl. 27, 396-412 (2005).
+J. D. Stevenson and D. J. Wales, J. Chem. Phys. 141, 041104 (2014).
+J. J. Hunter, Spec. Matrices 4, 151-175 (2016).
+J. J. Hunter, Linear Algebra Appl. 549, 100-122 (2018).
+R. S. MacKay and J. D. Robinson, Phil. Trans. Roy. Soc. A 376, 20170232 (2018).
 
 This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous- and discrete-time Markov chains (CTMCs).
 Copyright (C) 2020 Daniel J. Sharpe
@@ -32,7 +47,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 using namespace std;
 
 KPS::KPS(const Network &ktn, bool discretetime, int nelim, long double tau, int kpskmcsteps, \
-         bool adaptivecomms, double adaptminrate, bool pfold) {
+         bool adaptivecomms, double adaptminrate, bool committor) {
 
     cout << "kps> kPS parameters:\n  lag time: " << tau << " \tmax. no. of eliminated nodes: " \
          << nelim << "\n  no. of basins: " << ktn.ncomms << " \tno. of kMC steps after kPS iteration: " << kpskmcsteps \
@@ -40,7 +55,7 @@ KPS::KPS(const Network &ktn, bool discretetime, int nelim, long double tau, int 
          << "\tmin. allowed rate in adaptive communities: " << adaptminrate << endl;
     this->discretetime=discretetime;
     this->nelim=nelim; this->tau=tau; this->kpskmcsteps=kpskmcsteps;
-    this->adaptivecomms=adaptivecomms; this->adaptminrate=adaptminrate; this->pfold=pfold;
+    this->adaptivecomms=adaptivecomms; this->adaptminrate=adaptminrate; this->committor=committor;
     basin_ids.resize(ktn.n_nodes);
 }
 
@@ -52,7 +67,7 @@ KPS::~KPS() {
 
 KPS::KPS(const KPS& kps_obj) {
     this->nelim=kps_obj.nelim; this->tau=kps_obj.tau; this->kpskmcsteps=kps_obj.kpskmcsteps;
-    this->adaptivecomms=false; this->adaptminrate=-1.; this->pfold=false;
+    this->adaptivecomms=false; this->adaptminrate=-1.; this->committor=false;
     this->tintvl=kps_obj.tintvl; this->dumpintvls=kps_obj.dumpintvls; this->seed=kps_obj.seed; this->debug=false;
     this->basin_ids.resize(kps_obj.basin_ids.size());
 }
@@ -82,8 +97,8 @@ void KPS::kmc_iteration(const Network &ktn, Walker &walker) {
     } else {
         setup_basin_sets(ktn,walker,false); // get the new initial node without updating the definition of the basin
     }
-    if (pfold) {
-        calc_pfold(ktn); return; }
+    if (committor) {
+        calc_committor(ktn); return; }
     Node *dummy_alpha = sample_absorbing_node();
     alpha = &ktn.nodes[dummy_alpha->node_id-1];
     long double t_esc = iterative_reverse_randomisation();
@@ -127,7 +142,7 @@ void KPS::setup_basin_sets(const Network &ktn, Walker &walker, bool get_new_basi
 
     if (debug) cout << "\nkps> setting up basin sets" << endl;
     bool newpath=false;
-    if (pfold) { // not simulating a trajectory, set epsilon to any node not in A or B
+    if (committor) { // not simulating a trajectory, set epsilon to any node not in A or B
         for (const Node &node: ktn.nodes) {
             if (node.aorb==-1 || node.aorb==1) continue;
             epsilon=&node; break;
@@ -374,7 +389,7 @@ void KPS::graph_transformation(const Network &ktn) {
     if (debug) cout << "\nkps> graph transformation" << endl;
     ktn_kps=get_subnetwork(ktn,true);
     ktn_kps->ncomms=ktn.ncomms;
-    if (!pfold) { // the original, L and U networks are not needed for the pfold calculation, which only requires GT
+    if (!committor) { // the original, L and U networks are not needed for the committor calculation, which only requires GT
     ktn_kps_orig=get_subnetwork(ktn,false);
     ktn_l = new Network(N_B+N_c,0);
     ktn_u = new Network(N_B+N_c,0);
@@ -407,7 +422,7 @@ void KPS::graph_transformation(const Network &ktn) {
         if (debug) { cout << "\nrunning debug tests on transformed network:" << endl; test_ktn(*ktn_kps); }
     }
     if (!adaptivecomms && ktn.ncomms==2 && ktn_kps_gt==nullptr) ktn_kps_gt = new Network(*ktn_kps);
-    if (debug && !pfold) {
+    if (debug && !committor) {
         cout << "\nrunning debug tests on L:" << endl; test_ktn(*ktn_l);
         cout << "\nrunning debug tests on U:" << endl; test_ktn(*ktn_u);
     }
@@ -492,7 +507,7 @@ void KPS::gt_iteration(Node *node_elim) {
     // vector of which relevant entries are for all nodes directly connected to the current elimd node, incl elimd nodes
     vector<nbrnode> nbrnode_vec(N_B+N_c,(nbrnode){false,0.,0.});
     // update the self-loops of the L and U networks
-    if (!pfold) {
+    if (!committor) {
     ktn_u->nodes[node_elim->node_pos].t = -factor;
     ktn_l->nodes[node_elim->node_pos].t = node_elim->t/factor;
     }
@@ -506,7 +521,7 @@ void KPS::gt_iteration(Node *node_elim) {
         nodes_nbrs.push_back(edgeptr->to_node); // queue nbr node
         nbrnode_vec[edgeptr->to_node->node_pos].t_fromn=edgeptr->t;
         nbrnode_vec[edgeptr->to_node->node_pos].t_ton=edgeptr->rev_edge->t;
-        if (!pfold) {
+        if (!committor) {
         // update L and U networks
         ktn_l->edges[ktn_l->n_edges].t = edgeptr->rev_edge->t/factor;
         ktn_l->edges[ktn_l->n_edges].edge_pos = ktn_l->n_edges;
@@ -696,15 +711,17 @@ vector<pair<Node*,Edge*>> KPS::undo_gt_iteration(Node *node_elim) {
     return nodes_nbrs;
 }
 
-/* calculate the A<-B and B<-A committor functions and write to files */
-void KPS::calc_pfold(const Network& ktn) {
+/* calculate the A<-B and B<-A committor probabilities and write to files */
+void KPS::calc_committor(const Network& ktn) {
 
-    cout << "kps> calculating committor functions from the graph transformation" << endl;
+    cout << "kps> calculating committor probabilities from the graph transformation" << endl;
     vector<long double> q_ab_vals(ktn.n_nodes); // A<-B committor
     vector<long double> q_ba_vals(ktn.n_nodes); // B<-A committor
-    /* NB nodes in A or B that are not directly connected to the intermediate set do not appear in the ktn_kps
-       Network object. Use a nodemask to do bookkeeping - the committor probabilities of any nodes in A or B
-       are precisely 0 or 1 */
+    /* NB nodes in A or B that are not directly connected to the intermediate set I do not appear in the ktn_kps
+       Network object. Use a nodemask to do bookkeeping - the committor probabilities of any node in A, and of any
+       *internal* node in B, are precisely 1 and 0, respectively. The committor probability of any node at the boundary
+       of B is computed from the committor probabilities of neighbouring nodes in the set I, and the transition
+       probabilities to these nodes. This is for the A<-B direction, the same logic applies to the A<-B committor */
     vector<bool> nodemask(ktn.n_nodes,false);
     for (const Node& node: ktn_kps->nodes) {
         nodemask[node.node_id-1]=true;
@@ -731,17 +748,37 @@ void KPS::calc_pfold(const Network& ktn) {
         q_ba_vals[node.node_id-1] = q_ba/(q_ab+q_ba);
     }
     for (int i=0;i<ktn.n_nodes;i++) {
-        if (nodemask[i]) continue;
-        if (ktn.nodes[i].aorb==-1) {
+        if (nodemask[i] && ktn.nodes[i].aorb==0) { continue; // intermediate nodes have all been accounted for
+        } else if (!nodemask[i] && ktn.nodes[i].aorb==-1) { // internal node of A
             q_ab_vals[ktn.nodes[i].node_id-1]=1.; q_ba_vals[ktn.nodes[i].node_id-1]=0.;
-        } else if (ktn.nodes[i].aorb==1) {
-            q_ab_vals[ktn.nodes[i].node_id-1]=0.; q_ba_vals[ktn.nodes[i].node_id-1]-0.;
+        } else if (!nodemask[i] && ktn.nodes[i].aorb==1) { // internal node of B
+            q_ab_vals[ktn.nodes[i].node_id-1]=0.; q_ba_vals[ktn.nodes[i].node_id-1]=1.;
+        } else if (nodemask[i] && ktn.nodes[i].aorb==-1) { // boundary node of A
+            q_ab_vals[ktn.nodes[i].node_id-1]=1.;
+            q_ba_vals[ktn.nodes[i].node_id-1] = KPS::committor_boundary_node(ktn,ktn.nodes[i].node_id,q_ba_vals,-1);
+        } else if (nodemask[i] && ktn.nodes[i].aorb==1) { // boundary node of B
+            q_ba_vals[ktn.nodes[i].node_id-1]=1.;
+            q_ab_vals[ktn.nodes[i].node_id-1] = KPS::committor_boundary_node(ktn,ktn.nodes[i].node_id,q_ab_vals,1);
         } else { // committor probabilities should already have been calculated for all nodes not in A or B 
             throw exception();
         }
     }
     Wrapper_Method::write_vec<long double>(q_ab_vals,"committor_AB.dat");
     Wrapper_Method::write_vec<long double>(q_ba_vals,"committor_BA.dat");
+    cout << "kps> finished writing committor probabilities to files" << endl;
+}
+
+/* calculate the committor probability for an initial node at the boundary of the initial state, which is =/= 0 */
+long double KPS::committor_boundary_node(const Network& ktn, int node_id, const vector<long double> q_vals, int aorb) {
+    const Node& node = ktn.nodes[node_id-1];
+    long double q_val=0.;
+    const Edge *edgeptr = node.top_from;
+    while (edgeptr!=nullptr) {
+        if (!(edgeptr->deadts || edgeptr->to_node->aorb==aorb)) {
+            q_val += edgeptr->t*q_vals[edgeptr->to_node->node_id-1]; }
+        edgeptr=edgeptr->next_from;
+    }
+    return q_val;
 }
 
 /* calculate the factor (1-T_{nn}) needed in the elimination of the n-th node in graph transformation */

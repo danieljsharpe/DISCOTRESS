@@ -128,7 +128,7 @@ class Analyse_trajs(object):
                 walkeropdata.append(op_val)
             walker_f.close()
             plt.plot(walkertdata,walkeropdata,linewidth=5,color=self.pltcolors[i])
-        if self.logtime: plt.xlabel("$\log_{10}(t\ /\ \mathrm{s})$",fontsize=42)
+        if self.logtime: plt.xlabel("$\log_{10}(t\ /\ \mathrm{ns})$",fontsize=42)
         else: plt.xlabel("$t$",fontsize=42)
         plt.ylabel("$\mathrm{Potential\ energy}\ /\ \mathrm{kcal\,mol}^{-1}$",fontsize=42)
         ax=plt.gca()
@@ -160,7 +160,7 @@ class Analyse_trajs(object):
             if i==supstate_b or i==supstate_a: # shade region under curves corresponding to initial and final states
                 plt.fill_between(self.tbinvals,self.probdistribn[i,:],facecolor=self.pltcolors[i],alpha=0.5)
         if self.logtime:
-            plt.xlabel("$\log_{10}(t\ /\ \mathrm{s})$",fontsize=42)
+            plt.xlabel("$\log_{10}(t\ /\ \mathrm{ns})$",fontsize=42)
             plt.ylabel("$\mathrm{Occupation\ probability}\ p(\log_{10} t)$",fontsize=42) # note "\" before space char
         else:
             plt.xlabel("$t$",fontsize=42)
@@ -201,11 +201,14 @@ if __name__=="__main__":
     nyticks=10 # only used if plotting indiv trajectories
     op_minval, op_maxval = -455., -405.
 
+
     ### RUN ###
     analyse_trajs_obj=Analyse_trajs(first_wid,nwalkers,nsupstates,tmax,tintvl,logtime,dir_rootname,nruns)
 #    analyse_trajs_obj.calc_tp_stats(n_tpbins)
+
     # calc and plot time-dependent probability distribution for superstates
 #    analyse_trajs_obj.calc_timedepdistribn()
 #    analyse_trajs_obj.plot_probdistribn(nxticks)
+
     # plot representative trajectories
     analyse_trajs_obj.plot_trajs(nxticks,nyticks,op_fname,op_minval,op_maxval)

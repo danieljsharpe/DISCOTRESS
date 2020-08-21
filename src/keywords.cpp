@@ -117,8 +117,18 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.nelim=stoi(vecstr[1]);
         } else if (vecstr[0]=="TAURE") {
             my_kws.taure=stod(vecstr[1]);
-        } else if (vecstr[0]=="PFOLD") {
-            my_kws.pfold=true;
+        } else if (vecstr[0]=="COMMITTOR") {
+            my_kws.committor=true;
+        } else if (vecstr[0]=="ABSORPTION") {
+            my_kws.absorption=true;
+        } else if (vecstr[0]=="FUNDAMENTALRED") {
+            my_kws.fundamentalred=true;
+        } else if (vecstr[0]=="FUNDAMENTALIRRED") {
+            my_kws.fundamentalirred=true;
+        } else if (vecstr[0]=="MFPT") {
+            my_kws.mfpt=true;
+        } else if (vecstr[0]=="GTH") {
+            my_kws.gth=true;
         } else if (vecstr[0]=="TRANSNPROBS") {
             my_kws.transnprobs=true;
         } else if (vecstr[0]=="DISCRETETIME") {
@@ -160,6 +170,12 @@ Keywords read_keywords(const char *kw_file) {
         exit(EXIT_FAILURE); }
     if (my_kws.discretetime && !my_kws.transnprobs) {
         cout << "keywords> error: to simulate a DTMC, must read in weights as transition probs and set lag time" << endl; exit(EXIT_FAILURE); }
+    // set the purpose of the computation to be a state reduction procedure and not a dynamical simulation, if appropriate
+    if (my_kws.committor || my_kws.absorption || my_kws.fundamentalred || my_kws.fundamentalirred || my_kws.mfpt || my_kws.gth) {
+        if (my_kws.wrapper_method!=1 || my_kws.traj_method!=2) {
+            cout << "keywords> error: to perform a state reduction computation, must set WRAPPER NONE and TRAJ KPS" << endl; exit(EXIT_FAILURE); }
+        my_kws.statereduction=true;
+    }
     // check specification of wrapper method is valid
     if (my_kws.wrapper_method==0) { // special wrapper method to propagate trajectories required for dimensionality reduction
         if (my_kws.ntrajsfile==nullptr || my_kws.commsfile==nullptr || my_kws.meanrate || my_kws.initcondfile || \
@@ -186,7 +202,7 @@ Keywords read_keywords(const char *kw_file) {
         // ...
     } else if (my_kws.traj_method==2) { // kPS algorithm
         if ((my_kws.commsfile==nullptr && !my_kws.adaptivecomms) || my_kws.nelim<=0 || \
-            (my_kws.pfold && my_kws.ncomms!=3)) {
+            (my_kws.committor && my_kws.ncomms!=3)) {
             cout << "keywords> error: kPS algorithm not specified correctly" << endl; exit(EXIT_FAILURE); }
     } else if (my_kws.traj_method==3) { // MCAMC algorithm
         if (my_kws.branchprobs) {

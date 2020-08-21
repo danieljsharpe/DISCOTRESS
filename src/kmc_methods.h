@@ -202,11 +202,12 @@ class Traj_Method {
     virtual ~Traj_Method();
     Traj_Method(const Traj_Method&);
     virtual Traj_Method* clone() {}
-    void setup_traj_method(double,bool,int,bool) ; // set the protected members of the Traj_Method class
+    void setup_traj_method(double,bool,bool,int,bool) ; // set the protected members of the Traj_Method class
     void dump_traj(Walker&,bool,bool,long double=numeric_limits<long double>::infinity()); // call function to dump walker info and then update next_tintvl;
     virtual void kmc_iteration(const Network&,Walker&)=0;
     virtual void do_bkl_steps(const Network&,Walker&,long double=numeric_limits<long double>::infinity()) {} // dummy function overridden in KPS and MCAMC to do BKL steps after a basin escape
     virtual void reset_nodeptrs() {} // dummy function overridden in KPS and MCAMC to reset basin and absorbing node pointers when A is hit
+    bool statereduction;        // purpose of the computation is to perform a state reduction procedure, not a simulation
 };
 
 /* rejection-free algorithm of Bortz, Kalos and Lebowitz (aka n-fold way algorithm) */
@@ -246,7 +247,7 @@ class KPS : public Traj_Method {
         // NB these pointers point to nodes in the original network, passed as the arg to kmc_iteration()
     bool adaptivecomms;
     double adaptminrate; // maximum allowed rate in finding a community on-the-fly
-    bool pfold;      // calculate the committor functions instead of performing a kPS simulation
+    bool committor;      // calculate the committor functions instead of performing a kPS simulation
     int kpskmcsteps; // number of kMC steps to run after each kPS trapping basin escape trajectory sampled
 
     void setup_basin_sets(const Network&,Walker&,bool);
@@ -259,7 +260,8 @@ class KPS : public Traj_Method {
     Network *get_subnetwork(const Network&,bool);
     void do_bkl_steps(const Network&,Walker&,long double=numeric_limits<long double>::infinity());
     void reset_nodeptrs();
-    void calc_pfold(const Network&);
+    void calc_committor(const Network&);
+    static long double committor_boundary_node(const Network&,int,const vector<long double>,int);
 
     public:
 

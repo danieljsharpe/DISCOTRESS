@@ -230,6 +230,7 @@ void STD_KMC::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj)
     while ((n_ab<maxn_abpaths) && (n_it<=maxit)) { // if using kPS or MCAMC, algo terminates when max no of basin escapes have been simulated
         bool donebklsteps=false;
         traj_method_obj->kmc_iteration(ktn,walker);
+        if (traj_method_obj->statereduction) return; // if the purpose of the computation was to perform a state reduction procedure, quit here
         traj_method_obj->dump_traj(walker,walker.curr_node->aorb==-1,false);
         n_it++;
         check_if_endpoint:
@@ -300,8 +301,8 @@ Traj_Method::~Traj_Method() {}
 Traj_Method::Traj_Method(const Traj_Method& traj_method_obj) {}
 
 /* set protected members of Traj_Method class */
-void Traj_Method::setup_traj_method(double tintvl, bool dumpintvls, int seed, bool debug) {
-    this->tintvl=tintvl; this->dumpintvls=dumpintvls; this->seed=seed; this->debug=debug;
+void Traj_Method::setup_traj_method(double tintvl, bool dumpintvls, bool statereduction, int seed, bool debug) {
+    this->tintvl=tintvl; this->dumpintvls=dumpintvls; this->statereduction=statereduction; this->seed=seed; this->debug=debug;
 }
 
 void Traj_Method::dump_traj(Walker &walker, bool transnpath, bool newpath, long double maxtime) {
