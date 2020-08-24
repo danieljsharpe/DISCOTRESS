@@ -109,7 +109,9 @@ Discotress::Discotress () {
         if (my_kws.branchprobs) { ktn->get_tmtx_branch();
         } else if (!my_kws.transnprobs) { ktn->get_tmtx_lin(my_kws.tau); }
         KPS *kps_ptr = new KPS(*ktn,my_kws.discretetime,my_kws.nelim,my_kws.tau,my_kws.kpskmcsteps, \
-                    my_kws.adaptivecomms,my_kws.adaptminrate,my_kws.committor);
+                    my_kws.adaptivecomms,my_kws.adaptminrate);
+        if (my_kws.statereduction) kps_ptr->set_statereduction_procs(my_kws.committor,my_kws.absorption,my_kws.fundamentalred, \
+                    my_kws.fundamentalirred,my_kws.mfpt,my_kws.gth);
         traj_method_obj = kps_ptr;
     } else if (my_kws.traj_method==3) {     // MCAMC algorithm
         MCAMC *mcamc_ptr = new MCAMC(*ktn,my_kws.discretetime,my_kws.kpskmcsteps,my_kws.meanrate);

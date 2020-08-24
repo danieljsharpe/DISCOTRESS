@@ -419,9 +419,11 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         ktn.nodes[nodesinB[i]-1].aorb = 1;
         ktn.nodesB.insert(&ktn.nodes[nodesinB[i]-1]);
     }
+    /* the community IDs of A (and of B) nodes should be consistent, but note that it is *not* required that the
+       number of initial (B) nodes is equal to the number of nodes in that community - i.e. (I \cup B) is allowed to
+       be a single community */
     if (!comms.empty() && !nodesinA.empty()) { // community IDs of A (and of B) nodes should be consistent
-//        if (ktn.nodesA.size()!=ktn.comm_sizes[(*ktn.nodesA.begin())->comm_id] || \
-            ktn.nodesB.size()!=ktn.comm_sizes[(*ktn.nodesB.begin())->comm_id]) throw Ktn_exception();
+        if (ktn.nodesA.size()!=ktn.comm_sizes[(*ktn.nodesA.begin())->comm_id]) throw Ktn_exception();
         int commA=(*ktn.nodesA.begin())->comm_id;
         for (set<const Node*>::iterator it_set=ktn.nodesA.begin();it_set!=ktn.nodesA.end();++it_set) {
             if ((*it_set)->comm_id!=commA) throw Ktn_exception(); }

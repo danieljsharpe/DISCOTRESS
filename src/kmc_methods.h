@@ -207,7 +207,7 @@ class Traj_Method {
     virtual void kmc_iteration(const Network&,Walker&)=0;
     virtual void do_bkl_steps(const Network&,Walker&,long double=numeric_limits<long double>::infinity()) {} // dummy function overridden in KPS and MCAMC to do BKL steps after a basin escape
     virtual void reset_nodeptrs() {} // dummy function overridden in KPS and MCAMC to reset basin and absorbing node pointers when A is hit
-    bool statereduction;        // purpose of the computation is to perform a state reduction procedure, not a simulation
+    bool statereduction=false;    // purpose of the computation is to perform a state reduction procedure, not a simulation
 };
 
 /* rejection-free algorithm of Bortz, Kalos and Lebowitz (aka n-fold way algorithm) */
@@ -247,8 +247,9 @@ class KPS : public Traj_Method {
         // NB these pointers point to nodes in the original network, passed as the arg to kmc_iteration()
     bool adaptivecomms;
     double adaptminrate; // maximum allowed rate in finding a community on-the-fly
-    bool committor;      // calculate the committor functions instead of performing a kPS simulation
     int kpskmcsteps; // number of kMC steps to run after each kPS trapping basin escape trajectory sampled
+    // series of truth values specify which state reduction procedures to perform
+    bool committor=false, absorption=false, fundamentalred=false, fundamentalirred=false, mfpt=false, gth=false;
 
     void setup_basin_sets(const Network&,Walker&,bool);
     long double iterative_reverse_randomisation();
@@ -261,14 +262,17 @@ class KPS : public Traj_Method {
     void do_bkl_steps(const Network&,Walker&,long double=numeric_limits<long double>::infinity());
     void reset_nodeptrs();
     void calc_committor(const Network&);
+    void calc_absprobs(const Network&);
+    void write_fundamentalred(const Network&);
     static long double committor_boundary_node(const Network&,int,const vector<long double>,int);
 
     public:
 
-    KPS(const Network&,bool,int,long double,int,bool,double,bool);
+    KPS(const Network&,bool,int,long double,int,bool,double);
     ~KPS();
     KPS(const KPS&);
     KPS* clone() { return new KPS(*this); }
+    void set_statereduction_procs(bool,bool,bool,bool,bool,bool);
     void kmc_iteration(const Network&,Walker&);
     static long double calc_gt_factor(Node*);
     static void reset_kmc_hop_counts(Network&);

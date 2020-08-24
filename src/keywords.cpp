@@ -174,6 +174,10 @@ Keywords read_keywords(const char *kw_file) {
     if (my_kws.committor || my_kws.absorption || my_kws.fundamentalred || my_kws.fundamentalirred || my_kws.mfpt || my_kws.gth) {
         if (my_kws.wrapper_method!=1 || my_kws.traj_method!=2) {
             cout << "keywords> error: to perform a state reduction computation, must set WRAPPER NONE and TRAJ KPS" << endl; exit(EXIT_FAILURE); }
+        if (my_kws.ncomms!=2) {
+            cout << "keywords> error: a state reduction computation uses only two communities (not A and A)" << endl; exit(EXIT_FAILURE); }
+        if (my_kws.gth && my_kws.nA!=1) {
+            cout << "keywords> error: the GTH algorithm can be ran only when there is a single node in A" << endl; exit(EXIT_FAILURE); }
         my_kws.statereduction=true;
     }
     // check specification of wrapper method is valid
@@ -201,8 +205,7 @@ Keywords read_keywords(const char *kw_file) {
     if (my_kws.traj_method==1) { // BKL algorithm
         // ...
     } else if (my_kws.traj_method==2) { // kPS algorithm
-        if ((my_kws.commsfile==nullptr && !my_kws.adaptivecomms) || my_kws.nelim<=0 || \
-            (my_kws.committor && my_kws.ncomms!=3)) {
+        if ((my_kws.commsfile==nullptr && !my_kws.adaptivecomms) || my_kws.nelim<=0) {
             cout << "keywords> error: kPS algorithm not specified correctly" << endl; exit(EXIT_FAILURE); }
     } else if (my_kws.traj_method==3) { // MCAMC algorithm
         if (my_kws.branchprobs) {
