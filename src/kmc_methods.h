@@ -263,7 +263,8 @@ class KPS : public Traj_Method {
     void reset_nodeptrs();
     void calc_committor(const Network&);
     void calc_absprobs(const Network&);
-    void write_fundamentalred(const Network&);
+    void calc_fundamentalred(const Network&);
+    void write_renormalised_probs(string);
     static long double committor_boundary_node(const Network&,int,const vector<long double>,int);
 
     public:

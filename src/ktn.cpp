@@ -49,7 +49,7 @@ Network::Network(const Network &ktn) {
         edges[i].to_node = &nodes[ktn.edges[i].to_node->node_pos];
         add_to_edge(ktn.edges[i].to_node->node_pos,i);
         add_from_edge(ktn.edges[i].from_node->node_pos,i);
-        edges[i].rev_edge = &edges[ktn.edges[i].rev_edge->edge_pos];
+        edges[i].rev_edge = &edges[ktn.edges[i].rev_edge->edge_id];
     }
 }
 
@@ -125,7 +125,7 @@ void Network::get_cum_branchprobs() {
             edgeptr = next_edge;
         }
         while (!edge_pq.empty()) { // edges will be added so that the final linked list is in order of decreasing t
-            this->add_from_edge(node.node_id-1,edge_pq.top()->edge_pos);
+            this->add_from_edge(node.node_id-1,edge_pq.top()->edge_id);
             edge_pq.pop();
         }
         edgeptr = node.top_from;
@@ -211,14 +211,14 @@ void Network::del_from_edge(int i) {
     nodes[i].udeg--;
 }
 
-// delete TO edge with ts_id j for node i
+// delete TO edge with edge_id j for node i
 void Network::del_spec_to_edge(int i, int j) {
     Edge *edgeptr; Edge *edgeptr_prev = nullptr;
-    bool ts_exists = false;
+    bool edge_exists = false;
     if (nodes[i].top_to==nullptr) throw Ktn_exception();
     edgeptr = nodes[i].top_to;
     while (edgeptr!=nullptr) {
-        if (edgeptr->ts_id==j) {
+        if (edgeptr->edge_id==j) {
             if (edgeptr_prev != nullptr) {
                 edgeptr_prev->next_to = edgeptr->next_to;
             } else if (edgeptr->next_to != nullptr) {
@@ -226,23 +226,23 @@ void Network::del_spec_to_edge(int i, int j) {
             } else if (edgeptr->next_to == nullptr) {
                 nodes[i].top_to = nullptr;
             }
-            ts_exists = true;
+            edge_exists = true;
             break;
         }
         edgeptr_prev = edgeptr;
         edgeptr = edgeptr->next_to;
     }
-    if (!ts_exists) throw Ktn_exception();
+    if (!edge_exists) throw Ktn_exception();
 }
 
-// delete FROM edge with ts_id j for node i
+// delete FROM edge with edge_id j for node i
 void Network::del_spec_from_edge(int i, int j) {
     Edge *edgeptr; Edge *edgeptr_prev = nullptr;
-    bool ts_exists = false;
+    bool edge_exists = false;
     if (nodes[i].top_from==nullptr) throw Ktn_exception();
     edgeptr = nodes[i].top_from;
     while (edgeptr!=nullptr) {
-        if (edgeptr->ts_id==j) {
+        if (edgeptr->edge_id==j) {
             if (edgeptr_prev != nullptr) {
                 edgeptr_prev->next_from = edgeptr->next_from;
             } else if (edgeptr->next_from != nullptr) {
@@ -250,32 +250,32 @@ void Network::del_spec_from_edge(int i, int j) {
             } else if (edgeptr->next_from ==nullptr) {
                 nodes[i].top_from = nullptr;
             }
-            ts_exists = true;
+            edge_exists = true;
             break;
         }
         edgeptr_prev = edgeptr;
         edgeptr = edgeptr->next_from;
     }
-    if (!ts_exists) throw Ktn_exception();
+    if (!edge_exists) throw Ktn_exception();
 }
 
-// update edge so that it now points TO i
+// update edge with edge_id j so that it now points TO node i
 void Network::update_to_edge(int i, int j) {
     Edge *edgeptr;
     edgeptr = &edges[j];
     int old_to = edgeptr->to_node->node_id;
     edgeptr->to_node = &nodes[i];
-    del_spec_to_edge(old_to-1,edgeptr->ts_id);
+    del_spec_to_edge(old_to-1,edgeptr->edge_id);
     add_to_edge(i,j);
 }
 
-// update edge so that it now points FROM i
+// update edge with edge_id j so that it now points FROM i
 void Network::update_from_edge(int i, int j) {
     Edge *edgeptr;
     edgeptr = &edges[j];
     int old_from = edgeptr->from_node->node_id;
     edgeptr->from_node = &nodes[i];
-    del_spec_from_edge(old_from-1,edgeptr->ts_id);
+    del_spec_from_edge(old_from-1,edgeptr->edge_id);
     add_from_edge(i,j);
 }
 
@@ -302,12 +302,11 @@ void Network::calc_t_selfloop(Node &node) {
 }
 
 /* calculate the net flux along an edge and its reverse edge */
-void Network::calc_net_flux(Edge &edge) {
+long double Network::calc_net_flux(Edge &edge) {
     if (edge.rev_edge==nullptr) throw Network::Ktn_exception();
     if (!((edge.to_node->node_id==edge.rev_edge->from_node->node_id) || \
           (edge.from_node->node_id==edge.rev_edge->to_node->node_id))) throw Network::Ktn_exception();
-    edge.j = exp(edge.k+edge.from_node->pi)-exp(edge.rev_edge->k+edge.to_node->pi);
-    edge.rev_edge->j = -edge.j;
+    return exp(edge.k+edge.from_node->pi)-exp(edge.rev_edge->k+edge.to_node->pi);
 }
 
 /* set the vector specifying the initial probabilities of nodes in set B (if different from stationary probabilities) */
@@ -363,10 +362,8 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         cout << "ktn> Error: total equilibrium probabilities of nodes is: " << tot_pi << " =/= 1." << endl;
         throw Network::Ktn_exception(); }
     for (int i=0;i<ktn.n_edges;i++) {
-        ktn.edges[2*i].ts_id = i+1;
-        ktn.edges[(2*i)+1].ts_id = i+1;
-        ktn.edges[2*i].edge_pos = 2*i;
-        ktn.edges[(2*i)+1].edge_pos = (2*i)+1;
+        ktn.edges[2*i].edge_id = 2*i;
+        ktn.edges[(2*i)+1].edge_id = (2*i)+1;
         if (ts_conns[i].first == ts_conns[i].second) { // "dead" transition state (dangling node)
             cout << "ktn> warning: transition state " << i << " is dead" << endl;
             ktn.edges[2*i].deadts = true;
@@ -397,9 +394,6 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
 
         ktn.edges[2*i].rev_edge = &ktn.edges[(2*i)+1];
         ktn.edges[(2*i)+1].rev_edge = &ktn.edges[2*i];
-
-        if (!transnprobs) { calc_net_flux(ktn.edges[2*i]);
-        } else { ktn.edges[2*i].j = 0.; ktn.edges[(2*i)+1].j = 0.; } // dummy values
     }
     for (int i=0;i<ktn.n_nodes;i++) {
         if (!transnprobs) { // continuous-time, in general, nodes have different waiting times (escape rates)

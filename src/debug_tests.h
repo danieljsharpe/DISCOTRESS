@@ -58,19 +58,19 @@ void run_debug_tests(const Network& ktn) {
     Edge *edgeptr = ktn.nodes[test_node-1].top_from;
     Edge *edgeptr_prev;
     while (edgeptr!=nullptr) {
-        cout << "\n  ts id: " << edgeptr->ts_id << " edge id: " << edgeptr->edge_pos << endl;
+        cout << "\n  edge id: " << edgeptr->edge_id << endl;
         cout << "    from node: " << edgeptr->from_node->node_id << " to node: " << edgeptr->to_node->node_id << endl;
         cout << "    log transition rate: " << edgeptr->k << " transition rate: " << exp(edgeptr->k) << endl;
         cout << "    transition probability: " << edgeptr->t << endl;
-        cout << "    flux: " << edgeptr->j << endl;
+        cout << "    flux: " << Network::calc_net_flux(*edgeptr) << endl;
         edgeptr_prev = edgeptr;
         edgeptr = edgeptr->rev_edge;
         cout << "  reverse edge..." << endl;
-        cout << "  ts id: " << edgeptr->ts_id << " edge id: " << edgeptr->edge_pos << endl;
+        cout << "  edge id: " << edgeptr->edge_id << endl;
         cout << "    from node: " << edgeptr->from_node->node_id << " to node: " << edgeptr->to_node->node_id << endl;
         cout << "    log transition rate: " << edgeptr->k << " transition rate: " << exp(edgeptr->k) << endl;
         cout << "    transition probability: " << edgeptr->t << endl;
-        cout << "    flux: " << edgeptr->j << endl;
+        cout << "    flux: " << Network::calc_net_flux(*edgeptr) << endl;
         edgeptr=edgeptr_prev->next_from;
     }
 }

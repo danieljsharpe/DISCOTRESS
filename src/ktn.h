@@ -33,13 +33,11 @@ class Discotress;
 struct Node;
 
 struct Edge {
-    int ts_id;
-    int edge_pos; // position of the TS in the edges array
+    int edge_id; // position of the TS in the edges array
     unsigned long long int h=0; // no. of kMC moves along the edge (used in kPS)
     int label=0; // label indicates node ID of GT iteration at which edge becomes dead (in kPS)
     long double k; // (log) transition rate
     long double t; // transition probability
-    double j; // net flux
     long double dt; // change in transition probability (used in kPS)
     bool deadts=false; // indicates TS only linked to one node ("dangling TS") or is otherwise deleted
     Node *to_node=nullptr;
@@ -49,15 +47,15 @@ struct Edge {
     Edge *rev_edge=nullptr; // reverse edge (all edges are bidirectional)
 
     inline Edge operator+(const Edge& other_edge) const {
-        Edge new_edge{.ts_id=ts_id, .edge_pos=edge_pos, .h=h+other_edge.h, .label=other_edge.label, .k=k+other_edge.k, \
-            .t=t+other_edge.t, .j=j+other_edge.j, .dt=dt+other_edge.dt, .deadts=deadts, .to_node=to_node, \
+        Edge new_edge{.edge_id=edge_id, .h=h+other_edge.h, .label=other_edge.label, .k=k+other_edge.k, \
+            .t=t+other_edge.t, .dt=dt+other_edge.dt, .deadts=deadts, .to_node=to_node, \
             .from_node=from_node, .next_to=next_to, .next_from=next_from, .rev_edge=rev_edge};
         return new_edge;
     }
 
     inline Edge& operator=(const Edge& other_edge) {
-        ts_id=other_edge.ts_id; edge_pos=other_edge.edge_pos; label=other_edge.label;
-        k=other_edge.k; t=other_edge.t; j=other_edge.j; deadts=other_edge.deadts;
+        edge_id=other_edge.edge_id; label=other_edge.label;
+        k=other_edge.k; t=other_edge.t; deadts=other_edge.deadts;
     }
 };
 
@@ -121,7 +119,7 @@ struct Network {
     void update_from_edge(int,int);
     static void calc_k_esc(Node&);
     static void calc_t_selfloop(Node&);
-    static void calc_net_flux(Edge&);
+    static long double calc_net_flux(Edge&);
     void dumpwaittimes(); // print mean waiting times of nodes to file
     void get_tmtx_lin(long double); // calculate the linearised transition probability matrix
     void get_tmtx_branch(); // calculate the branching transition probability matrix

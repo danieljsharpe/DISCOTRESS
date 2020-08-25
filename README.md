@@ -2,6 +2,8 @@
 
 Welcome to the **DISCOTRESS** (DIscrete State COntinuous Time Rare Event Simulation Suite) program, developed by Daniel J. Sharpe.
 
+![Getting from B to A in a Markov chain](https://github.com/danieljsharpe/danieljsharpe/blob/master/discotress_network_annotated.png?raw=true)
+
 **DISCOTRESS** is a software package to simulate and analyse the dynamics on arbitrary Markov chains. **DISCOTRESS** is designed to enable simulation and analysis of the dynamics for discrete- and continuous-time finite Markov chains (DTMCs and CTMCs, respectively) that exhibit strong metastability (i.e. rare event dynamics). In the rare event regime, standard simulation methods are severely inefficient, and linear algebra methods for the exact computation of dynamical quantities fail to converge.
 
 Discrete-state DTMCs and CTMCs are widely applied models for the stochastic dynamics of many processes. Markov chains are commonly used to represent populations of species in and animal movement within an ecosystem, epidemic spread, financial markets, social groups, gene regulatory and other chemical reaction networks, as well as the dynamics of many-particle systems in condensed matter and biological physics, and more!

@@ -50,8 +50,8 @@ void KPS::calc_committor(const Network& ktn) {
             }
             edgeptr=edgeptr->next_from;
         }
-        q_ab_vals[node.node_id-1] = q_ab/(q_ab+q_ba);
-        q_ba_vals[node.node_id-1] = q_ba/(q_ab+q_ba);
+        q_ab_vals[node.node_id-1] = q_ab;
+        q_ba_vals[node.node_id-1] = q_ba;
     }
     /* committor probabilities for endpoint nodes */
     for (int i=0;i<ktn.n_nodes;i++) {
@@ -73,7 +73,7 @@ void KPS::calc_committor(const Network& ktn) {
     cout << "kps> finished writing committor probabilities to files" << endl;
 }
 
-/* calculate the committor probability for an initial node at the boundary of the initial state, which is =/= 0 */
+/* calculate the committor probability for an initial node at the boundary of the initial state, which is /= 0 */
 long double KPS::committor_boundary_node(const Network& ktn, int node_id, const vector<long double> q_vals, int aorb) {
     const Node& node = ktn.nodes[node_id-1];
     long double q_val=0.;
@@ -87,7 +87,32 @@ long double KPS::committor_boundary_node(const Network& ktn, int node_id, const 
 }
 
 /* compute and write absorption probabilities */
-void KPS::calc_absprobs(const Network &ktn) {}
+void KPS::calc_absprobs(const Network &ktn) {
+    cout << "kps> calculating absorption probabilities from the graph transformation" << endl;
+    write_renormalised_probs("absorption.dat");
+    cout << "kps> finished writing absorption probabilities to files" << endl;
+}
 
 /* write the elements of the fundamental matrix for an absorbing (i.e. reducible) Markov chain */
-void KPS::write_fundamentalred(const Network &ktn) {}
+void KPS::calc_fundamentalred(const Network &ktn) {
+    cout << "kps> calculating expected numbers of node visits from the graph transformation" << endl;
+    write_renormalised_probs("node_visits.dat");
+    cout << "kps> finished writing expected numbers of node visits to files" << endl;
+}
+
+/* write the elements of the graph-transformed network to a file */
+void KPS::write_renormalised_probs(string fname) {
+    ofstream elems_f; elems_f.open(fname);
+    elems_f.setf(ios::right,ios::adjustfield); elems_f.setf(ios::fixed,ios::floatfield);
+    elems_f.precision(10);
+    for (vector<Node>::iterator it_nodevec=ktn_kps->nodes.begin();it_nodevec!=ktn_kps->nodes.end();++it_nodevec) {
+        if (fundamentalred && !it_nodevec->flag) continue;
+        Edge *edgeptr = it_nodevec->top_from;
+        while (edgeptr!=nullptr) {
+            if (edgeptr->deadts || edgeptr->to_node->eliminated) { edgeptr=edgeptr->next_from; continue; }
+            elems_f << setw(5) << edgeptr->from_node->node_id << setw(5) << edgeptr->to_node->node_id \
+                    << setw(14) << edgeptr->t << endl;
+            edgeptr = edgeptr->next_from;
+        }
+    }
+}

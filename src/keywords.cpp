@@ -176,8 +176,10 @@ Keywords read_keywords(const char *kw_file) {
             cout << "keywords> error: to perform a state reduction computation, must set WRAPPER NONE and TRAJ KPS" << endl; exit(EXIT_FAILURE); }
         if (my_kws.ncomms!=2) {
             cout << "keywords> error: a state reduction computation uses only two communities (not A and A)" << endl; exit(EXIT_FAILURE); }
-        if (my_kws.gth && my_kws.nA!=1) {
-            cout << "keywords> error: the GTH algorithm can be ran only when there is a single node in A" << endl; exit(EXIT_FAILURE); }
+        if ((my_kws.gth || my_kws.fundamentalirred) && my_kws.nA!=1) {
+            cout << "keywords> error: the GTH and FUND algorithms can be ran only when there is a single node in A" << endl; exit(EXIT_FAILURE); }
+        if (my_kws.fundamentalred && (my_kws.committor || my_kws.absorption || my_kws.fundamentalirred || my_kws.mfpt || my_kws.gth)) {
+            cout << "keywords> error: computation of the fundamental matrix for a reducible Markov chain is standalone" << endl; exit(EXIT_FAILURE); }
         my_kws.statereduction=true;
     }
     // check specification of wrapper method is valid
