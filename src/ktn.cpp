@@ -309,7 +309,7 @@ long double Network::calc_net_flux(Edge &edge) {
     return exp(edge.k+edge.from_node->pi)-exp(edge.rev_edge->k+edge.to_node->pi);
 }
 
-/* set the vector specifying the initial probabilities of nodes in set B (if different from stationary probabilities) */
+/* set the vector specifying the initial probabilities of nodes in set B (if different from relative stationary probabilities) */
 void Network::set_initcond(const vector<double> &init_probs) {
 
     if (init_probs.size()!=nodesB.size()) throw Network::Ktn_exception();

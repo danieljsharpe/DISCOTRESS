@@ -19,6 +19,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#ifndef __STATEREDUCTION_H_INCLUDED__
+#define __STATEREDUCTION_H_INCLUDED__
+
+#include <cmath>
+
+using namespace std;
 
 /* calculate the A<-B and B<-A committor probabilities and write to files */
 void KPS::calc_committor(const Network& ktn) {
@@ -86,18 +92,74 @@ long double KPS::committor_boundary_node(const Network& ktn, int node_id, const 
     return q_val;
 }
 
-/* compute and write absorption probabilities */
+/* compute and write absorption probabilities. NB At this point, pi values of the ktn_kps object should, for
+   initial nodes, have been overwritten to the initial probability distribution values */
 void KPS::calc_absprobs(const Network &ktn) {
     cout << "kps> calculating absorption probabilities from the graph transformation" << endl;
-    write_renormalised_probs("absorption.dat");
+    write_renormalised_probs("absorption.dat"); // compute probabilities that trajectories initialised at node i are absorbed at node j
+    if (gth) return; // the stationary distribution is not known at this point
+    /* find total hitting probabilities for absorbing nodes given the initial probability distribution */
+    ofstream hitprob_f; hitprob_f.open("hitting_probs.dat");
+    hitprob_f.setf(ios::right,ios::adjustfield); hitprob_f.setf(ios::fixed,ios::floatfield);
+    hitprob_f.precision(10);
+    vector<Node>::iterator it_nodevec = ktn_kps->nodes.begin();
+    while (it_nodevec!=ktn_kps->nodes.end()) {
+        if (it_nodevec->aorb!=-1) { it_nodevec++; continue; } // not an absorbing node
+        long double b=0.; // hitting probability for this absorbing node
+        Edge *edgeptr = it_nodevec->top_to;
+        while (edgeptr!=nullptr) {
+            if (edgeptr->deadts || edgeptr->from_node->aorb!=1) { edgeptr=edgeptr->next_to; continue; } // skip non-initial nodes
+            b += exp(edgeptr->from_node->pi)*edgeptr->t;
+            edgeptr = edgeptr->next_to;
+        }
+        hitprob_f << setw(5) << it_nodevec->node_id << setw(14) << b << endl;
+        it_nodevec++;
+    }
     cout << "kps> finished writing absorption probabilities to files" << endl;
 }
 
 /* write the elements of the fundamental matrix for an absorbing (i.e. reducible) Markov chain */
 void KPS::calc_fundamentalred(const Network &ktn) {
     cout << "kps> calculating expected numbers of node visits from the graph transformation" << endl;
-    write_renormalised_probs("node_visits.dat");
+    write_renormalised_probs("transient_visits.dat"); // compute expected number of visits of node j given that trajectories are initialised at node i
+    if (gth) return; // the stationary distribution is not known at this point
     cout << "kps> finished writing expected numbers of node visits to files" << endl;
+}
+
+/* write the elements of the vector of MFPTs to the absorbing state */
+void KPS::calc_mfpt(const Network &ktn) {
+
+    if (gth) return; // the stationary distribution is not known at this point
+}
+
+/* rewrite the stationary probabilities of the ktn_kps network to reflect the initial distribution */
+void KPS::rewrite_stat_probs(const Network &ktn) {
+    set<const Node*>::iterator it_set = ktn.nodesB.begin();
+    if (ktn.nodesB.size()==1) { // there is only one node in the initial set
+        ktn_kps->nodes[nodemap[(*it_set)->node_id]-1].pi=1.;
+    } else if (ktn.initcond) { // specified initial probability distribution from file
+        int i=0;
+        while (it_set!=ktn.nodesB.end()) {
+            ktn_kps->nodes[nodemap[(*it_set)->node_id]-1].pi = ktn.init_probs[i];
+            i++; it_set++;
+        }
+    } else { // local equilibrium distribution within initial set
+        double pi_B = -numeric_limits<double>::infinity(); // (log) occupation probability of all nodes in initial set B
+        while (it_set!=ktn.nodesB.end()) {
+            pi_B = log(exp(pi_B)+exp((*it_set)->pi));
+            it_set++;
+        }
+        it_set = ktn.nodesB.begin();
+        while (it_set!=ktn.nodesB.end()) {
+            ktn_kps->nodes[nodemap[(*it_set)->node_id]-1].pi -= pi_B;
+            it_set++;
+        }
+    }
+}
+
+/* set all stationary probabilities in ktn_kps to zero */
+void KPS::reset_stat_probs() {
+    
 }
 
 /* write the elements of the graph-transformed network to a file */
@@ -107,6 +169,9 @@ void KPS::write_renormalised_probs(string fname) {
     elems_f.precision(10);
     for (vector<Node>::iterator it_nodevec=ktn_kps->nodes.begin();it_nodevec!=ktn_kps->nodes.end();++it_nodevec) {
         if (fundamentalred && !it_nodevec->flag) continue;
+        if (!it_nodevec->eliminated && it_nodevec->aorb!=-1) { // print self-loop of non-absorbing node if node is non-eliminated
+            elems_f << setw(5) << it_nodevec->node_id << setw(5) << it_nodevec->node_id << setw(14) << it_nodevec->t << endl;
+        }
         Edge *edgeptr = it_nodevec->top_from;
         while (edgeptr!=nullptr) {
             if (edgeptr->deadts || edgeptr->to_node->eliminated) { edgeptr=edgeptr->next_from; continue; }
@@ -116,3 +181,5 @@ void KPS::write_renormalised_probs(string fname) {
         }
     }
 }
+
+#endif

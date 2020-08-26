@@ -250,6 +250,7 @@ class KPS : public Traj_Method {
     int kpskmcsteps; // number of kMC steps to run after each kPS trapping basin escape trajectory sampled
     // series of truth values specify which state reduction procedures to perform
     bool committor=false, absorption=false, fundamentalred=false, fundamentalirred=false, mfpt=false, gth=false;
+    vector<long double> mfpt_vals; // vector of MFPTs (elem is non-zero for non-absorbing nodes)
 
     void setup_basin_sets(const Network&,Walker&,bool);
     long double iterative_reverse_randomisation();
@@ -264,7 +265,10 @@ class KPS : public Traj_Method {
     void calc_committor(const Network&);
     void calc_absprobs(const Network&);
     void calc_fundamentalred(const Network&);
+    void calc_mfpt(const Network&);
     void write_renormalised_probs(string);
+    void rewrite_stat_probs(const Network&);
+    void reset_stat_probs();
     static long double committor_boundary_node(const Network&,int,const vector<long double>,int);
 
     public:

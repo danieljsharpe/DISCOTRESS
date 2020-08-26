@@ -64,6 +64,7 @@ KPS::~KPS() {
     if (ktn_kps!=nullptr) delete ktn_kps; if (ktn_kps_orig!=nullptr) delete ktn_kps_orig;
     if (ktn_kps_gt!=nullptr) delete ktn_kps_gt;
     if (ktn_l!=nullptr) delete ktn_l; if (ktn_u!=nullptr) delete ktn_u;
+    if (mfpt) mfpt_vals.clear();
 }
 
 KPS::KPS(const KPS& kps_obj) {
@@ -412,6 +413,7 @@ void KPS::graph_transformation(const Network &ktn) {
         ktn_l->nodes[i].node_pos=i; ktn_u->nodes[i].node_pos=i;
         ktn_l->nodes[i].t=0.; ktn_u->nodes[i].t=0.; // the "transn probs" in the L and U TNs are the values to "undo" GT
     }
+    if (mfpt) { mfpt_vals.resize(ktn_kps->n_nodes); fill(mfpt_vals.begin(),mfpt_vals.end(),0.); }
     }
     /* comparison function for the priority queue. Note that computation of the committor probabilities within the state reduction
        procedure takes place when only nodes of the set A and B remain, so elimination of nodes not in B should be prioritised */
@@ -441,14 +443,16 @@ void KPS::graph_transformation(const Network &ktn) {
         eliminated_nodes.push_back(node_elim->node_id);
         N++;
         if (debug) { cout << "\nrunning debug tests on transformed network:" << endl; test_ktn(*ktn_kps); }
+        if (mfpt && gt_pq.empty()) { // only nodes not in A remain at this point; compute the MFPT for the last node to be eliminated
+            mfpt_vals[node_elim->node_pos]=1./exp(node_elim->k_esc); }
     }
     if (!adaptivecomms && ktn.ncomms==2 && ktn_kps_gt==nullptr) ktn_kps_gt = new Network(*ktn_kps);
     if (N!=(!(N_B>nelim)?N_B:nelim)) {
         cout << "kps> fatal error: lost track of number of eliminated nodes" << endl; exit(EXIT_FAILURE); }
     if (debug) cout << "kps> finished graph transformation" << endl;
+    if (statereduction) rewrite_stat_probs(ktn); // the stationary probs of initial nodes in the ktn_kps object are rewritten to be the initial probs
     if (absorption) calc_absprobs(ktn); // only nodes not in A remain at this point; compute absorption probabilities
     if (fundamentalred) calc_fundamentalred(ktn); // the remaining edges are the elements of the fundamental matrix for a reducible Markov chain
-//    if (mfpt) continue; // only nodes not in A remain at this point; compute the MFPT for the last node to be eliminated
 }
 
 /* return the subnetwork corresponding to the active trapping basin and absorbing boundary nodes, to be transformed
