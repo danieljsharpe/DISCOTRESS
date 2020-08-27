@@ -61,7 +61,7 @@ Node::~Node() {}
 Node::Node(const Node &node) {
     node_id=node.node_id; comm_id=node.comm_id; aorb=node.aorb;
     udeg=node.udeg; eliminated=node.eliminated;
-    k_esc=node.k_esc; t=node.t; pi=node.pi;
+    t_esc=node.t_esc; t=node.t; pi=node.pi;
 }
 
 /* print mean waiting times for nodes to file */
@@ -70,7 +70,7 @@ void Network::dumpwaittimes() {
     tau_f.open("meanwaitingtimes.dat");
     tau_f.setf(ios::scientific,ios::floatfield); tau_f.precision(20);
     for (const Node &node: nodes) {
-        tau_f << 1./exp(node.k_esc) << endl; }
+        tau_f << node.t_esc << endl; }
 }
 
 /* update the Nodes and Edges of the Network data structure to contain transition probabibilities
@@ -78,13 +78,14 @@ void Network::dumpwaittimes() {
 void Network::get_tmtx_lin(long double tau) {
     cout << "ktn> calculating linearised transition probability matrix at lag time: " << tau << endl;
     for (auto &node: nodes) {
-        if (tau>1./exp(node.k_esc)) throw Ktn_exception(); // value of tau does not give stochastic matrix
-        node.t = 1.-(exp(node.k_esc)*tau);
-        node.k_esc = log(tau); // override node escape rates
+        if (tau>node.t_esc) throw Ktn_exception(); // value of tau does not give stochastic matrix
+        node.t = 1.L-(tau/node.t_esc);
+        node.t_esc = tau; // mean waiting times are all equal in the linearised transition matrix
     }
     for (auto &edge: edges) {
         if (edge.deadts) continue;
-        edge.t = exp(edge.k)*tau; }
+        edge.t = exp(edge.k)*tau;
+    }
     this->tau=tau;
 }
 
@@ -94,10 +95,10 @@ void Network::get_tmtx_branch() {
     branchprobs=true;
     for (auto & edge: edges) {
         if (edge.deadts) continue;
-        edge.t = exp(edge.k-edge.from_node->k_esc); }
+        edge.t = exp(edge.k)*edge.from_node->t_esc; }
     for (auto &node: nodes) {
-        node.t = 0.; // branching probability matrix contains no self-loops
-        long double cum_t=0.; // accumulated branching probability
+        node.t = 0.L; // branching probability matrix contains no self-loops
+        long double cum_t=0.L; // accumulated branching probability
         Edge *edgeptr = node.top_from;
         while (edgeptr!=nullptr) {
             if (!edgeptr->deadts) { cum_t += edgeptr->t; }
@@ -129,7 +130,7 @@ void Network::get_cum_branchprobs() {
             edge_pq.pop();
         }
         edgeptr = node.top_from;
-        long double cum_t=0.;
+        long double cum_t=0.L;
         while (edgeptr!=nullptr) { // calculate accumulated branching probabilities
             if (edgeptr->deadts) { edgeptr=edgeptr->next_from; continue; }
             long double prev_cum_t = cum_t;
@@ -279,21 +280,22 @@ void Network::update_from_edge(int i, int j) {
     add_from_edge(i,j);
 }
 
-/* calculate the escape rate for node */
-void Network::calc_k_esc(Node &node) {
+/* calculate the mean waiting time for a node. Note that the mean waiting time is not stored as a log */
+void Network::calc_t_esc(Node &node) {
     Edge *edgeptr;
-    node.k_esc = -numeric_limits<long double>::infinity();
+    long double k_esc = -numeric_limits<long double>::infinity();
     edgeptr = node.top_from;
     while (edgeptr!=nullptr) {
-        if (!edgeptr->deadts) node.k_esc = log(exp(node.k_esc)+exp(edgeptr->k));
+        if (!edgeptr->deadts) k_esc = log(exp(k_esc)+exp(edgeptr->k));
         edgeptr = edgeptr->next_from;
     }
+    node.t_esc = 1.L/exp(k_esc);
 }
 
 /* calculate the self-loop transition probability for node */
 void Network::calc_t_selfloop(Node &node) {
     Edge *edgeptr;
-    node.t=1.;
+    node.t=1.L;
     edgeptr = node.top_from;
     while (edgeptr!=nullptr) {
         if (!edgeptr->deadts) node.t -= edgeptr->t;
@@ -378,7 +380,7 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
             ktn.edges[2*i].k = ts_wts[2*i];
             ktn.edges[(2*i)+1].k = ts_wts[(2*i)+1];
         } else { // ts_wts are transition probabilities
-            ktn.edges[2*i].k = 0.; ktn.edges[(2*i)+1].k = 0.; // dummy values for transition rates
+            ktn.edges[2*i].k = 0.L; ktn.edges[(2*i)+1].k = 0.L; // dummy values for transition rates
             ktn.edges[2*i].t = ts_wts[2*i];
             ktn.edges[(2*i)+1].t = ts_wts[(2*i)+1];
         }
@@ -397,10 +399,10 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
     }
     for (int i=0;i<ktn.n_nodes;i++) {
         if (!transnprobs) { // continuous-time, in general, nodes have different waiting times (escape rates)
-            calc_k_esc(ktn.nodes[i]);
+            calc_t_esc(ktn.nodes[i]);
         } else {
             calc_t_selfloop(ktn.nodes[i]);
-            ktn.nodes[i].k_esc = log(1./tau); // continuous- or discrete-time, all nodes have same escape rate
+            ktn.nodes[i].t_esc = tau; // continuous- or discrete-time, all nodes have same escape rate
         }
     }
     for (int i=0;i<nodesinA.size();i++) {

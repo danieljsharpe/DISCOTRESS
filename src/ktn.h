@@ -67,7 +67,7 @@ struct Node {
     int aorb = 0; // indicates set to which node belongs: -1 for A, +1 for B, 0 for I
     int udeg = 0; // (unweighted) node (out-) degree
     bool eliminated = false; // node has been eliminated from the network (in graph transformation) (or otherwise deleted)
-    long double k_esc; // (log) escape rate from node (sum of outgoing transition rates)
+    long double t_esc; // mean waiting time for escape from node
     long double t; // self-transition probability
     double pi; // (log) occupation probability (usually the stationary/equilibrium probability)
     unsigned long long int h=0; // no. of kMC moves along the self-loop "edge" (used in kPS)
@@ -93,7 +93,7 @@ struct Node {
         node_id=other_node.node_id; node_pos=other_node.node_pos;
         comm_id=other_node.comm_id; bin_id=other_node.bin_id; udeg=0;
         aorb=other_node.aorb; eliminated=other_node.eliminated;
-        k_esc=other_node.k_esc; t=other_node.t; pi=other_node.pi;
+        t_esc=other_node.t_esc; t=other_node.t; pi=other_node.pi;
     }
 };
 
@@ -117,7 +117,7 @@ struct Network {
     void del_spec_from_edge(int,int);
     void update_to_edge(int,int);
     void update_from_edge(int,int);
-    static void calc_k_esc(Node&);
+    static void calc_t_esc(Node&);
     static void calc_t_selfloop(Node&);
     static long double calc_net_flux(Edge&);
     void dumpwaittimes(); // print mean waiting times of nodes to file

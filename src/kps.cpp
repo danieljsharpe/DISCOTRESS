@@ -258,17 +258,17 @@ long double KPS::iterative_reverse_randomisation() {
                 if (debug) cout << " old node h: " << h_prev << "  new node h: " << edgeptr->from_node->h \
                                 << "  R: " << ratio << endl;
             }
-            edgeptr->from_node->dt=0.;
+            edgeptr->from_node->dt=0.L;
             // update edges
 //            cout << "    stage 2" << endl;
             while (edgeptr!=nullptr) {
                 if (edgeptr->to_node->eliminated || (edgeptr->deadts && edgeptr->label!=curr_node->node_id) \
                     || edgeptr->to_node==curr_node) {
-                    edgeptr->dt=0.; edgeptr=edgeptr->next_from; continue;
+                    edgeptr->dt=0.L; edgeptr=edgeptr->next_from; continue;
                 }
                 long double ratio;
                 if (!edgeptr->deadts) { ratio=edgeptr->t/(edgeptr->t+edgeptr->dt);
-                } else { ratio=0.; }
+                } else { ratio=0.L; }
                 unsigned long long int h_prev = edgeptr->h;
 //                cout << "      about to draw from B distribn. h: " << edgeptr->from_node->h << "  ratio: " << ratio << endl;                
                 edgeptr->h = KPS::binomial_distribn(edgeptr->h,ratio,seed);
@@ -276,7 +276,7 @@ long double KPS::iterative_reverse_randomisation() {
                 fromn_hops[edgeptr->to_node->node_pos] += h_prev-edgeptr->h;
                 if (debug) cout << "  to node : " << edgeptr->to_node->node_id \
                                 << "  R: " << ratio << "  old h: " << h_prev << "  new h: " << edgeptr->h << endl;
-                edgeptr->dt=0.; edgeptr=edgeptr->next_from;
+                edgeptr->dt=0.L; edgeptr=edgeptr->next_from;
             }
             ((*it_nodevec).second)->rev_edge->h = hx; // transitions from eliminated nodes to the i-th node
             if (debug) cout << "  new h to elimd node: " << hx << endl;
@@ -312,7 +312,7 @@ long double KPS::iterative_reverse_randomisation() {
         }
     }
     // count the number of hops and stochastically draw the time for the escape trajectory
-    long double t_esc=0.; // sampled time for basin escape trajectory
+    long double t_esc=0.L; // sampled time for basin escape trajectory
     if (!ktn_kps->branchprobs) { // transitions from all nodes are associated with the same waiting time
         unsigned long long int nhops=0; // total number of kMC hops
         for (const auto &node: ktn_kps->nodes) nhops += node.h; // linearised or discrete-time prob matrix has self-loops
@@ -328,7 +328,7 @@ long double KPS::iterative_reverse_randomisation() {
                 if (!edgeptr->deadts) nhops += edgeptr->h;
                 edgeptr = edgeptr->next_from;
             }
-            t_esc += KPS::gamma_distribn(nhops+node.h,1./exp(node.k_esc),seed);
+            t_esc += KPS::gamma_distribn(nhops+node.h,node.t_esc,seed);
         }
     }
     if (debug) {
@@ -351,9 +351,9 @@ Node *KPS::sample_absorbing_node() {
     do {
         if (debug) cout << "curr_node is: " << curr_node->node_id << endl;
         double rand_no = Wrapper_Method::rand_unif_met(seed);
-        long double cum_t = 0.; // accumulated transition probability
+        long double cum_t = 0.L; // accumulated transition probability
         bool nonelimd = false; // flag indicates if the current node is transient noneliminated
-        long double factor = 0.;
+        long double factor = 0.L;
         if (!curr_node->eliminated) {
             if (debug) cout << "  node has not been eliminated" << endl;
             dummy_node = &(*curr_node);
@@ -411,9 +411,9 @@ void KPS::graph_transformation(const Network &ktn) {
         ktn_l->nodes[i] = ktn_kps->nodes[i];
         ktn_u->nodes[i] = ktn_kps->nodes[i];
         ktn_l->nodes[i].node_pos=i; ktn_u->nodes[i].node_pos=i;
-        ktn_l->nodes[i].t=0.; ktn_u->nodes[i].t=0.; // the "transn probs" in the L and U TNs are the values to "undo" GT
+        ktn_l->nodes[i].t=0.L; ktn_u->nodes[i].t=0.L; // the "transn probs" in the L and U TNs are the values to "undo" GT
     }
-    if (mfpt) { mfpt_vals.resize(ktn_kps->n_nodes); fill(mfpt_vals.begin(),mfpt_vals.end(),0.); }
+    if (mfpt) { mfpt_vals.resize(ktn_kps->n_nodes); fill(mfpt_vals.begin(),mfpt_vals.end(),0.L); }
     }
     /* comparison function for the priority queue. Note that computation of the committor probabilities within the state reduction
        procedure takes place when only nodes of the set A and B remain, so elimination of nodes not in B should be prioritised */
@@ -444,7 +444,7 @@ void KPS::graph_transformation(const Network &ktn) {
         N++;
         if (debug) { cout << "\nrunning debug tests on transformed network:" << endl; test_ktn(*ktn_kps); }
         if (mfpt && gt_pq.empty()) { // only nodes not in A remain at this point; compute the MFPT for the last node to be eliminated
-            mfpt_vals[node_elim->node_pos]=1./exp(node_elim->k_esc); }
+            mfpt_vals[node_elim->node_pos] = node_elim->t_esc; }
     }
     if (!adaptivecomms && ktn.ncomms==2 && ktn_kps_gt==nullptr) ktn_kps_gt = new Network(*ktn_kps);
     if (N!=(!(N_B>nelim)?N_B:nelim)) {
@@ -529,7 +529,7 @@ void KPS::gt_iteration(Node *node_elim) {
         long double t_ton; // transition probability to eliminated node from this node
     } nbrnode;
     // vector of which relevant entries are for all nodes directly connected to the current elimd node, incl elimd nodes
-    vector<nbrnode> nbrnode_vec(N_B+N_c,(nbrnode){false,0.,0.});
+    vector<nbrnode> nbrnode_vec(N_B+N_c,(nbrnode){false,0.L,0.L});
     // update the self-loops of the L and U networks
     if (!statereduction || fundamentalirred || mfpt || gth) {
     ktn_u->nodes[node_elim->node_pos].t = -factor;
@@ -622,7 +622,7 @@ void KPS::gt_iteration(Node *node_elim) {
             ktn_kps->n_edges++;
             // reverse edge
             if ((*it_nodevec)->eliminated) {
-                ktn_kps->edges[ktn_kps->n_edges].t = 0.; // dummy value
+                ktn_kps->edges[ktn_kps->n_edges].t = 0.L; // dummy value
             } else {
                 if (debug) cout << "    t of new reverse edge: " \
                                 << nbrnode_vec[node2_pos].t_ton*nbrnode_vec[node1_pos].t_fromn/factor << endl;
@@ -741,14 +741,14 @@ vector<pair<Node*,Edge*>> KPS::undo_gt_iteration(Node *node_elim) {
 /* calculate the factor (1-T_{nn}) needed in the elimination of the n-th node in graph transformation */
 long double KPS::calc_gt_factor(Node *node_elim) {
 
-    long double factor=0.; // equal to (1-T_{nn})
+    long double factor=0.L; // equal to (1-T_{nn})
     if (node_elim->t>0.99) { // loop over neighbouring edges to maintain numerical precision
         Edge *edgeptr = node_elim->top_from;
         while (edgeptr!=nullptr) {
             if (!(edgeptr->deadts || edgeptr->to_node->eliminated)) factor += edgeptr->t;
             edgeptr=edgeptr->next_from;
         }
-    } else { factor=1.-node_elim->t; }
+    } else { factor=1.L-node_elim->t; }
     return factor;
 }
 
@@ -816,6 +816,6 @@ unsigned long long int KPS::negbinomial_distribn(unsigned long long int r, long 
 long double KPS::exp_distribn(long double tau, int seed) {
 
     static default_random_engine generator(seed);
-    exponential_distribution<long double> exp_distrib(1./tau);
+    exponential_distribution<long double> exp_distrib(1.L/tau);
     return exp_distrib(generator);
 }

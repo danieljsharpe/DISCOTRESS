@@ -57,7 +57,7 @@ void Walker::dump_tp_distribn() {
 
 /* reset path quantities */
 void Walker::reset_walker_info() {
-    k=0; p=-numeric_limits<long double>::infinity(); t=0.; s=0.;
+    k=0; p=-numeric_limits<long double>::infinity(); t=0.L; s=0.L;
     prev_node=nullptr; curr_node=nullptr;
 }
 
@@ -203,7 +203,7 @@ void Wrapper_Method::write_tp_stats(int nbins) {
 /* draw a uniform random number between 0 and 1, used in Metropolis conditions etc. */
 long double Wrapper_Method::rand_unif_met(int seed) {
     static default_random_engine generator(seed);
-    static uniform_real_distribution<long double> unif_real_distrib(0.,1.);
+    static uniform_real_distribution<long double> unif_real_distrib(0.L,1.L);
     return unif_real_distrib(generator);
 }
 
@@ -265,7 +265,7 @@ DIMREDN::DIMREDN(const Network &ktn, vector<int> ntrajsvec, long double dt) {
     walkers.resize(ktn.ncomms);
     for (int i=0;i<ktn.ncomms;i++) {
         walkers[i] = {walker_id:i,path_no:0,comm_curr:0,comm_prev:0,k:0,active:true,accumprobs:ktn.accumprobs, \
-                      p:-numeric_limits<long double>::infinity(),t:0.,s:0.};
+                      p:-numeric_limits<long double>::infinity(),t:0.L,s:0.L};
     }
 }
 
@@ -345,7 +345,7 @@ void BKL::bkl(Walker &walker, bool discretetime, int seed) {
     double rand_no = Wrapper_Method::rand_unif_met(seed); // random number used to select transition
     Edge *edgeptr = walker.curr_node->top_from;
     const Node *old_node = walker.curr_node;
-    long double prev_cum_p = 0.; // previous accumulated branching / transition probability
+    long double prev_cum_p = 0.L; // previous accumulated branching / transition probability
     long double p; // branching / transition probability of accepted move
     while (edgeptr!=nullptr) { // loop over FROM edges and check random number against accumulated transition probability
         if (walker.accumprobs) { // branching probability values are cumulative
@@ -370,8 +370,8 @@ void BKL::bkl(Walker &walker, bool discretetime, int seed) {
     if (edgeptr!=nullptr) walker.s += edgeptr->rev_edge->k-edgeptr->k; // entropy flow
     // sample transition time
     if (!discretetime) { // continuous-time with non-uniform (branching) or uniform (linearised transn prob mtx) waiting times for nodes
-        walker.t += -(1./exp(old_node->k_esc))*log(Wrapper_Method::rand_unif_met(seed)); // recall for linearised transn prob mtx, exp(k_esc) should have been set to 1./tau
+        walker.t += -1.L*old_node->t_esc*log(Wrapper_Method::rand_unif_met(seed)); // recall for linearised transn prob mtx, t_esc should have been set to tau
     } else { // discrete-time
-        walker.t += exp(old_node->k_esc); // recall for discrete-time transn prob mtx, exp(k_esc) should have been set to 1./tau
+        walker.t += old_node->t_esc; // recall for discrete-time transn prob mtx, t_esc should have been set to tau
     }
 }

@@ -51,7 +51,7 @@ void run_debug_tests(const Network& ktn) {
     cout << "  community id: " << ktn.nodes[test_node-1].comm_id << endl;
     cout << "  aorb endpoint set flag: " << ktn.nodes[test_node-1].aorb << endl;
     cout << "  log stationary probability: " << ktn.nodes[test_node-1].pi << endl;
-    cout << "  log escape rate: " << ktn.nodes[test_node-1].k_esc << " escape rate: " << exp(ktn.nodes[test_node-1].k_esc) << endl;
+    cout << "  mean waiting time: " << ktn.nodes[test_node-1].t_esc << endl;
     cout << "  self-transition probability: " << ktn.nodes[test_node-1].t << endl;
 
     cout << "\ndebug> printing outgoing edges for node " << test_node << endl;
