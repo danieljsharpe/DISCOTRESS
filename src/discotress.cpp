@@ -94,7 +94,7 @@ Discotress::Discotress () {
     } else {
         Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesAvec,nodesBvec,my_kws.transnprobs,my_kws.tau,my_kws.ncomms);
     }
-    cout << "discotress> no. of nodes: " << ktn->n_nodes << "   in A: " << ktn->nodesA.size() << " in B: " << ktn->nodesB.size() << endl;
+    cout << "discotress> no. of nodes: " << ktn->n_nodes << "   in A: " << ktn->nodesA.size() << "   in B: " << ktn->nodesB.size() << endl;
     cout << "discotress> no. of edges: " << ktn->n_edges << "      no. of communities: " << ktn->ncomms << endl;
     if (my_kws.dumpwaittimes) ktn->dumpwaittimes();
     if (my_kws.initcond) ktn->set_initcond(init_probs);

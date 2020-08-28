@@ -263,9 +263,8 @@ class KPS : public Traj_Method {
     void do_bkl_steps(const Network&,Walker&,long double=numeric_limits<long double>::infinity());
     void reset_nodeptrs();
     void calc_committor(const Network&);
-    void calc_absprobs(const Network&);
+    void calc_absprobs(); void calc_mfpt();
     void calc_fundamentalred(const Network&);
-    void calc_mfpt(const Network&);
     void write_renormalised_probs(string);
     void rewrite_stat_probs(const Network&);
     void reset_stat_probs();

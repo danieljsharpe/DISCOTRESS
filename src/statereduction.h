@@ -23,6 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define __STATEREDUCTION_H_INCLUDED__
 
 #include <cmath>
+#include <string>
 
 using namespace std;
 
@@ -94,13 +95,13 @@ long double KPS::committor_boundary_node(const Network& ktn, int node_id, const 
 
 /* compute and write absorption probabilities. NB At this point, pi values of the ktn_kps object should, for
    initial nodes, have been overwritten to the initial probability distribution values */
-void KPS::calc_absprobs(const Network &ktn) {
+void KPS::calc_absprobs() {
     cout << "kps> calculating absorption probabilities from the graph transformation" << endl;
     write_renormalised_probs("absorption.dat"); // compute probabilities that trajectories initialised at node i are absorbed at node j
     if (gth) return; // the stationary distribution is not known at this point
     /* find total hitting probabilities for absorbing nodes given the initial probability distribution */
     ofstream hitprob_f; hitprob_f.open("hitting_probs.dat");
-    hitprob_f.setf(ios::right,ios::adjustfield); hitprob_f.setf(ios::fixed,ios::floatfield);
+    hitprob_f.setf(ios::right,ios::adjustfield); hitprob_f.setf(ios::scientific,ios::floatfield);
     hitprob_f.precision(10);
     vector<Node>::iterator it_nodevec = ktn_kps->nodes.begin();
     while (it_nodevec!=ktn_kps->nodes.end()) {
@@ -112,7 +113,7 @@ void KPS::calc_absprobs(const Network &ktn) {
             b += exp(edgeptr->from_node->pi)*edgeptr->t;
             edgeptr = edgeptr->next_to;
         }
-        hitprob_f << setw(5) << it_nodevec->node_id << setw(14) << b << endl;
+        hitprob_f << setw(5) << it_nodevec->node_id << setw(18) << b << endl;
         it_nodevec++;
     }
     cout << "kps> finished writing absorption probabilities to files" << endl;
@@ -126,17 +127,30 @@ void KPS::calc_fundamentalred(const Network &ktn) {
     cout << "kps> finished writing expected numbers of node visits to files" << endl;
 }
 
-/* write the elements of the vector of MFPTs to the absorbing state */
-void KPS::calc_mfpt(const Network &ktn) {
-
+/* write the elements of the vector of MFPTs to the absorbing state. NB At this point, pi values of the ktn_kps
+   object should, for initial nodes, have been overwritten to the initial probability distribution values */
+void KPS::calc_mfpt() {
+    cout << "kps> writing MFPTs for transitions from all non-absorbing nodes to file" << endl;
+    ofstream mfpt_f; mfpt_f.open("mfpts.dat"); mfpt_f.setf(ios::scientific,ios::floatfield);
+    mfpt_f.precision(10);
+    vector<Node>::iterator it_nodevec = ktn_kps->nodes.begin();
+    long double mfpt_ab = 0.L; // calculate total A<-B MFPT given the initial probability distribution within the set B
+    while (it_nodevec!=ktn_kps->nodes.end()) {
+        if (it_nodevec->aorb==-1) { it_nodevec++; continue; // skip absorbing nodes, for which the MFPT is not defined
+        } else if (it_nodevec->aorb==1) { mfpt_ab += exp(it_nodevec->pi)*mfpt_vals[it_nodevec->node_pos]; }
+        mfpt_f << setw(5) << it_nodevec->node_id << setw(18) << mfpt_vals[it_nodevec->node_pos] << endl;
+        it_nodevec++;
+    }
     if (gth) return; // the stationary distribution is not known at this point
+    cout << "kps> the A<-B MFPT is:" << string(10,' ') << setw(18) << scientific << setprecision(10) << mfpt_ab << endl;
+    cout << "kps> finished writing MFPTs to file" << endl;
 }
 
 /* rewrite the stationary probabilities of the ktn_kps network to reflect the initial distribution */
 void KPS::rewrite_stat_probs(const Network &ktn) {
     set<const Node*>::iterator it_set = ktn.nodesB.begin();
     if (ktn.nodesB.size()==1) { // there is only one node in the initial set
-        ktn_kps->nodes[nodemap[(*it_set)->node_id]-1].pi=1.;
+        ktn_kps->nodes[nodemap[(*it_set)->node_id]-1].pi=0.L;
     } else if (ktn.initcond) { // specified initial probability distribution from file
         int i=0;
         while (it_set!=ktn.nodesB.end()) {
@@ -165,18 +179,18 @@ void KPS::reset_stat_probs() {
 /* write the elements of the graph-transformed network to a file */
 void KPS::write_renormalised_probs(string fname) {
     ofstream elems_f; elems_f.open(fname);
-    elems_f.setf(ios::right,ios::adjustfield); elems_f.setf(ios::fixed,ios::floatfield);
+    elems_f.setf(ios::right,ios::adjustfield); elems_f.setf(ios::scientific,ios::floatfield);
     elems_f.precision(10);
     for (vector<Node>::iterator it_nodevec=ktn_kps->nodes.begin();it_nodevec!=ktn_kps->nodes.end();++it_nodevec) {
         if (fundamentalred && !it_nodevec->flag) continue;
         if (!it_nodevec->eliminated && it_nodevec->aorb!=-1) { // print self-loop of non-absorbing node if node is non-eliminated
-            elems_f << setw(5) << it_nodevec->node_id << setw(5) << it_nodevec->node_id << setw(14) << it_nodevec->t << endl;
+            elems_f << setw(5) << it_nodevec->node_id << setw(5) << it_nodevec->node_id << setw(18) << it_nodevec->t << endl;
         }
         Edge *edgeptr = it_nodevec->top_from;
         while (edgeptr!=nullptr) {
             if (edgeptr->deadts || edgeptr->to_node->eliminated) { edgeptr=edgeptr->next_from; continue; }
             elems_f << setw(5) << edgeptr->from_node->node_id << setw(5) << edgeptr->to_node->node_id \
-                    << setw(14) << edgeptr->t << endl;
+                    << setw(18) << edgeptr->t << endl;
             edgeptr = edgeptr->next_from;
         }
     }

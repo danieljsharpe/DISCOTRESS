@@ -156,7 +156,7 @@ Keywords read_keywords(const char *kw_file) {
 
     // check necessary keywords and compatability
     if (my_kws.n_nodes<=0 || my_kws.n_edges<=0 || ((my_kws.nA<=0 || my_kws.nB<=0) && my_kws.wrapper_method!=0)) {
-        cout << "keywords> error: transition network parameters not set correctly" << endl; exit(EXIT_FAILURE); }
+        cout << "keywords> error: network parameters not set correctly" << endl; exit(EXIT_FAILURE); }
     if ((my_kws.nabpaths<=0 && my_kws.ntrajsfile==nullptr) || (my_kws.dt<=0. && my_kws.wrapper_method==0) || my_kws.maxit<=0) {
         cout << "keywords> error: termination condition not specified correctly" << endl; exit(EXIT_FAILURE); }
     if (my_kws.commsfile!=nullptr && my_kws.ncomms<=1) {
@@ -180,6 +180,8 @@ Keywords read_keywords(const char *kw_file) {
             cout << "keywords> error: the GTH and FUND algorithms can be ran only when there is a single node in A" << endl; exit(EXIT_FAILURE); }
         if (my_kws.fundamentalred && (my_kws.committor || my_kws.absorption || my_kws.fundamentalirred || my_kws.mfpt || my_kws.gth)) {
             cout << "keywords> error: computation of the fundamental matrix for a reducible Markov chain is standalone" << endl; exit(EXIT_FAILURE); }
+        if (my_kws.n_nodes-my_kws.nA>my_kws.nelim) {
+            cout << "keywords> error: for state reduction must set NELIM to ensure that all nodes not in A are eliminated" << endl; exit(EXIT_FAILURE); }
         my_kws.statereduction=true;
     }
     // check specification of wrapper method is valid
