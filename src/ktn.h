@@ -69,7 +69,7 @@ struct Node {
     bool eliminated = false; // node has been eliminated from the network (in graph transformation) (or otherwise deleted)
     long double t_esc; // mean waiting time for escape from node
     long double t; // self-transition probability
-    double pi; // (log) occupation probability (usually the stationary/equilibrium probability)
+    long double pi; // (log) occupation probability (usually the stationary/equilibrium probability)
     unsigned long long int h=0; // no. of kMC moves along the self-loop "edge" (used in kPS)
     long double dt; // change in transition probability (used in kPS)
     bool flag=false; // additional flag variable
@@ -127,7 +127,7 @@ struct Network {
     void set_initcond(const vector<double>&); // set initial probabilities for nodes in set B
     static void add_edge_network(Network*,Node&,Node&,int);
     static void setup_network(Network&,const vector<pair<int,int>>&,const vector<long double>&, \
-        const vector<double>&,const vector<int>&,const vector<int>&,bool,long double,int,const vector<int>& = {}, \
+        const vector<long double>&,const vector<int>&,const vector<int>&,bool,long double,int,const vector<int>& = {}, \
         const vector<int>& = {});
 
     vector<Node> nodes;

@@ -108,6 +108,8 @@ Format: bin ID (indexed from 0) / no. of direct A<-B paths for which bin is visi
 
 The following keywords are used in combination with the keywords **WRAPPER NONE** and **TRAJ KPS**. Use of any of the following keywords overrides the default functionality of DISCOTRESS, which is to simulate dynamical paths, and instead instructs the program to perform a state reduction procedure to exactly compute one or more dynamical quantities associated with nodes, in a numerically stable manner. **NABPATHS** must be set to some arbitrary number >0. The _communities.dat_ file must specify precisely two communities; namely, nodes in the target set A and nodes not in A. The **COMMITTOR**, **ABSORPTION**, **MFPT**, and **GTH** keywords can be used together in any combination. The computations performed with the **FUNDAMENTALRED** and **FUNDAMENTALIRRED** keywords are standalone operations.
 
+The memory costs of state reduction computations can be reduced by setting the type of the "h" members (which represent the numbers of kMC steps for transitions, when using the **KPS** algorithm) of the Node and Edge structures (defined in the file *ktn.h*) to _int_, since these members are not used in the state reduction methods.
+
 **COMMITTOR**  
   specifies that a state reduction procedure is performed to compute the committor probabilities for all nodes. The committor probabilities are written to the files *committor\_AB.dat* and *committor\_BA.dat* (for A<-B and B<-A directions, respectively). Note that the committor probabilities determined by this method are for each node, and the calculation is exact and deterministic (unlike calculation of the committor probabilities for the bins from simulation data, cf. the **BINSFILE** keyword).
 
@@ -125,6 +127,9 @@ The following keywords are used in combination with the keywords **WRAPPER NONE*
 
 **GTH**  
   specifies that the stationary probability distribution (which exists if the Markov chain is irreducible) is computed using the Grassmann-Taksar-Heyman (GTH) algorithm. Can only be used when the target set A contains a single node. The input file *stat\_prob.dat* must be provided, but its contents are not used. The stationary probabilities determined by the GTH algorithm are written to the file *stat\_prob\_gth.dat*.
+
+**PATHLENGTHS**  
+  when used in conjunction with **MFPT**, specifies that mean first passage path lengths (instead of times) are computed. This is achieved by overriding the mean waiting times to instead represent the mean numbers of steps to exit, which are initially equal to unity for all nodes. Is used in conjunction with **BRANCHPROBS**, in which case each transition represents a move to a different node.
 
 ## Other optional keywords
 

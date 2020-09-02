@@ -333,7 +333,7 @@ void Network::add_edge_network(Network *ktn, Node &from_node, Node &to_node, int
 
 /* set up the kinetic transition network */
 void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns, \
-        const vector<long double> &ts_wts, const vector<double> &stat_probs, const vector<int> &nodesinA, \
+        const vector<long double> &ts_wts, const vector<long double> &stat_probs, const vector<int> &nodesinA, \
         const vector<int> &nodesinB, bool transnprobs, long double tau, int ncomms, const vector<int> &comms,
         const vector<int> &bins) {
 
@@ -346,7 +346,7 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         ktn.tau=tau; }
     ktn.ncomms=ncomms;
     if (!comms.empty()) ktn.comm_sizes.resize(ncomms);
-    double tot_pi = -numeric_limits<double>::infinity();
+    long double tot_pi = -numeric_limits<long double>::infinity();
     for (int i=0;i<ktn.n_nodes;i++) {
         ktn.nodes[i].node_id = i+1; ktn.nodes[i].node_pos = i;
         if (!comms.empty()) {

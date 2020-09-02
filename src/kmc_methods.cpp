@@ -71,7 +71,7 @@ Wrapper_Method::~Wrapper_Method() {}
 const Node *Wrapper_Method::get_initial_node(const Network &ktn, Walker &walker, int seed) {
 
     const Node *node_b=nullptr; // sampled starting node
-    double pi_B = -numeric_limits<double>::infinity(); // (log) occupation probability of all nodes in initial set B
+    long double pi_B = -numeric_limits<long double>::infinity(); // (log) occupation probability of all nodes in initial set B
     vector<pair<const Node*,double>> b_probs;
     set<const Node*> nodesinB;
     if (!ktn.nodesB.empty()) {
@@ -96,7 +96,7 @@ const Node *Wrapper_Method::get_initial_node(const Network &ktn, Walker &walker,
             b_probs.push_back(make_pair((*it_set),cum_prob));
             it_set++; }
     } else { // choose node in set B in proportion to specified initial condition probs
-        pi_B=0.; // for specified initial condition, sum of probabilities should be unity
+        pi_B=0.L; // for specified initial condition, sum of probabilities should be unity
         double cum_prob=0.; int i=0;
         while (it_set!=nodesinB.end()) {
             cum_prob += ktn.init_probs[i];

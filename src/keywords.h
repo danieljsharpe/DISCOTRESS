@@ -82,6 +82,7 @@ struct Keywords {
     bool fundamentalirred=false; // "FUNDAMENTALIRRED" specifies that the fundamental matrix of an irreducible Markov chain is to be computed
     bool mfpt=false;         // "MFPT" specifies that the MFPTs for transitions from all non-target nodes are to be computed
     bool gth=false;          // "GTH" specifies that the Grassmann-Taksar-Heyman algorithm for computation of the stationary distribution is to be performed
+    bool pathlengths=false;  // "PATHLENGTHS" specifies that mean first passage path lengths (instead of times) are calculated
 
     // other keywords
     bool transnprobs=false;  // "TRANSNPROBS" edge weights are read in as transition probabilities (not as weights)

@@ -129,6 +129,8 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.mfpt=true;
         } else if (vecstr[0]=="GTH") {
             my_kws.gth=true;
+        } else if (vecstr[0]=="PATHLENGTHS") {
+            my_kws.pathlengths=true;
         } else if (vecstr[0]=="TRANSNPROBS") {
             my_kws.transnprobs=true;
         } else if (vecstr[0]=="DISCRETETIME") {
@@ -182,6 +184,8 @@ Keywords read_keywords(const char *kw_file) {
             cout << "keywords> error: computation of the fundamental matrix for a reducible Markov chain is standalone" << endl; exit(EXIT_FAILURE); }
         if (my_kws.n_nodes-my_kws.nA>my_kws.nelim) {
             cout << "keywords> error: for state reduction must set NELIM to ensure that all nodes not in A are eliminated" << endl; exit(EXIT_FAILURE); }
+        if (my_kws.pathlengths && (!my_kws.mfpt || !my_kws.branchprobs)) {
+            cout << "keywords> error: path lengths must be calculated via the MFPT keyword when using branching probs" << endl; exit(EXIT_FAILURE); }
         my_kws.statereduction=true;
     }
     // check specification of wrapper method is valid

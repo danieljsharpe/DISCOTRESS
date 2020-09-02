@@ -116,6 +116,7 @@ void KPS::kmc_iteration(const Network &ktn, Walker &walker) {
     long double t_esc = iterative_reverse_randomisation();
     if (statereduction) {
         if (mfpt) calc_mfpt();
+        if (gth) calc_gth();
         return;
     }
     update_path_quantities(walker,t_esc,alpha);
@@ -439,7 +440,7 @@ void KPS::graph_transformation(const Network &ktn) {
     bool done_committor=false;
     while (!gt_pq.empty() && N<nelim) {
         Node *node_elim=gt_pq.top();
-//        node_elim = &ktn_kps->nodes[N]; // quack eliminate nodes in order of IDs
+        node_elim = &ktn_kps->nodes[N]; // quack eliminate nodes in order of IDs
         gt_pq.pop();
         if (committor && !done_committor && node_elim->aorb==1) { // only nodes not in A and B remain at this point; compute committor probabilities
             calc_committor(ktn); done_committor=true;
@@ -450,7 +451,14 @@ void KPS::graph_transformation(const Network &ktn) {
         N++;
         if (debug) { cout << "\nrunning debug tests on transformed network:" << endl; test_ktn(*ktn_kps); }
         if (gth && gt_pq.empty()) { // if GTH, only [the single node in] A remains at this point;
-//            cout << "mfpt for last node to be eliminated: " << scientific << setprecision(10) << node_elim->t_esc << endl;
+            for (vector<Node>::iterator it_nodevec=ktn_kps->nodes.begin();it_nodevec!=ktn_kps->nodes.end();++it_nodevec) {
+                if (!it_nodevec->eliminated) {
+                    cout << "unnormalised pi of node: " << it_nodevec->node_id << " is set to 1." << endl;
+                    cout << "self-loop for this node: " << it_nodevec->t << endl;
+                    it_nodevec->pi=1.L; // note that the GTH stationary probabilities are initially not stored as logs
+                    mu=1.L; break;
+                }
+            }
         }
     }
     if (!adaptivecomms && ktn.ncomms==2 && ktn_kps_gt==nullptr) ktn_kps_gt = new Network(*ktn_kps);
@@ -754,7 +762,25 @@ vector<pair<Node*,Edge*>> KPS::undo_gt_iteration(Node *node_elim) {
         mfpt_vals[node_elim->node_pos] *= 1.L/factor;
     }
     if (gth) {
-
+        cout << "\nrestored node: " << node_elim->node_id << endl;
+        cout << "  self-loop: " << node_elim->t << endl;
+        long double new_pi=0.L;
+        Edge *edgeptr = node_elim->top_to;
+        while (edgeptr!=nullptr) {
+            if (!edgeptr->deadts && !edgeptr->from_node->eliminated) {
+                cout << "  edge from: " << edgeptr->from_node->node_id << "    pi: " << edgeptr->from_node->pi << "   t: " << edgeptr->t << endl;
+                new_pi += edgeptr->from_node->pi*edgeptr->t; }
+            edgeptr=edgeptr->next_to;
+        }
+        cout << "    new_pi is: " << new_pi << endl;
+        node_elim->pi = new_pi; mu += new_pi;
+    }
+    cout << "\nedge weights for node in A are now:" << endl;
+    edgeptr = ktn_kps->nodes[4].top_from;
+    cout << "    to: " << 5 << "    t: " << ktn_kps->nodes[4].t << endl;
+    while (edgeptr!=nullptr) {
+        if (!edgeptr->deadts && !edgeptr->to_node->eliminated) cout << "    to: " << edgeptr->to_node->node_id << "    t: "<< edgeptr->t << endl;
+        edgeptr=edgeptr->next_from;
     }
     return nodes_nbrs;
 }

@@ -98,7 +98,7 @@ long double KPS::committor_boundary_node(const Network& ktn, int node_id, const 
 void KPS::calc_absprobs() {
     cout << "kps> calculating absorption probabilities from the graph transformation" << endl;
     write_renormalised_probs("absorption.dat"); // compute probabilities that trajectories initialised at node i are absorbed at node j
-    if (gth) return; // the stationary distribution is not known at this point
+    if (gth || ktn_kps->nodesA.size()==1) return; // stat probs are not known at this point, or only one possible target state to hit
     /* find total hitting probabilities for absorbing nodes given the initial probability distribution */
     ofstream hitprob_f; hitprob_f.open("hitting_probs.dat");
     hitprob_f.setf(ios::right,ios::adjustfield); hitprob_f.setf(ios::scientific,ios::floatfield);
@@ -124,6 +124,7 @@ void KPS::calc_fundamentalred(const Network &ktn) {
     cout << "kps> calculating expected numbers of node visits from the graph transformation" << endl;
     write_renormalised_probs("transient_visits.dat"); // compute expected number of visits of node j given that trajectories are initialised at node i
     if (gth) return; // the stationary distribution is not known at this point
+    // ...
     cout << "kps> finished writing expected numbers of node visits to files" << endl;
 }
 
@@ -146,6 +147,18 @@ void KPS::calc_mfpt() {
     cout << "kps> finished writing MFPTs to file" << endl;
 }
 
+/* compute and write the stationary probabilities determined by the GTH algorithm */
+void KPS::calc_gth() {
+    cout << "kps> writing stationary probabilities determined by the GTH algorithm to file" << endl;
+    cout << "mu is: " << mu << endl;
+    vector<long double> gth_pi_vals(ktn_kps->n_nodes);
+    for (vector<Node>::iterator it_nodevec=ktn_kps->nodes.begin();it_nodevec!=ktn_kps->nodes.end();++it_nodevec) {
+        it_nodevec->pi *= 1.L/mu; gth_pi_vals[it_nodevec->node_pos] = it_nodevec->pi; }
+    Wrapper_Method::write_vec<long double>(gth_pi_vals,"stat_prob_gth.dat");
+    cout << "kps> finished writing stationary distribution to file" << endl;
+}
+
+
 /* rewrite the stationary probabilities of the ktn_kps network to reflect the initial distribution */
 void KPS::rewrite_stat_probs(const Network &ktn) {
     set<const Node*>::iterator it_set = ktn.nodesB.begin();
@@ -158,7 +171,7 @@ void KPS::rewrite_stat_probs(const Network &ktn) {
             i++; it_set++;
         }
     } else { // local equilibrium distribution within initial set
-        double pi_B = -numeric_limits<double>::infinity(); // (log) occupation probability of all nodes in initial set B
+        long double pi_B = -numeric_limits<long double>::infinity(); // (log) occupation probability of all nodes in initial set B
         while (it_set!=ktn.nodesB.end()) {
             pi_B = log(exp(pi_B)+exp((*it_set)->pi));
             it_set++;
@@ -169,11 +182,6 @@ void KPS::rewrite_stat_probs(const Network &ktn) {
             it_set++;
         }
     }
-}
-
-/* set all stationary probabilities in ktn_kps to zero */
-void KPS::reset_stat_probs() {
-    
 }
 
 /* write the elements of the graph-transformed network to a file */

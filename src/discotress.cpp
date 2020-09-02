@@ -64,7 +64,7 @@ Discotress::Discotress () {
                *stat_probs_fname = "stat_prob.dat";
     vector<pair<int,int>> ts_conns = Read_files::read_two_col<int>(conns_fname);
     vector<long double> ts_wts = Read_files::read_one_col<long double>(wts_fname);
-    vector<double> stat_probs = Read_files::read_one_col<double>(stat_probs_fname);
+    vector<long double> stat_probs = Read_files::read_one_col<long double>(stat_probs_fname);
     vector<int> communities, bins;
     if (my_kws.commsfile!=nullptr) {
         communities = Read_files::read_one_col<int>(my_kws.commsfile);
@@ -138,6 +138,10 @@ Discotress::Discotress () {
     }
     wrapper_method_obj->setup_wrapper_method(my_kws.nabpaths,my_kws.tintvl,my_kws.maxit,my_kws.seed,my_kws.debug);
     long double dummy_randno = Wrapper_Method::rand_unif_met(my_kws.seed); // seed this generator
+    if (my_kws.statereduction && my_kws.pathlengths) { // override mean waiting times to represent mean number of steps to exit
+        for (vector<Node>::iterator it_nodevec=ktn->nodes.begin();it_nodevec!=ktn->nodes.end();++it_nodevec) {
+            it_nodevec->t_esc=1.L; }
+    }
     if (my_kws.debug) debug=true;
     cout << "discotress> finished setting up simulation" << endl;
 }

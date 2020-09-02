@@ -95,11 +95,11 @@ class Wrapper_Method {
     static long double rand_unif_met(int=19); // draw uniform random number between 0 and 1
 
     template <typename T>
-    static void write_vec(const vector<T>& vec, string fname) {
+    static void write_vec(const vector<T>& vec, string fname, int precision=30) {
         ofstream vec_f; vec_f.open(fname);
         if (typeid(T)==typeid(double) || typeid(T)==typeid(long double)) {
-            vec_f.precision(30); vec_f.setf(ios::scientific,ios::floatfield); }
-        for (const T elem: vec) vec_f << setw(30) << elem << endl;
+            vec_f.precision(precision); vec_f.setf(ios::scientific,ios::floatfield); }
+        for (const T elem: vec) vec_f << setw(32) << elem << endl;
     }
 };
 
@@ -251,6 +251,7 @@ class KPS : public Traj_Method {
     // series of truth values specify which state reduction procedures to perform
     bool committor=false, absorption=false, fundamentalred=false, fundamentalirred=false, mfpt=false, gth=false;
     vector<long double> mfpt_vals; // vector of MFPTs (elem is non-zero for non-absorbing nodes)
+    long double mu; // sum of (unnormalised) stationary probabilities in GTH algorithm
 
     void setup_basin_sets(const Network&,Walker&,bool);
     long double iterative_reverse_randomisation();
@@ -263,11 +264,10 @@ class KPS : public Traj_Method {
     void do_bkl_steps(const Network&,Walker&,long double=numeric_limits<long double>::infinity());
     void reset_nodeptrs();
     void calc_committor(const Network&);
-    void calc_absprobs(); void calc_mfpt();
+    void calc_absprobs(); void calc_mfpt(); void calc_gth();
     void calc_fundamentalred(const Network&);
     void write_renormalised_probs(string);
     void rewrite_stat_probs(const Network&);
-    void reset_stat_probs();
     static long double committor_boundary_node(const Network&,int,const vector<long double>,int);
 
     public:
