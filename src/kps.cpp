@@ -166,7 +166,7 @@ void KPS::setup_basin_sets(const Network &ktn, Walker &walker, bool get_new_basi
         }
     } else if (!epsilon) { // first iteration of A<-B path, need to set starting node
         epsilon = Wrapper_Method::get_initial_node(ktn,walker,seed);
-        walker.dump_walker_info(true,0.,walker.curr_node,dumpintvls);
+        if (tintvl>=0.) walker.dump_walker_info(true,0.,walker.curr_node,dumpintvls);
         next_tintvl=tintvl;
     }
     if (!get_new_basin) return; // the basin is not to be updated
@@ -440,7 +440,7 @@ void KPS::graph_transformation(const Network &ktn) {
     bool done_committor=false;
     while (!gt_pq.empty() && N<nelim) {
         Node *node_elim=gt_pq.top();
-        node_elim = &ktn_kps->nodes[N]; // quack eliminate nodes in order of IDs
+//        node_elim = &ktn_kps->nodes[N]; // quack eliminate nodes in order of IDs
         gt_pq.pop();
         if (committor && !done_committor && node_elim->aorb==1) { // only nodes not in A and B remain at this point; compute committor probabilities
             calc_committor(ktn); done_committor=true;
@@ -775,9 +775,6 @@ vector<pair<Node*,Edge*>> KPS::undo_gt_iteration(Node *node_elim) {
         cout << "    new_pi is: " << new_pi << endl;
         node_elim->pi = new_pi; mu += new_pi;
     }
-    cout << "\nedge weights for node in A are now:" << endl;
-    edgeptr = ktn_kps->nodes[4].top_from;
-    cout << "    to: " << 5 << "    t: " << ktn_kps->nodes[4].t << endl;
     while (edgeptr!=nullptr) {
         if (!edgeptr->deadts && !edgeptr->to_node->eliminated) cout << "    to: " << edgeptr->to_node->node_id << "    t: "<< edgeptr->t << endl;
         edgeptr=edgeptr->next_from;

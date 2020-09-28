@@ -71,7 +71,7 @@ class Wrapper_Method {
     double tintvl;              // time interval for dumping trajectory data
     vector<int> ab_successes;   // vector of counts of bin appearances along A<-B transition paths
     vector<int> ab_failures;    // vector of counts of bin appearances along B<-B unreactive paths
-    vector<double> tp_densities; // probability that a bin is visited along an A<-B transition path
+    vector<double> visitations;  // probability that a bin is visited along an A<-B transition path
     vector<double> committors;  // forward (A<-B) committor probabilities for bins
     bool adaptivecomms; // comunities are defined adaptively (or else are set prior to the simulation)
     int maxit;                  // another termination condition; the maximum number of iterations of the enhanced kMC method

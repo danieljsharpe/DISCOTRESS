@@ -20,7 +20,7 @@ optional input files relating to the simulation and calculating statistics:
 -  *ntrajs.dat*      \- single col, length cf **COMMSFILE**, see **DIMREDUCTION** keyword: numbers of short trajectories to run from each community
 
 keyword file:
--  *input.kmc*       \- see below for a list of keywords
+-  *input.kmc*       \- see below for a list of keywords. Comment lines begin with an exclamation mark (!)
 
 ## Output files
 -  *walker.x.y.dat*  \- trajectory information dumped at the specified time intervals (or when a trajectory escapes from a community, depending on options). x is the walker ID, y is the path number.  
@@ -33,10 +33,10 @@ Format: bin ID (indexed from 0) / no. of direct A<-B paths for which bin is visi
 ## Main keywords
 
 **NNODES** _int_  
-  mandatory, number of nodes in the Markov chain
+  mandatory, number of nodes in the Markov chain.
 
 **NEDGES** _int_   
-  mandatory, number of (bidirectional) edges in the Markov chain
+  mandatory, number of (bidirectional) edges in the Markov chain.
 
 **WRAPPER** _str_  
   mandatory, employ a \`wrapping' enhanced sampling strategy for accelerating the observation of rare events. Options:  
@@ -53,16 +53,16 @@ Format: bin ID (indexed from 0) / no. of direct A<-B paths for which bin is visi
 -    **BKL**     \- Bortz-Kalos-Lebowitz \(aka n-fold way\) rejection-free algorithm \(ie standard kMC\)
 -    **KPS**     \- kinetic path sampling algorithm
 -    **MCAMC**   \- Monte Carlo with Absorbing Markov Chains algorithm  
-  Note the following excluded combinations of WRAPPER / TRAJ options: WE / KPS, WE / MCAMC, NEUS / KPS, NEUS / MCAMC, DIMREDN / BKL
+  Note the following excluded combinations of WRAPPER / TRAJ options: WE / KPS, WE / MCAMC, NEUS / KPS, NEUS / MCAMC, DIMREDN / BKL.
 
 **NODESAFILE** _str_ _int_  
-  mandatory, name of the file containing the node ID's (indexed from 1) belonging to the A (absorbing) set and no. of nodes in A
+  mandatory, name of the file containing the node ID's (indexed from 1) belonging to the A (absorbing) set and no. of nodes in A.
 
 **NODESBFILE** _str_ _int_  
-  mandatory, name of the file containing the node ID's (indexed from 1) belonging to the B (initial) set and no. of nodes in B
+  mandatory, name of the file containing the node ID's (indexed from 1) belonging to the B (initial) set and no. of nodes in B.
 
 **NABPATHS** _int_  
-  mandatory, the simulation is terminated when this number of A<-B paths have been successfully sampled
+  mandatory, the simulation is terminated when this number of A<-B paths have been successfully sampled.
 
 ## Optional keywords relating to enhanced sampling methods
 
@@ -70,12 +70,12 @@ Format: bin ID (indexed from 0) / no. of direct A<-B paths for which bin is visi
   optional. Name of the file containing initial occupation probabilities for nodes in B that are alternative to the stationary probabilities. The number of entries is assumed to be the same as the specified number of nodes in B, and the specified order is assumed to be the same also \(cf **NODESBFILE**\). The values must sum to unity.
 
 **COMMSFILE** _str_ _int_  
-  mandatory if **WRAPPER** is DIMREDN, FFS, NEUS, or MILES. Also mandatory if **WRAPPER** is WE, or if **TRAJ** is KPS or MCAMC, and **ADAPTIVECOMMS** is not specified.
-  Name of the file containing the definitions of communities (single-column, indexed from zero, number of entries equal to the number of nodes **NNODES** in the network) and no. of communities. Is overridden by **ADAPTIVECOMMS**. For both **WRAPPER** and **TRAJ** enhanced sampling methods, except **TRAJ BKL**, the communities are used to divide the state space (eg the communities define the trapping basins in KPS, or the communities for resampling in WE), and for certain algorithms may dictate the resolution at which the transition path statistics (see **BINFILE** keyword) can be calculated. The specification of communities must be consistent with the definition of the A and B sets. An exception is if the number of communities is 2, in which case the initial set B can be a subset of the relevant community. Note that if this is chosen to be the case, then re-hitting B is not detected, and committor probabilities and transition path probability density will be incorrect.
+  mandatory if **WRAPPER** is **DIMREDN**, **FFS**, **NEUS**, or **MILES**. Also mandatory if **WRAPPER** is **WE**, or if **TRAJ** is **KPS** or **MCAMC**, and **ADAPTIVECOMMS** is not specified.
+  Name of the file containing the definitions of communities (single-column, indexed from zero, number of entries equal to the number of nodes **NNODES** in the network) and no. of communities. Is overridden by **ADAPTIVECOMMS**. For both **WRAPPER** and **TRAJ** enhanced sampling methods, except **TRAJ BKL**, the communities are used to divide the state space (eg the communities define the trapping basins in **KPS**, or the communities for resampling in **WE**), and for certain algorithms may dictate the resolution at which the transition path statistics (see **BINFILE** keyword) can be calculated. The specification of communities must be consistent with the definition of the A and B sets. An exception is if the number of communities is 2, in which case the initial set B can be a subset of the relevant community. Note that if this is chosen to be the case, then re-hitting B is not detected, and committor and transient visitation probabilities for the bins will be incorrect.
 
 **ADAPTIVECOMMS** _double_  
-  mandatory if **WRAPPER WE**, **TRAJ KPS**, or **TRAJ MCAMC**, and **COMMSFILE** is not specified. Default False.
-  Set the partitioning of the state space leveraged in WE-kMC, kPS or MCAMC to be defined on-the-fly by a breadth-first search procedure. The argument is the minimum transition rate for a node to be included in the community being built up. If set with KPS or MCAMC, **KPSKMCSTEPS** is ignored.
+  mandatory if **WRAPPER WE**, **TRAJ KPS**, or **TRAJ MCAMC**, and **COMMSFILE** is not specified. Default _False_.
+  Set the partitioning of the state space leveraged in **WE**, **KPS** or **MCAMC** to be defined on-the-fly by a breadth-first search procedure. The argument is the minimum transition rate for a node to be included in the community being built up. If set with **TRAJ** as **KPS** or **MCAMC**, **KPSKMCSTEPS** is ignored.
 
 **COMMSTARGFILE** _str_  
   mandatory if **WRAPPER WE** and not **ADAPTIVECOMMS**.
@@ -83,7 +83,7 @@ Format: bin ID (indexed from 0) / no. of direct A<-B paths for which bin is visi
 
 **BINFILE** _str_ _int_  
   optional. Default to be the same as **COMMSFILE**, if specified.
-  Name of the file containing the definition of bins (indexed from 0) for calculating transition path statistics (ie committor functions and transition path probability densities), and no. of bins.
+  Name of the file containing the definition of bins (indexed from 0) for calculating transition path statistics (i.e. committor and transient visitation probabilities), and no. of bins.
 
 **TAU** _long double_  
   mandatory if not **BRANCHPROBS**.
@@ -102,7 +102,7 @@ Format: bin ID (indexed from 0) / no. of direct A<-B paths for which bin is visi
   mandatory if **WRAPPER WE**, the time between resampling trajectories
 
 **DIMREDUCTION** _str_ _long double_  
-  mandatory if **WRAPPER DIMREDN**, which initialises a special wrapper class that does not perform the usual code function, which is to simulate A<-B transition paths, and instead instructs the program to simulate many short trajectories starting from each community, each of length in time equal to the float argument. These trajectories are printed to files _walker.x.y.dat_, where _x_ is the ID of the community, and _y_ is the iteration number for that community. Trajectory information is written to files whenever a trajectory transitions to a new community. The total number of trajectories that are to be simulated starting from each community is listed in the file given as the string arg. This calculation is parallelised, using a number of threads equal to **NTHREADS** (defaults to maximum number of threads available). This calculation is compatible with two algorithms to propagate individual trajectories: **TRAJ KPS**, and **TRAJ MCAMC** (without **MEANRATE**). The communities of nodes must be specified (**COMMSFILE** keyword). **NABPATHS**, **MAXIT**, and **BINFILE** keywords are ignored. This setup is incompatible with specification of an initial condition via the **INITCONDFILE** keyword, and with the **NODESAFILE** and **NODESBFILE** keywords. Instead, a local equilibrium within the starting community is assumed as the initial probability distribution for each trajectory. Note that **WRAPPER DIMREDN** requires both this keyword and **DUMPINTVLS** to be set.
+  mandatory if **WRAPPER DIMREDN**, which initialises a special wrapper class that does not perform the usual code function, which is to simulate A<-B transition paths, and instead instructs the program to simulate many short trajectories starting from each community, each of length in time equal to the float argument. These trajectories are printed to files _walker.x.y.dat_, where _x_ is the ID of the community, and _y_ is the iteration number for that community. Trajectory information is written to files whenever a trajectory transitions to a new community. The total number of trajectories that are to be simulated starting from each community is listed in the file given as the string arg. This calculation is parallelised, using a number of threads equal to **NTHREADS** (defaults to maximum number of threads available). This calculation is compatible with two algorithms to propagate individual trajectories: **TRAJ KPS**, and **TRAJ MCAMC** (without **MEANRATE**). The communities of nodes must be specified (**COMMSFILE** keyword). **NABPATHS**, **MAXIT**, and **BINFILE** keywords are ignored. This setup is incompatible with specification of an initial condition via the **INITCONDFILE** keyword, and with the **NODESAFILE** and **NODESBFILE** keywords. Instead, a local equilibrium within the starting community is assumed as the initial probability distribution for each macrostate. Note that **WRAPPER DIMREDN** requires both this keyword and **DUMPINTVLS** to be set.
 
 ## Optional keywords related to exact numerical analysis of the dynamics by state reduction methods
 
@@ -111,7 +111,7 @@ The following keywords are used in combination with the keywords **WRAPPER NONE*
 The memory costs of state reduction computations can be reduced by setting the type of the "h" members (which represent the numbers of kMC steps for transitions, when using the **KPS** algorithm) of the Node and Edge structures (defined in the file *ktn.h*) to _int_, since these members are not used in the state reduction methods.
 
 **COMMITTOR**  
-  specifies that a state reduction procedure is performed to compute the committor probabilities for all nodes. The committor probabilities are written to the files *committor\_AB.dat* and *committor\_BA.dat* (for A<-B and B<-A directions, respectively). Note that the committor probabilities determined by this method are for each node, and the calculation is exact and deterministic (unlike calculation of the committor probabilities for the bins from simulation data, cf. the **BINSFILE** keyword).
+  specifies that a state reduction procedure is performed to compute the committor probabilities for all nodes. The committor probabilities are written to the files *committor\_AB.dat* and *committor\_BA.dat* (for A<-B and B<-A directions, respectively). Note that the committor probabilities determined by this method are for each node, and the calculation is exact and deterministic (unlike calculation of the committor probabilities for the bins from simulation data, cf. the **BINFILE** keyword).
 
 **ABSORPTION**  
   specifies that a state reduction procedure is performed to compute the absorption probabilities. The probabilities b\_ij that a trajectory initialised from the non-absorbing node i is absorbed at node j are written to the file *absorption.dat* in the format "i / j / b\_ij". For the initial occupation probability distribution (which, by default, is assumed to be a local equilibrium within the initial set B), the absorption (hitting) probabilities for each absorbing node are printed to the file *hitting\_probs.dat*.
@@ -134,7 +134,7 @@ The memory costs of state reduction computations can be reduced by setting the t
 ## Other optional keywords
 
 **MAXIT** _int_  
-  default is inf. The maximum number of iterations of the relevant algorithm to run before the simulation is terminated (if the target number of A<-B paths to simulate is not reached). The interpretation of this option depends on the chosen enhanced sampling method. eg with WRAPPER WE, **MAXIT** is the number of iterations of the resampling procedure. With WRAPPER NONE and TRAJ KPS or TRAJ MCAMC, **MAXIT** is the number of basin escape trajectories simulated.
+  default is inf. The maximum number of iterations of the relevant algorithm to run before the simulation is terminated (if the target number of A<-B paths to simulate is not reached). The interpretation of this option depends on the chosen enhanced sampling method. e.g. with **WRAPPER WE**, **MAXIT** is the number of iterations of the resampling procedure. With **WRAPPER NONE** and **TRAJ KPS** or **TRAJ MCAMC**, **MAXIT** is the number of basin escape trajectories simulated.
 
 **NTHREADS** _int_  
   number of threads to use in parallel calculations. Defaults to max. no. of threads available.
@@ -149,7 +149,7 @@ The memory costs of state reduction computations can be reduced by setting the t
   when set with the **TRANSNPROBS** keyword, the edge weights read from *ts_weights.dat* are taken to be the transition probabilities of a discrete-time Markov chain (by default, the transition probabilities are assumed to be continuous-time). **TAU** is then the constant lag time (ie all transitions are associated with time **TAU**, rather than sampling from an exponential distribution). Note that this keyword is compatible with all **TRAJ** options.
 
 **TINTVL** _double_  
-  ignored if **TRAJ KPS** (in which case trajectory data is written after every basin escape). Time interval for dumping trajectory information. Negative value (default) indicates that trajectory data is not written. In this case, start and end nodes are still written to files walker.0.y.dat. Zero value specifies that all trajectory information is written.
+  time interval for dumping trajectory information. Negative value (default) indicates that trajectory data is not written (i.e. files _walker.0.y.dat_ are not output). Zero value specifies that all trajectory information is written. An explicit non-negative value must be set if **WRAPPER DIMREDN**. The exact value of **TINTVL** is ignored if **TRAJ KPS** (in which case trajectory data is written after every basin escape).
 
 **DUMPINTVLS**  
   if set, then trajectory data is dumped at precisely the time intervals specified by **TINTVL** (which must therefore be >0.). Otherwise, trajectory data written when the next time interval is exceeded is precisely for the current time of the walker. Path probability and entropy flow are not written in the walker files if this keyword is set, but are still dumped to the *tp_distribns.dat* file. This keyword is required with **WRAPPER DIMREDN**, since the trajectory information required to construct a coarse-grained Markov chain is otherwise not printed.

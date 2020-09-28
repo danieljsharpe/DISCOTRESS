@@ -12,7 +12,7 @@ Discrete-state DTMCs and CTMCs are widely applied models for the stochastic dyna
 
 **DISCOTRESS** can be used to:
 - simulate the ensemble of A<-B first passage paths (the FPPE) from an initial set of nodes in the Markov chain, denoted B, to an absorbing set of nodes, denoted A [1,3]
-- estimate A<-B FPPE statistics by simulation, including the mean first first passage time (MFPT) and FPT distribution, the path probability and entropy flow distributions, and committor probabilities [1,3]
+- estimate A<-B FPPE statistics by simulation, including the mean first passage time (MFPT) and FPT distribution, the path probability and entropy flow distributions, and committor and transient visitation probabilities [1,3]
 - obtain dynamical quantities characterising the FPPE exactly, including MFPTs, path lengths, committor and absorption probabilities, as well as the expected numbers of node visits and node visitation probabilities, using numerically stable state reduction methods [2,3]
 - obtain dynamical quantities characterising the dynamics in the infinite-time limit, namely the stationary distribution and the average mixing time, using numerically stable state reduction methods [2,3]
 - estimate and validate a coarse-grained Markov chain constructed from multiple short nonequilibrium trajectories [4]
@@ -24,11 +24,11 @@ A host of simulation algorithms for the above purposes are built in to the softw
 **Requirements:** C++17  
 **Dependencies:** OpenMP
 
-Please see the "documentation" file for a list of keywords that may be included in the input file "input.kmc", a description of the other input/output files and their formats, and the compilation command.
+Please see the *documentation* file for a list of keywords that may be included in the input file *input.kmc*, a description of the other input/output files and their formats, and the compilation command.
 
-Try running the example in the "tutorials" folder to perform your first kPS simulation!
+Try running the [tutorial examples](https://github.com/danieljsharpe/DISCOTRESS_tutorials) to get started!
 
-More tutorials are forthcoming.
+Use the available [analysis scripts](https://github.com/danieljsharpe/DISCOTRESS_tools) to find out what it all means.
 
 ## Citations
 

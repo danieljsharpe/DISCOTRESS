@@ -42,14 +42,15 @@ Keywords read_keywords(const char *kw_file) {
         while (getline(ss,token,*delim)) { // collect keyword + args in vector
             vecstr.emplace_back(token); }
         // PROCESS KEYWORDS
+        if (vecstr[0][0]=='!') continue; // comment line
         if (vecstr[0]=="TRAJ") {
             if (vecstr[1]=="BKL") {
                 my_kws.traj_method=1;
             } else if (vecstr[1]=="KPS") {
                 my_kws.traj_method=2;
-            } else if (vecstr[2]=="MCAMC") {
+            } else if (vecstr[1]=="MCAMC") {
                 my_kws.traj_method=3;
-            } else { exit(EXIT_FAILURE); }
+            } else { cout << "unrecognised TRAJ option" << endl; exit(EXIT_FAILURE); }
         } else if (vecstr[0]=="WRAPPER") {
             if (vecstr[1]=="DIMREDN") {
                 my_kws.wrapper_method=0;
@@ -57,13 +58,13 @@ Keywords read_keywords(const char *kw_file) {
                 my_kws.wrapper_method=1;
             } else if (vecstr[1]=="WE") {
                 my_kws.wrapper_method=2;
-            } else if (vecstr[2]=="FFS") {
+            } else if (vecstr[1]=="FFS") {
                 my_kws.wrapper_method=3;
-            } else if (vecstr[3]=="NEUS") {
+            } else if (vecstr[1]=="NEUS") {
                 my_kws.wrapper_method=4;
-            } else if (vecstr[4]=="MILES") {
+            } else if (vecstr[1]=="MILES") {
                 my_kws.wrapper_method=5;
-            } else { exit(EXIT_FAILURE); }
+            } else { cout << "unrecognised WRAPPER option" << endl; exit(EXIT_FAILURE); }
         } else if (vecstr[0]=="NNODES") {
             my_kws.n_nodes=stoi(vecstr[1]);
         } else if (vecstr[0]=="NEDGES") {

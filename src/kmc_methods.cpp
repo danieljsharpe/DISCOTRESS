@@ -183,7 +183,7 @@ void Wrapper_Method::calc_tp_stats(int nbins) {
     cout << "wrapper_method> calculating transition path statistics" << endl;
     for (int i=0;i<nbins;i++) {
         committors[i] = static_cast<double>(ab_successes[i])/static_cast<double>(ab_successes[i]+ab_failures[i]);
-        tp_densities[i] = static_cast<double>(ab_successes[i])/static_cast<double>(n_ab);
+        visitations[i] = static_cast<double>(ab_successes[i])/static_cast<double>(n_ab);
     }
     write_tp_stats(nbins);
 }
@@ -194,9 +194,9 @@ void Wrapper_Method::write_tp_stats(int nbins) {
     ofstream tpstats_f;
     tpstats_f.open("tp_stats.dat");
     for (int i=0;i<nbins;i++) {
-        tpstats_f << setw(7) << i << setw(10) << ab_successes[i] << setw(10) << ab_failures[i];
+        tpstats_f << setw(7) << i << setw(20) << ab_successes[i] << setw(20) << ab_failures[i];
         tpstats_f << fixed << setprecision(12);
-        tpstats_f << setw(26) << tp_densities[i] << setw(20) << committors[i] << endl;
+        tpstats_f << setw(26) << visitations[i] << setw(20) << committors[i] << endl;
     }
 }
 
@@ -215,7 +215,7 @@ STD_KMC::STD_KMC(const Network& ktn, bool adaptivecomms) {
     this->adaptivecomms=adaptivecomms;
     if (ktn.ncomms>0) {
         walker.visited.resize(ktn.nbins); fill(walker.visited.begin(),walker.visited.end(),false);
-        tp_densities.resize(ktn.nbins); committors.resize(ktn.nbins);
+        visitations.resize(ktn.nbins); committors.resize(ktn.nbins);
         ab_successes.resize(ktn.nbins); ab_failures.resize(ktn.nbins);
     }
 }
@@ -252,7 +252,7 @@ void STD_KMC::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj)
     }
     cout << "\nstd_kmc> simulation terminated after " << n_it-1 << " iterations. Simulated " \
          << n_ab << " transition paths" << endl;
-    if (!adaptivecomms) calc_tp_stats(ktn.nbins); // calc committors and transn path densities for communities and write to file
+    if (!adaptivecomms) calc_tp_stats(ktn.nbins); // calc committor and transient visitation probabilities for bins and write to file
 }
 
 /* Wrapper_Method handle simulation of many short nonequilibrium trajectories, used to obtain data required for coarse-graining
@@ -307,10 +307,10 @@ void Traj_Method::setup_traj_method(double tintvl, bool dumpintvls, bool statere
 
 void Traj_Method::dump_traj(Walker &walker, bool transnpath, bool newpath, long double maxtime) {
     if (!transnpath && !newpath && tintvl>0. && walker.t<next_tintvl && walker.t<maxtime) return;
-    if (dumpintvls && (walker.t>=next_tintvl || walker.t>maxtime)) {
+    if (tintvl>=0. && dumpintvls && (walker.t>=next_tintvl || walker.t>maxtime)) {
         walker.dump_walker_info(newpath,next_tintvl,walker.prev_node,true);
     }
-    if (transnpath || !dumpintvls || walker.t>maxtime) {
+    if (tintvl>=0. && (transnpath || !dumpintvls || walker.t>maxtime)) {
         walker.dump_walker_info(newpath,walker.t,walker.curr_node,dumpintvls);
     }
     if (transnpath) { walker.dump_tp_distribn(); return; }
@@ -332,7 +332,7 @@ BKL::BKL(const BKL& bkl_obj) {}
 void BKL::kmc_iteration(const Network &ktn, Walker &walker) {
     if (walker.curr_node==nullptr) {
         const Node *dummy_node = Wrapper_Method::get_initial_node(ktn,walker,seed);
-        walker.dump_walker_info(true,0.,walker.curr_node,dumpintvls);
+        if (tintvl>=0.) walker.dump_walker_info(true,0.,walker.curr_node,dumpintvls);
         next_tintvl=tintvl;
     }
     BKL::bkl(walker,discretetime,seed);
