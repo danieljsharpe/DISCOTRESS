@@ -1,5 +1,5 @@
 /*
-File containing functions to construct and handle a Network (transition network) object
+File containing functions to construct and handle a Network object (representing the Markov chain)
 
 This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous- and discrete-time Markov chains (CTMCs and DTMCs).
 Copyright (C) 2020 Daniel J. Sharpe
@@ -331,14 +331,14 @@ void Network::add_edge_network(Network *ktn, Node &from_node, Node &to_node, int
     ktn->add_to_edge(to_node.node_id-1,k);
 }
 
-/* set up the kinetic transition network */
-void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns, \
-        const vector<long double> &ts_wts, const vector<long double> &stat_probs, const vector<int> &nodesinA, \
-        const vector<int> &nodesinB, bool transnprobs, long double tau, int ncomms, const vector<int> &comms,
-        const vector<int> &bins) {
+/* set up the Markov chain (kinetic transition network, KTN) */
+void Network::setup_network(Network& ktn, const vector<pair<int,int>> &conns, \
+        const vector<pair<long double,long double>> &weights, const vector<long double> &stat_probs, \
+        const vector<int> &nodesinA, const vector<int> &nodesinB, bool transnprobs, long double tau, \
+        int ncomms, const vector<int> &comms, const vector<int> &bins) {
 
-    cout << "ktn> constructing nodes and edges of transition network from vectors" << endl;
-    if (!((ts_conns.size()==ktn.n_edges) || (ts_wts.size()==2*ktn.n_edges) || \
+    cout << "ktn> constructing nodes and edges of Markovian network from vectors" << endl;
+    if (!((conns.size()==ktn.n_edges) || (weights.size()==ktn.n_edges) || \
          (stat_probs.size()==ktn.n_nodes) || \
          (!comms.empty() && comms.size()==ktn.n_nodes))) throw Network::Ktn_exception();
     if (transnprobs) {
@@ -366,7 +366,7 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
     for (int i=0;i<ktn.n_edges;i++) {
         ktn.edges[2*i].edge_id = 2*i;
         ktn.edges[(2*i)+1].edge_id = (2*i)+1;
-        if (ts_conns[i].first == ts_conns[i].second) { // "dead" transition state (dangling node)
+        if (conns[i].first == conns[i].second) { // "dead" transition state (dangling node)
             cout << "ktn> warning: transition state " << i << " is dead" << endl;
             ktn.edges[2*i].deadts = true;
             ktn.edges[(2*i)+1].deadts = true;
@@ -376,23 +376,23 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
             ktn.edges[2*i].deadts = false;
             ktn.edges[(2*i)+1].deadts = false;
         }
-        if (!transnprobs) { // ts_wts are transition rates
-            ktn.edges[2*i].k = ts_wts[2*i];
-            ktn.edges[(2*i)+1].k = ts_wts[(2*i)+1];
-        } else { // ts_wts are transition probabilities
+        if (!transnprobs) { // edge weights are transition rates
+            ktn.edges[2*i].k = weights[i].first;
+            ktn.edges[(2*i)+1].k = weights[i].second;
+        } else { // edge weights are transition probabilities
             ktn.edges[2*i].k = 0.L; ktn.edges[(2*i)+1].k = 0.L; // dummy values for transition rates
-            ktn.edges[2*i].t = ts_wts[2*i];
-            ktn.edges[(2*i)+1].t = ts_wts[(2*i)+1];
+            ktn.edges[2*i].t = weights[i].first;
+            ktn.edges[(2*i)+1].t = weights[i].second;
         }
-        ktn.edges[2*i].from_node = &ktn.nodes[ts_conns[i].first-1];
-        ktn.edges[2*i].to_node = &ktn.nodes[ts_conns[i].second-1];
-        ktn.edges[(2*i)+1].from_node = &ktn.nodes[ts_conns[i].second-1];
-        ktn.edges[(2*i)+1].to_node = &ktn.nodes[ts_conns[i].first-1];
+        ktn.edges[2*i].from_node = &ktn.nodes[conns[i].first-1];
+        ktn.edges[2*i].to_node = &ktn.nodes[conns[i].second-1];
+        ktn.edges[(2*i)+1].from_node = &ktn.nodes[conns[i].second-1];
+        ktn.edges[(2*i)+1].to_node = &ktn.nodes[conns[i].first-1];
 
-        ktn.add_to_edge(ts_conns[i].second-1,2*i);
-        ktn.add_from_edge(ts_conns[i].first-1,2*i);
-        ktn.add_to_edge(ts_conns[i].first-1,(2*i)+1);
-        ktn.add_from_edge(ts_conns[i].second-1,(2*i)+1);
+        ktn.add_to_edge(conns[i].second-1,2*i);
+        ktn.add_from_edge(conns[i].first-1,2*i);
+        ktn.add_to_edge(conns[i].first-1,(2*i)+1);
+        ktn.add_from_edge(conns[i].second-1,(2*i)+1);
 
         ktn.edges[2*i].rev_edge = &ktn.edges[(2*i)+1];
         ktn.edges[(2*i)+1].rev_edge = &ktn.edges[2*i];
@@ -427,5 +427,5 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &ts_conns,
         for (set<const Node*>::iterator it_set=ktn.nodesB.begin();it_set!=ktn.nodesB.end();++it_set) {
             if ((*it_set)->comm_id!=commB) throw Ktn_exception(); }
     }
-    cout << "ktn> finished setting up transition network data structure" << endl;
+    cout << "ktn> finished setting up Markovian network data structure" << endl;
 }

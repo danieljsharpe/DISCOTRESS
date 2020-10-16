@@ -29,7 +29,7 @@ using namespace std;
 
 void run_debug_tests(const Network& ktn) {
 
-    // check implementation of transition network data structure
+    // check implementation of Markovian network data structure
     cout << "\ndebug> ktn info: no. of nodes: " << ktn.n_nodes << " no. of edges: " << ktn.n_edges << endl;
     if (ktn.n_nodes<20) {
     cout << "debug> network is small, printing all transition probabilities" << endl;

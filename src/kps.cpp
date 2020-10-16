@@ -400,7 +400,7 @@ Node *KPS::sample_absorbing_node() {
 
 /* Graph transformation to eliminate up to N nodes of the current trapping basin.
    Calculates the set of N-1 transition probability matrices {T^(n)} for 0 < n <= N.
-   The transition network input to this function is the full network, and get_subnetwork() returns T^(0).
+   The Markovian network input to this function is the full network, and get_subnetwork() returns T^(0).
    The graph transformation is achieved by performing a LU-decomposition of T^(0) */
 void KPS::graph_transformation(const Network &ktn) {
 

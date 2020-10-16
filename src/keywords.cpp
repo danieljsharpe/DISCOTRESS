@@ -102,10 +102,10 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.commstargfile = new char[vecstr[1].size()+1];
             copy(vecstr[1].begin(),vecstr[1].end(),my_kws.commstargfile);
             my_kws.commstargfile[vecstr[1].size()]='\0';
-        } else if (vecstr[0]=="BINFILE") {
-            my_kws.binfile = new char[vecstr[1].size()+1];
-            copy(vecstr[1].begin(),vecstr[1].end(),my_kws.binfile);
-            my_kws.binfile[vecstr[1].size()]='\0';
+        } else if (vecstr[0]=="BINSFILE") {
+            my_kws.binsfile = new char[vecstr[1].size()+1];
+            copy(vecstr[1].begin(),vecstr[1].end(),my_kws.binsfile);
+            my_kws.binsfile[vecstr[1].size()]='\0';
             my_kws.nbins=stoi(vecstr[2]);
         } else if (vecstr[0]=="ADAPTIVECOMMS") {
             my_kws.adaptivecomms=true;

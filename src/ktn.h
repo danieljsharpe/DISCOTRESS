@@ -1,5 +1,5 @@
 /*
-Custom data structure for representing a Markovian transition network
+Custom data structure for representing a Markov chain (kinetic transition network, KTN)
 
 This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous- and discrete-time Markov chains (CTMCs and DTMCs).
 Copyright (C) 2020 Daniel J. Sharpe
@@ -97,7 +97,7 @@ struct Node {
     }
 };
 
-// structure containing the kinetic transition network
+/* structure representing the Markovian network */
 struct Network {
 
     friend class Discotress;
@@ -126,7 +126,7 @@ struct Network {
     void get_cum_branchprobs(); // set transition probabilities to accumulated branching probability values (for optimisation in kMC)
     void set_initcond(const vector<double>&); // set initial probabilities for nodes in set B
     static void add_edge_network(Network*,Node&,Node&,int);
-    static void setup_network(Network&,const vector<pair<int,int>>&,const vector<long double>&, \
+    static void setup_network(Network&,const vector<pair<int,int>>&,const vector<pair<long double,long double>>&, \
         const vector<long double>&,const vector<int>&,const vector<int>&,bool,long double,int,const vector<int>& = {}, \
         const vector<int>& = {});
 

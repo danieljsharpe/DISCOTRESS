@@ -40,7 +40,7 @@ struct Keywords {
         if (initcondfile) delete[] initcondfile;
         if (commsfile) delete[] commsfile;
         if (commstargfile) delete[] commstargfile;
-        if (binfile) delete[] binfile;
+        if (binsfile) delete[] binsfile;
         if (ntrajsfile) delete[] ntrajsfile;
     }
 
@@ -65,7 +65,7 @@ struct Keywords {
     char *initcondfile=nullptr; // "INITCOND" name of file where nonequilibrium initial probs of nodes in B are specified
     char *commsfile=nullptr; // "COMMSFILE" name of file where communities are defined (WE-kMC, kPS)
     char *commstargfile=nullptr; // "COMMSTARGFILE" name of file where target number of trajectories in each community is defined (WE-kMC)
-    char *binfile=nullptr;   // "BINFILE" name of file where bins are defined (for calculating TP statistics)
+    char *binsfile=nullptr;   // "BINSFILE" name of file where bins are defined (for calculating TP statistics)
     char *ntrajsfile=nullptr; // cf "DIMREDUCTION" name of file where number of short trajectories to be ran from each community are defined
     bool adaptivecomms=false; // "ADAPTIVECOMMS" communities for resampling (WE-kMC) or trapping basins (kPS) are determined on-the-fly
     int kpskmcsteps=0;       // "KPSKMCSTEPS" number of BKL kMC steps after a trapping basin escape (kPS)
@@ -123,6 +123,10 @@ class Read_files {
             vec_data.emplace_back(make_pair(stoi(vecstr[0]),stoi(vecstr[1])));
         } else if (typeid(T)==typeid(double)) {
             vec_data.emplace_back(make_pair(stod(vecstr[0]),stod(vecstr[1])));
+        } else if (typeid(T)==typeid(long double)) {
+            vec_data.emplace_back(make_pair(stold(vecstr[0]),stod(vecstr[1])));
+        } else { // inappropriate data type of entries in file
+            throw exception();
         }
     }
     inp_f.close();
@@ -145,6 +149,8 @@ class Read_files {
             vec_data.emplace_back(stod(line));
         } else if (typeid(T)==typeid(long double)) {
             vec_data.emplace_back(stold(line));
+        } else { // inappropriate data type of entries in file
+            throw exception();
         }
     }
     inp_f.close();

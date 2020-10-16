@@ -180,7 +180,7 @@ void Wrapper_Method::update_tp_stats(Walker &walker, bool abpath, bool update) {
 
 /* calculate the transition path statistics for bins from the observed counts during the simulation */
 void Wrapper_Method::calc_tp_stats(int nbins) {
-    cout << "wrapper_method> calculating transition path statistics" << endl;
+    cout << "wrapper_method> calculating transition path statistics for bins" << endl;
     for (int i=0;i<nbins;i++) {
         committors[i] = static_cast<double>(ab_successes[i])/static_cast<double>(ab_successes[i]+ab_failures[i]);
         visitations[i] = static_cast<double>(ab_successes[i])/static_cast<double>(n_ab);
@@ -190,7 +190,7 @@ void Wrapper_Method::calc_tp_stats(int nbins) {
 
 /* write transition path statistics to file */
 void Wrapper_Method::write_tp_stats(int nbins) {
-    cout << "wrapper_method> writing transition path statistics to file" << endl;
+    cout << "wrapper_method> writing transition path statistics for bins to file" << endl;
     ofstream tpstats_f;
     tpstats_f.open("tp_stats.dat");
     for (int i=0;i<nbins;i++) {

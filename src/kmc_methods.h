@@ -36,7 +36,7 @@ using namespace std;
 
 class Traj_Method;
 
-/* data structure for a single trajectory (walker) on the transition network */
+/* data structure for a single trajectory (walker) on the Markov chain (KTN) */
 struct Walker {
 
     public:

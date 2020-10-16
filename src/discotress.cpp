@@ -38,6 +38,9 @@ class Discotress {
 
     private:
 
+    void print_discotress_begin();
+    void print_discotress_end();
+
     public:
 
     Discotress();
@@ -51,6 +54,7 @@ class Discotress {
 
 Discotress::Discotress () {
 
+    print_discotress_begin();
     const char *inpfname = "input.kmc"; // file containing input keywords
     cout << "discotress> reading keywords..." << endl;
     Keywords my_kws = read_keywords(inpfname);
@@ -60,15 +64,15 @@ Discotress::Discotress () {
         cout << "discotress> simulating a continuous-time Markov chain" << endl;
     }
     cout << "discotress> reading input data files..." << endl;
-    const char *conns_fname="ts_conns.dat", *wts_fname="ts_weights.dat", \
+    const char *conns_fname="edge_conns.dat", *wts_fname="edge_weights.dat", \
                *stat_probs_fname = "stat_prob.dat";
-    vector<pair<int,int>> ts_conns = Read_files::read_two_col<int>(conns_fname);
-    vector<long double> ts_wts = Read_files::read_one_col<long double>(wts_fname);
+    vector<pair<int,int>> conns = Read_files::read_two_col<int>(conns_fname);
+    vector<pair<long double,long double>> weights = Read_files::read_two_col<long double>(wts_fname);
     vector<long double> stat_probs = Read_files::read_one_col<long double>(stat_probs_fname);
     vector<int> communities, bins;
     if (my_kws.commsfile!=nullptr) {
         communities = Read_files::read_one_col<int>(my_kws.commsfile);
-        if (my_kws.binfile!=nullptr) { bins = Read_files::read_one_col<int>(my_kws.binfile);
+        if (my_kws.binsfile!=nullptr) { bins = Read_files::read_one_col<int>(my_kws.binsfile);
         } else { bins = communities; } // copy community vector to bin vector
     }
     vector<int> nodesAvec, nodesBvec;
@@ -86,13 +90,13 @@ Discotress::Discotress () {
     vector<double> init_probs;
     if (my_kws.initcond) init_probs = Read_files::read_one_col<double>(my_kws.initcondfile);
     omp_set_num_threads(my_kws.nthreads);
-    cout << "discotress> setting up the transition network data structure..." << endl;
+    cout << "discotress> setting up the Markovian network data structure..." << endl;
     ktn = new Network(my_kws.n_nodes,my_kws.n_edges);
     if (my_kws.commsfile!=nullptr) {
-        Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesAvec,nodesBvec,my_kws.transnprobs, \
+        Network::setup_network(*ktn,conns,weights,stat_probs,nodesAvec,nodesBvec,my_kws.transnprobs, \
             my_kws.tau,my_kws.ncomms,communities,bins);
     } else {
-        Network::setup_network(*ktn,ts_conns,ts_wts,stat_probs,nodesAvec,nodesBvec,my_kws.transnprobs,my_kws.tau,my_kws.ncomms);
+        Network::setup_network(*ktn,conns,weights,stat_probs,nodesAvec,nodesBvec,my_kws.transnprobs,my_kws.tau,my_kws.ncomms);
     }
     cout << "discotress> no. of nodes: " << ktn->n_nodes << "   in A: " << ktn->nodesA.size() << "   in B: " << ktn->nodesB.size() << endl;
     cout << "discotress> no. of edges: " << ktn->n_edges << "      no. of communities: " << ktn->ncomms << endl;
@@ -150,8 +154,52 @@ Discotress::~Discotress() {
     if (wrapper_method_obj) delete wrapper_method_obj;
     if (traj_method_obj) delete traj_method_obj;
     delete ktn;
+    print_discotress_end();
 }
 
+void Discotress::print_discotress_begin() {
+    // this ASCII art was produced using the FIGlet JS app (github.com/patorjk/figlet.js)
+    cout << "\n\n\n\n" \
+         << "          ::::::::: ::::::::::: ::::::::   ::::::::   :::::::: ::::::::::: :::::::::  :::::::::: ::::::::   :::::::: \n" \
+         << "          :+:    :+:    :+:    :+:    :+: :+:    :+: :+:    :+:    :+:     :+:    :+: :+:       :+:    :+: :+:    :+:\n" \
+         << "          +:+    +:+    +:+    +:+        +:+        +:+    +:+    +:+     +:+    +:+ +:+       +:+        +:+       \n" \
+         << "          +#+    +:+    +#+    +#++:++#++ +#+        +#+    +:+    +#+     +#++:++#:  +#++:++#  +#++:++#++ +#++:++#++\n" \
+         << "          +#+    +#+    +#+           +#+ +#+        +#+    +#+    +#+     +#+    +#+ +#+              +#+        +#+\n" \
+         << "          #+#    #+#    #+#    #+#    #+# #+#    #+# #+#    #+#    #+#     #+#    #+# #+#       #+#    #+# #+#    #+#\n" \
+         << "          ######### ########### ########   ########   ########     ###     ###    ### ########## ########   ######## \n" \
+         << endl;
+    cout << "\n\n                                                (C) Daniel J. Sharpe 2020\n\n\n\n" << endl;
+}
+
+void Discotress::print_discotress_end() {
+    cout << "\n\n\n\n" \
+         << "                        ########==                                               \n" \
+         << "                    ####==++++++====          ________________________________   \n" \
+         << "                  ====++++XXXXXX++====       |                                |_ \n" \
+         << "              ==##++++++XXXX #  XX  XX##     |           Thank you for          |\n" \
+         << "              ====++++XXXXXX  XX++    ##     |                                  |\n" \
+         << "              ==++++++++XXXXXX++##==XX##     |               using              |\n" \
+         << "            ##==####++++++++++####==XX##   __|                                  |\n" \
+         << "            ##++++==##++++++####  ####  __|      D  I  S  C  O  T  R  E  S  S   |\n" \
+         << "            ##++++++##++++++==##  ==    \\______                              __|\n" \
+         << "          ##++++++++==##++++####               |_____________________________|   \n" \
+         << "          ##++++++++XX##++++==##                                                 \n" \
+         << "          ##++++++XXXX##++++==##                                                 \n" \
+         << "          ##++++++XX++##++++==##                                                 \n" \
+         << "          ##XX    XX==##++++==##                                                 \n" \
+         << "          ##XXXXXX++==##++==##                                                   \n" \
+         << "          ##XX++==##==##++==##                                                   \n" \
+         << "          ##=====+##==##++==##                                                   \n" \
+         << "          ##====++######++####                                                   \n" \
+         << "          ##==######++++____++++_________________________________________________\n" \
+         << "           ##==##   ##++#   ##++#                                                \n" \
+         << "           ##==##     ##      ##                                                 \n" \
+         << "           ##=#                                                                  \n" \
+         << "          #=#                                                                    \n" \
+         << "          ##                                                                     \n" \
+         << "          #                                                                      " << endl;
+    cout << "\n\n" << endl;
+}
 
 int main(int argc, char** argv) {
 
@@ -159,11 +207,7 @@ int main(int argc, char** argv) {
     if (discotress_obj.debug) run_debug_tests(*discotress_obj.ktn);
     discotress_obj.wrapper_method_obj->run_enhanced_kmc(*discotress_obj.ktn,discotress_obj.traj_method_obj);
 
-/*
-    Node newnode = discotress_obj.ktn->nodes[0];
-    cout << newnode.node_id << "   " << newnode.udeg << endl;
-*/
-
     cout << "discotress> finished, exiting program normally" << endl;
+
     return 0;
 }
