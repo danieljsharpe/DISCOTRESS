@@ -28,7 +28,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace std;
 
-MILES_KMC::MILES_KMC(const Network &ktn) {}
+MILES_KMC::MILES_KMC(const Network &ktn, const Wrapper_args &wrapper_args) : Wrapper_Method(wrapper_args) {}
 MILES_KMC::~MILES_KMC() {}
 
 void MILES_KMC::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {

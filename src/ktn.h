@@ -123,11 +123,11 @@ struct Network {
     void dumpwaittimes(); // print mean waiting times of nodes to file
     void get_tmtx_lin(long double); // calculate the linearised transition probability matrix
     void get_tmtx_branch(); // calculate the branching transition probability matrix
-    void get_cum_branchprobs(); // set transition probabilities to accumulated branching probability values (for optimisation in kMC)
+    void set_accumprobs(); // set transition probabilities to accumulated branching probability values (for optimisation in kMC)
     void set_initcond(const vector<double>&); // set initial probabilities for nodes in set B
     static void add_edge_network(Network*,Node&,Node&,int);
     static void setup_network(Network&,const vector<pair<int,int>>&,const vector<pair<long double,long double>>&, \
-        const vector<long double>&,const vector<int>&,const vector<int>&,bool,long double,int,const vector<int>& = {}, \
+        const vector<long double>&,const vector<int>&,const vector<int>&,bool,bool,long double,int,const vector<int>& = {}, \
         const vector<int>& = {});
 
     vector<Node> nodes;

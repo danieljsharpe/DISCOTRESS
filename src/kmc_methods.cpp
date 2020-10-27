@@ -31,7 +31,7 @@ using namespace std;
 
 Walker::~Walker() {}
 
-/* write trajectory data to file */
+/* write trajectory data to walker file */
 void Walker::dump_walker_info(bool newpath, long double time, const Node *the_node, bool intvl) {
     if (curr_node==nullptr) throw exception();
     ofstream walker_f;
@@ -46,13 +46,13 @@ void Walker::dump_walker_info(bool newpath, long double time, const Node *the_no
     walker_f << endl;
 }
 
-/* append transition path quantities to file recording distributions */
-void Walker::dump_tp_distribn() {
-    ofstream tpdistrib_f;
-    tpdistrib_f.open("tp_distribns.dat",ios_base::app);
-    tpdistrib_f.setf(ios::right,ios::adjustfield); tpdistrib_f.setf(ios::fixed,ios::floatfield);
-    tpdistrib_f.precision(10);
-    tpdistrib_f << setw(14) << path_no << setw(30) << k << setw(60) << t << setw(35) << p << setw(20) << s << endl;
+/* append first passage path properties to file */
+void Walker::dump_fpp_properties() {
+    ofstream pathprops_f;
+    pathprops_f.open("fpp_properties.dat",ios_base::app);
+    pathprops_f.setf(ios::right,ios::adjustfield); pathprops_f.setf(ios::fixed,ios::floatfield);
+    pathprops_f.precision(10);
+    pathprops_f << setw(14) << path_no << setw(30) << k << setw(60) << t << setw(35) << p << setw(20) << s << endl;
 }
 
 /* reset path quantities */
@@ -61,7 +61,21 @@ void Walker::reset_walker_info() {
     prev_node=nullptr; curr_node=nullptr;
 }
 
-Wrapper_Method::Wrapper_Method() {}
+/* set members of the base class for methods to deal with the set of walkers (independent trajectories) */
+Wrapper_Method::Wrapper_Method(const Wrapper_args &wrapper_args) {
+    walkers.resize(wrapper_args.nwalkers);
+    for (int i=0;i<wrapper_args.nwalkers;i++) {
+        walkers[i] = {walker_id:i,path_no:0,comm_curr:0,comm_prev:0,active:true, \
+                      k:0,p:-numeric_limits<double>::infinity(),t:0.L,s:0.L};
+        walkers[i].visited.resize(wrapper_args.nbins);
+        fill(walkers[i].visited.begin(),walkers[i].visited.end(),false);
+    }
+    visitations.resize(wrapper_args.nbins); committors.resize(wrapper_args.nbins);
+    ab_successes.resize(wrapper_args.nbins); ab_failures.resize(wrapper_args.nbins);
+    this->nabpaths=wrapper_args.nabpaths; this->tintvl=wrapper_args.tintvl;
+    this->maxit=wrapper_args.maxit; this->adaptivecomms=wrapper_args.adaptivecomms;
+    this->seed=wrapper_args.seed; this->debug=wrapper_args.debug;
+}
 
 Wrapper_Method::~Wrapper_Method() {}
 
@@ -118,12 +132,6 @@ const Node *Wrapper_Method::get_initial_node(const Network &ktn, Walker &walker,
     walker.p=node_b->pi-pi_B; // factor in path probability corresponding to initial occupation of node
     if (ktn.nbins>0 && !ktn.nodesB.empty()) walker.visited[node_b->bin_id]=true;
     return node_b;
-}
-
-/* function to set the protected members of the Wrapper_Method class */
-void Wrapper_Method::setup_wrapper_method(int maxn_abpaths, double tintvl, int maxit, int seed, bool debug) {
-    this->maxn_abpaths=maxn_abpaths; this->tintvl=tintvl; this->maxit=maxit;
-    this->seed=seed; this->debug=debug;
 }
 
 /* function to set the Traj_Method member function to propagate individual trajectories */
@@ -208,16 +216,8 @@ long double Wrapper_Method::rand_unif_met(int seed) {
 }
 
 /* Wrapper_Method no enhanced sampling method (ie simulate A<-B transition paths using chosen trajectory propagation method */
-STD_KMC::STD_KMC(const Network& ktn, bool adaptivecomms) {
+STD_KMC::STD_KMC(const Network &ktn, const Wrapper_args &wrapper_args) : Wrapper_Method(wrapper_args) {
     cout << "std_kmc> setting up kMC simulation with no enhanced sampling wrapper method" << endl;
-    // quack move this somewhere more general
-    this->walker.accumprobs=ktn.accumprobs;
-    this->adaptivecomms=adaptivecomms;
-    if (ktn.ncomms>0) {
-        walker.visited.resize(ktn.nbins); fill(walker.visited.begin(),walker.visited.end(),false);
-        visitations.resize(ktn.nbins); committors.resize(ktn.nbins);
-        ab_successes.resize(ktn.nbins); ab_failures.resize(ktn.nbins);
-    }
 }
 
 STD_KMC::~STD_KMC() {}
@@ -226,47 +226,57 @@ STD_KMC::~STD_KMC() {}
 void STD_KMC::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {
 
     cout << "\nstd_kmc> beginning kMC simulation with no enhanced sampling wrapper method" << endl;
-    n_ab=0; n_traj=0; int n_it=1;
-    while ((n_ab<maxn_abpaths) && (n_it<=maxit)) { // if using kPS or MCAMC, algo terminates when max no of basin escapes have been simulated
-        bool donebklsteps=false;
-        traj_method_obj->kmc_iteration(ktn,walker);
-        if (traj_method_obj->statereduction) return; // if the purpose of the computation was to perform a state reduction procedure, quit here
-        traj_method_obj->dump_traj(walker,walker.curr_node->aorb==-1,false);
-        n_it++;
-        check_if_endpoint:
-            if (walker.curr_node->aorb==-1 || walker.curr_node->aorb==1) { // traj has reached absorbing macrostate A or has returned to B
-                update_tp_stats(walker,walker.curr_node->aorb==-1,!adaptivecomms);
-                if (walker.curr_node->aorb==-1) { // transition path, reset walker
-                    walker.reset_walker_info();
-                    walker.path_no++;
-                    traj_method_obj->reset_nodeptrs();
-                    continue;
-                } else if (ktn.nbins>0) {
-                    walker.visited[walker.curr_node->bin_id]=true;
+    n_ab=0; n_traj=0; int n_it=0;
+    #pragma omp parallel
+    {
+    int x = omp_get_thread_num();
+    Traj_Method *traj_method_local = traj_method_obj->clone(); // copy required within thread because reference types cannot be made firstprivate
+    #pragma omp for
+    for (int pathno=0;pathno<nabpaths;pathno++) {
+//        #pragma omp critical
+//        cout << "  thread no. " << x << " is dealing with path no. " << pathno << endl;
+        for (;;) {
+            if (n_it>=maxit) break; // quack this leaves walker files that are not complete A<-B trajectories
+            bool donebklsteps=false;
+            traj_method_local->kmc_iteration(ktn,walkers[x]);
+            if (traj_method_local->statereduction) break; // if the purpose of the computation was to perform a state reduction procedure, quit here
+            traj_method_local->dump_traj(walkers[x],walkers[x].curr_node->aorb==-1,false);
+            #pragma omp atomic
+            n_it++;
+            check_if_endpoint:
+                if (walkers[x].curr_node->aorb==-1 || walkers[x].curr_node->aorb==1) { // traj has reached absorbing macrostate A or has returned to B
+                    #pragma omp critical
+                    update_tp_stats(walkers[x],walkers[x].curr_node->aorb==-1,!adaptivecomms);
+                    if (walkers[x].curr_node->aorb==-1) { // transition path, reset walker
+                        #pragma omp critical
+                        cout << "  transition path    thread: " << x << " path no: " << pathno << endl;
+                        walkers[x].reset_walker_info();
+                        walkers[x].path_no++;
+                        traj_method_local->reset_nodeptrs();
+                        break;
+                    } else if (ktn.nbins>0) {
+                        walkers[x].visited[walkers[x].curr_node->bin_id]=true;
+                    }
                 }
-            }
-            if (donebklsteps) continue;
-        traj_method_obj->do_bkl_steps(ktn,walker);
-        donebklsteps=true;
-        goto check_if_endpoint;
+                if (donebklsteps) continue;
+            traj_method_local->do_bkl_steps(ktn,walkers[x]);
+            donebklsteps=true;
+            goto check_if_endpoint;
+        }
     }
-    cout << "\nstd_kmc> simulation terminated after " << n_it-1 << " iterations. Simulated " \
+    }
+    cout << "\nstd_kmc> simulation terminated after " << n_it << " iterations. Simulated " \
          << n_ab << " transition paths" << endl;
-    if (!adaptivecomms) calc_tp_stats(ktn.nbins); // calc committor and transient visitation probabilities for bins and write to file
+    if (!adaptivecomms) calc_tp_stats(ktn.nbins); // calc committor and visitation probabilities for bins and write to file
 }
 
 /* Wrapper_Method handle simulation of many short nonequilibrium trajectories, used to obtain data required for coarse-graining
    a transition network */
-DIMREDN::DIMREDN(const Network &ktn, vector<int> ntrajsvec, long double dt) {
+DIMREDN::DIMREDN(const Network &ktn, vector<int> ntrajsvec, long double dt, \
+                 const Wrapper_args &wrapper_args) : Wrapper_Method(wrapper_args) {
 
     cout << "dimredn> constructing DIMREDN class" << endl;
     this->ntrajsvec=ntrajsvec; this->dt=dt;
-    this->seed=seed;
-    walkers.resize(ktn.ncomms);
-    for (int i=0;i<ktn.ncomms;i++) {
-        walkers[i] = {walker_id:i,path_no:0,comm_curr:0,comm_prev:0,k:0,active:true,accumprobs:ktn.accumprobs, \
-                      p:-numeric_limits<long double>::infinity(),t:0.L,s:0.L};
-    }
 }
 
 DIMREDN::~DIMREDN() {}
@@ -296,13 +306,18 @@ void DIMREDN::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj)
     }
 }
 
-Traj_Method::Traj_Method() {}
-Traj_Method::~Traj_Method() {}
-Traj_Method::Traj_Method(const Traj_Method& traj_method_obj) {}
+Traj_Method::Traj_Method(const Traj_args &traj_args) {
+    this->discretetime=traj_args.discretetime; this->statereduction=traj_args.statereduction;
+    this->tintvl=traj_args.tintvl; this->dumpintvls=traj_args.dumpintvls;
+    this->seed=traj_args.seed; this->debug=traj_args.debug;
+}
 
-/* set protected members of Traj_Method class */
-void Traj_Method::setup_traj_method(double tintvl, bool dumpintvls, bool statereduction, int seed, bool debug) {
-    this->tintvl=tintvl; this->dumpintvls=dumpintvls; this->statereduction=statereduction; this->seed=seed; this->debug=debug;
+Traj_Method::~Traj_Method() {}
+
+Traj_Method::Traj_Method(const Traj_Method& traj_method_obj) {
+    this->discretetime=traj_method_obj.discretetime; this->statereduction=traj_method_obj.statereduction;
+    this->tintvl=traj_method_obj.tintvl; this->dumpintvls=traj_method_obj.dumpintvls;
+    this->seed=traj_method_obj.seed; this->debug=traj_method_obj.debug;
 }
 
 void Traj_Method::dump_traj(Walker &walker, bool transnpath, bool newpath, long double maxtime) {
@@ -313,20 +328,20 @@ void Traj_Method::dump_traj(Walker &walker, bool transnpath, bool newpath, long 
     if (tintvl>=0. && (transnpath || !dumpintvls || walker.t>maxtime)) {
         walker.dump_walker_info(newpath,walker.t,walker.curr_node,dumpintvls);
     }
-    if (transnpath) { walker.dump_tp_distribn(); return; }
+    if (transnpath) { walker.dump_fpp_properties(); return; }
     if (walker.t>maxtime) return;
     if (tintvl>0. && walker.t>=next_tintvl) { // reached time interval for dumping trajectory data, calc next interval
         while (walker.t>=next_tintvl) next_tintvl+=tintvl;
     }
 }
 
-BKL::BKL(const Network &ktn, bool discretetime) {
-    this->discretetime=discretetime;
+BKL::BKL(const Network &ktn, const Traj_args &traj_args) : Traj_Method(traj_args) {
+    cout << "bkl> constructing object for BKL simulation" << endl;
 }
 
 BKL::~BKL() {}
 
-BKL::BKL(const BKL& bkl_obj) {}
+BKL::BKL(const BKL &bkl_obj) : Traj_Method(bkl_obj) {}
 
 /* effectively a dummy wrapper function to bkl() function so that BKL class is consistent with other Traj_Method classes */
 void BKL::kmc_iteration(const Network &ktn, Walker &walker) {
@@ -335,43 +350,54 @@ void BKL::kmc_iteration(const Network &ktn, Walker &walker) {
         if (tintvl>=0.) walker.dump_walker_info(true,0.,walker.curr_node,dumpintvls);
         next_tintvl=tintvl;
     }
-    BKL::bkl(walker,discretetime,seed);
+    BKL::bkl(walker,discretetime,ktn.accumprobs,seed);
     if (ktn.nbins>0 && !ktn.nodesB.empty()) walker.visited[walker.curr_node->bin_id]=true;
 }
 
-/* function to take a single kMC step using the BKL algorithm */
-void BKL::bkl(Walker &walker, bool discretetime, int seed) {
-    // propagate trajectory
+/* function to take a single kMC step (i.e. propagate trajectory by one internode transition) using the BKL algorithm */
+void BKL::bkl(Walker &walker, bool discretetime, bool accumprobs, int seed) {
     double rand_no = Wrapper_Method::rand_unif_met(seed); // random number used to select transition
-    Edge *edgeptr = walker.curr_node->top_from;
-    const Node *old_node = walker.curr_node;
-    long double prev_cum_p = 0.L; // previous accumulated branching / transition probability
-    long double p; // branching / transition probability of accepted move
-    while (edgeptr!=nullptr) { // loop over FROM edges and check random number against accumulated transition probability
-        if (walker.accumprobs) { // branching probability values are cumulative
-            if (edgeptr->t > rand_no) { p = edgeptr->t-prev_cum_p; break; }
-            prev_cum_p = edgeptr->t;
-        } else { // branching / transition probability values are not accumulative
-            if (edgeptr->t+prev_cum_p > rand_no) { p = edgeptr->t; break; }
-            prev_cum_p += edgeptr->t;
+    Edge *edgeptr = nullptr;
+    long double t; // transition probability of accepted move
+    long double prev_cum_t = walker.curr_node->t; // previous accumulated transition probability
+//    cout << "\ncurr node:  " << walker.curr_node->node_id << "    rand no: " << rand_no << "    accumprobs?: " << accumprobs << endl;
+//    cout << "    node.t: " << walker.curr_node->t << endl;
+    if (!(prev_cum_t>rand_no)) {
+        edgeptr = walker.curr_node->top_from;
+        while (edgeptr!=nullptr) {
+            if (accumprobs) { // transition probability values are cumulative
+//                cout << "    edge to: " << edgeptr->to_node->node_id << "    t: " << edgeptr->t << endl;
+                if (edgeptr->t>rand_no) { t=edgeptr->t-prev_cum_t; break; }
+                prev_cum_t = edgeptr->t;
+            } else { // transition probability values are not cumulative
+                if (edgeptr->t+prev_cum_t>rand_no) { t=edgeptr->t; break; }
+                prev_cum_t += edgeptr->t;
+            }
+            edgeptr=edgeptr->next_from;
         }
-        edgeptr = edgeptr->next_from;
+        if (edgeptr==nullptr) throw exception();
+    } else {
+        t=prev_cum_t;
     }
     walker.prev_node = walker.curr_node;
-    if (edgeptr!=nullptr) { // advance trajectory
+    if (edgeptr!=nullptr) { // left the previously occupied node; advance trajectory
         walker.curr_node = edgeptr->to_node;
-    } else { // (for non-branching matrix) self-loop transition, node remains same
+    } else { // self-loop transition, node remains same
         walker.curr_node = walker.prev_node;
-        p = walker.curr_node->t;
+        t = walker.curr_node->t;
     }
+//    cout << "node is now: " << walker.curr_node->node_id << endl;
     // update path quantities
     walker.k++; // dynamical activity (no. of steps)
-    walker.p += log(p); // log path probability
-    if (edgeptr!=nullptr) walker.s += edgeptr->rev_edge->k-edgeptr->k; // entropy flow
+    walker.p += log(t); // log path probability
+    if (edgeptr!=nullptr) { // trajectory has advanced to another node (not self-loop transtion), non-zero contribution to path entropy flow
+        if (!discretetime) { walker.s += edgeptr->rev_edge->k-edgeptr->k;
+        } else { walker.s += 1.L*log(edgeptr->rev_edge->t/edgeptr->t); } // entropy flow
+    }
     // sample transition time
     if (!discretetime) { // continuous-time with non-uniform (branching) or uniform (linearised transn prob mtx) waiting times for nodes
-        walker.t += -1.L*old_node->t_esc*log(Wrapper_Method::rand_unif_met(seed)); // recall for linearised transn prob mtx, t_esc should have been set to tau
+        walker.t += -1.L*walker.prev_node->t_esc*log(Wrapper_Method::rand_unif_met(seed)); // recall for linearised transn prob mtx, t_esc should have been set to tau
     } else { // discrete-time
-        walker.t += old_node->t_esc; // recall for discrete-time transn prob mtx, t_esc should have been set to tau
+        walker.t += walker.prev_node->t_esc; // recall for discrete-time transn prob mtx, t_esc should have been set to tau
     }
 }

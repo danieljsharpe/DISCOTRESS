@@ -108,11 +108,10 @@ void Network::get_tmtx_branch() {
     }
 }
 
-/* calculate the branching probabilities, resort edges into decreasing order of branching probabilities, and set the transition
+/* resort edges into decreasing order of transition probabilities, and set the transition
    probabilities as the accumulated values. This is for optimisation of the rejection-free kMC algorithm (BKL) */
-void Network::get_cum_branchprobs() {
-    this->get_tmtx_branch();
-    cout << "ktn> calculating accumulative branching probabilities" << endl;
+void Network::set_accumprobs() {
+    cout << "ktn> calculating accumulated transition probabilities" << endl;
     accumprobs=true;
     for (auto &node: nodes) {
         Edge *edgeptr = node.top_from;
@@ -130,7 +129,7 @@ void Network::get_cum_branchprobs() {
             edge_pq.pop();
         }
         edgeptr = node.top_from;
-        long double cum_t=0.L;
+        long double cum_t=node.t;
         while (edgeptr!=nullptr) { // calculate accumulated branching probabilities
             if (edgeptr->deadts) { edgeptr=edgeptr->next_from; continue; }
             long double prev_cum_t = cum_t;
@@ -334,14 +333,14 @@ void Network::add_edge_network(Network *ktn, Node &from_node, Node &to_node, int
 /* set up the Markov chain (kinetic transition network, KTN) */
 void Network::setup_network(Network& ktn, const vector<pair<int,int>> &conns, \
         const vector<pair<long double,long double>> &weights, const vector<long double> &stat_probs, \
-        const vector<int> &nodesinA, const vector<int> &nodesinB, bool transnprobs, long double tau, \
-        int ncomms, const vector<int> &comms, const vector<int> &bins) {
+        const vector<int> &nodesinA, const vector<int> &nodesinB, bool discretetime, bool branchprobs, \
+        long double tau, int ncomms, const vector<int> &comms, const vector<int> &bins) {
 
     cout << "ktn> constructing nodes and edges of Markovian network from vectors" << endl;
     if (!((conns.size()==ktn.n_edges) || (weights.size()==ktn.n_edges) || \
          (stat_probs.size()==ktn.n_nodes) || \
          (!comms.empty() && comms.size()==ktn.n_nodes))) throw Network::Ktn_exception();
-    if (transnprobs) {
+    if (discretetime) {
         cout << "ktn> interpreting edge weights as transition probabilities at a lag time: " << tau << endl;
         ktn.tau=tau; }
     ktn.ncomms=ncomms;
@@ -363,6 +362,8 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &conns, \
     if (abs(tot_pi-1.)>1.E-10) {
         cout << "ktn> Error: total equilibrium probabilities of nodes is: " << tot_pi << " =/= 1." << endl;
         throw Network::Ktn_exception(); }
+
+    // network topology setup
     for (int i=0;i<ktn.n_edges;i++) {
         ktn.edges[2*i].edge_id = 2*i;
         ktn.edges[(2*i)+1].edge_id = (2*i)+1;
@@ -376,7 +377,7 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &conns, \
             ktn.edges[2*i].deadts = false;
             ktn.edges[(2*i)+1].deadts = false;
         }
-        if (!transnprobs) { // edge weights are transition rates
+        if (!discretetime) { // edge weights are transition rates
             ktn.edges[2*i].k = weights[i].first;
             ktn.edges[(2*i)+1].k = weights[i].second;
         } else { // edge weights are transition probabilities
@@ -397,14 +398,21 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &conns, \
         ktn.edges[2*i].rev_edge = &ktn.edges[(2*i)+1];
         ktn.edges[(2*i)+1].rev_edge = &ktn.edges[2*i];
     }
+
+    // set the transition probabilities (if rates were provided) and set lag/mean waiting times (for DTMC/CTMC, respectively)
+    if (branchprobs) { ktn.get_tmtx_branch(); } // branching probabilities (non-uniform mean waiting times)
+    else if (!discretetime) { ktn.get_tmtx_lin(tau); } // linearised transition probabilities (uniform mean waiting times)
     for (int i=0;i<ktn.n_nodes;i++) {
-        if (!transnprobs) { // continuous-time, in general, nodes have different waiting times (escape rates)
-            calc_t_esc(ktn.nodes[i]);
-        } else {
+        // for DTMC, nodes have uniform fixed lag time. For CTMC parameterised by linearised transition matrix, nodes have uniform mean waiting times
+        if (!branchprobs) {
             calc_t_selfloop(ktn.nodes[i]);
-            ktn.nodes[i].t_esc = tau; // continuous- or discrete-time, all nodes have same escape rate
+            ktn.nodes[i].t_esc = tau;
+        } else { // nodes have non-uniform mean waiting times (escape rates) for CTMC parameterised by branching matrix, which has no self-loops
+            calc_t_esc(ktn.nodes[i]);
         }
     }
+
+    // set endpoint states
     for (int i=0;i<nodesinA.size();i++) {
         if (nodesinA[i]>ktn.n_nodes) throw Ktn_exception();
         ktn.nodes[nodesinA[i]-1].aorb = -1;

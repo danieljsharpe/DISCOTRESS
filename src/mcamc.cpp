@@ -25,22 +25,24 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace std;
 
-MCAMC::MCAMC(const Network &ktn, bool discretetime, int kpskmcsteps, bool meanrate) {
+MCAMC::MCAMC(const Network &ktn, int kpskmcsteps, bool meanrate, \
+             const Traj_args &traj_args) : Traj_Method(traj_args) {
 
     cout << "kps> MCAMC parameters:\n  FPTA (0) or mean rate method (1)?: " << meanrate \
          << "\n  no. of kMC steps after MCAMC iteration: " << kpskmcsteps << endl;
-    this->discretetime=discretetime;
     this->kpskmcsteps=kpskmcsteps; this->meanrate=meanrate;
 }
 
 MCAMC::~MCAMC() {}
 
+MCAMC::MCAMC(const MCAMC &mcamc_obj) : Traj_Method(mcamc_obj) {
+    this->kpskmcsteps=mcamc_obj.kpskmcsteps; this->meanrate=mcamc_obj.meanrate;
+}
+
 void MCAMC::kmc_iteration(const Network &ktn, Walker &walker) {
 
     cout << "mcamc> running a single iteration of MCAMC" << endl;
 }
-
-MCAMC::MCAMC(const MCAMC& mcamc_obj) {}
 
 /* perform specified number of BKL iterations after a basin escape */
 void MCAMC::do_bkl_steps(const Network &ktn, Walker &walker, long double maxtime) {

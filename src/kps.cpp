@@ -47,15 +47,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace std;
 
-KPS::KPS(const Network &ktn, bool discretetime, int nelim, long double tau, int kpskmcsteps, \
-         bool adaptivecomms, double adaptminrate) {
+KPS::KPS(const Network &ktn, int nelim, int kpskmcsteps, bool adaptivecomms, double adaptminrate, \
+         const Traj_args &traj_args) : Traj_Method(traj_args) {
 
-    cout << "kps> kPS parameters:\n  lag time: " << tau << " \tmax. no. of eliminated nodes: " \
+    cout << "kps> kPS parameters:\n  max. no. of eliminated nodes: " \
          << nelim << "\n  no. of basins: " << ktn.ncomms << " \tno. of kMC steps after kPS iteration: " << kpskmcsteps \
          << "\n  adaptive definition of communities (y/n): " << adaptivecomms \
          << "\tmin. allowed rate in adaptive communities: " << adaptminrate << endl;
-    this->discretetime=discretetime;
-    this->nelim=nelim; this->tau=tau; this->kpskmcsteps=kpskmcsteps;
+    this->nelim=nelim; this->kpskmcsteps=kpskmcsteps;
     this->adaptivecomms=adaptivecomms; this->adaptminrate=adaptminrate;
     basin_ids.resize(ktn.n_nodes);
 }
@@ -67,10 +66,9 @@ KPS::~KPS() {
     if (mfpt) mfpt_vals.clear();
 }
 
-KPS::KPS(const KPS& kps_obj) {
-    this->nelim=kps_obj.nelim; this->tau=kps_obj.tau; this->kpskmcsteps=kps_obj.kpskmcsteps;
+KPS::KPS(const KPS &kps_obj) : Traj_Method(kps_obj) {
+    this->nelim=kps_obj.nelim; this->kpskmcsteps=kps_obj.kpskmcsteps;
     this->adaptivecomms=false; this->adaptminrate=-1.; this->statereduction=statereduction; this->committor=committor;
-    this->tintvl=kps_obj.tintvl; this->dumpintvls=kps_obj.dumpintvls; this->seed=kps_obj.seed; this->debug=false;
     this->basin_ids.resize(kps_obj.basin_ids.size());
 }
 
@@ -139,7 +137,7 @@ void KPS::do_bkl_steps(const Network &ktn, Walker &walker, long double maxtime) 
     if (adaptivecomms) return;
     int n_kmcit=0;
     while ((n_kmcit<kpskmcsteps || ktn.comm_sizes[epsilon->comm_id]>nelim) && walker.t<maxtime) { // quack force BKL simulation to continue if active community is large
-        BKL::bkl(walker,discretetime,seed);
+        BKL::bkl(walker,discretetime,ktn.accumprobs,seed);
         alpha=walker.curr_node;
         if (ktn.nbins>0 && !ktn.nodesB.empty()) walker.visited[alpha->bin_id]=true;
         if (alpha->comm_id!=epsilon->comm_id || walker.t>maxtime) { // traj data is not dumped unless comm changes, regardless of tintvl, except if (DIMREDN) max time is exceeded
@@ -326,6 +324,7 @@ long double KPS::iterative_reverse_randomisation() {
         for (const auto &node: ktn_kps->nodes) nhops += node.h; // linearised or discrete-time prob matrix has self-loops
         for (const auto &edge: ktn_kps->edges) {
             if (edge.deadts) continue; nhops += edge.h; }
+        long double tau=ktn_kps->nodes[0].t_esc; // for CTMC with linearised transition probs / DTMC, waiting/lag times are uniform
         if (!discretetime) { t_esc = KPS::gamma_distribn(nhops,tau,seed); // continuous-time Markov chain
         } else { t_esc = static_cast<long double>(nhops)*tau; } // discrete-time Markov chain
     } else { // continuous-time, the waiting times are different between nodes
@@ -797,7 +796,9 @@ long double KPS::calc_gt_factor(Node *node_elim) {
 }
 
 /* Update path quantities along a trajectory, where the (unordered) path is specified by the kMC hop counts
-   ("h") in the Node and Edge members of the subnetwork pointed to by ktn_kps */
+   ("h") in the Node and Edge members of the subnetwork pointed to by ktn_kps.
+   Transition probabilities associated with nodes and edges should not be accumulated values (this feature
+   should only be set for use with pure BKL simulations) */
 void KPS::update_path_quantities(Walker &walker, long double t_esc, const Node *curr_node) {
 
     if (debug) cout << "kps> updating path quantities" << endl;
@@ -806,9 +807,10 @@ void KPS::update_path_quantities(Walker &walker, long double t_esc, const Node *
     walker.curr_node = &(*curr_node);
     walker.t += t_esc;
     for (const auto &node: ktn_kps->nodes) {
-        if ((!ktn_kps->branchprobs || basin_ids[node.node_id-1]==2) && node.h>0) {
+        if (!ktn_kps->branchprobs && node.h>0) {
             walker.k += node.h;
             walker.p += static_cast<long double>(node.h)*log(node.t);
+            // no need to update entropy flow along paths because contribution from self-loop transitions is zero
             if (ktn_kps->ncomms>0 && !walker.visited.empty()) walker.visited[node.bin_id]=true;
         }
         Edge *edgeptr = node.top_from;
@@ -817,8 +819,11 @@ void KPS::update_path_quantities(Walker &walker, long double t_esc, const Node *
             walker.k += edgeptr->h;
             walker.p += static_cast<long double>(edgeptr->h)*log(edgeptr->t);
             if (ktn_kps->ncomms>0 && !walker.visited.empty()) walker.visited[edgeptr->to_node->bin_id]=true;
-            if (ktn_kps->branchprobs) { // can also calculate contribution to the entropy flow
-                walker.s += static_cast<long double>(edgeptr->h)*(edgeptr->rev_edge->k-edgeptr->k); }
+            if (!discretetime) {
+                walker.s += static_cast<long double>(edgeptr->h)*(edgeptr->rev_edge->k-edgeptr->k);
+            } else {
+                walker.s += static_cast<long double>(edgeptr->h)*log(edgeptr->rev_edge->t/edgeptr->t);
+            }
             edgeptr=edgeptr->next_from;
         }
     }

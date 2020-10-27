@@ -6,7 +6,7 @@ Author: Daniel J. Sharpe (daniel.j.sharpe@gmail.com; github.com/danieljsharpe)
 
 DISCOTRESS is a software package to simulate the dynamics on arbitrary continuous- and discrete-time Markov chains (CTMCs and DTMCs).
 DISCOTRESS is designed to enable simulation of the dynamics even for Markov chains that exhibit strong metastability
-(ie rare event dynamics), where standard simulation methods fail.
+(i.e. rare event dynamics), where standard simulation methods fail.
 
 Copyright (C) 2020 Daniel J. Sharpe
 
@@ -63,6 +63,12 @@ Discotress::Discotress () {
     } else {
         cout << "discotress> simulating a continuous-time Markov chain" << endl;
     }
+    omp_set_num_threads(my_kws.nthreads);
+    cout << "discotress> simulation will use " << my_kws.nthreads << " threads" << endl;
+    long double dummy_randno = Wrapper_Method::rand_unif_met(my_kws.seed); // seed this generator
+    if (my_kws.debug) debug=true;
+
+    // read input files
     cout << "discotress> reading input data files..." << endl;
     const char *conns_fname="edge_conns.dat", *wts_fname="edge_weights.dat", \
                *stat_probs_fname = "stat_prob.dat";
@@ -89,50 +95,59 @@ Discotress::Discotress () {
     }
     vector<double> init_probs;
     if (my_kws.initcond) init_probs = Read_files::read_one_col<double>(my_kws.initcondfile);
-    omp_set_num_threads(my_kws.nthreads);
-    cout << "discotress> setting up the Markovian network data structure..." << endl;
+
+    // set up the Markov chain (KTN) data structure
+    cout << "discotress> setting up the Markovian network data object..." << endl;
     ktn = new Network(my_kws.n_nodes,my_kws.n_edges);
     if (my_kws.commsfile!=nullptr) {
-        Network::setup_network(*ktn,conns,weights,stat_probs,nodesAvec,nodesBvec,my_kws.transnprobs, \
+        Network::setup_network(*ktn,conns,weights,stat_probs,nodesAvec,nodesBvec,my_kws.discretetime,my_kws.branchprobs, \
             my_kws.tau,my_kws.ncomms,communities,bins);
     } else {
-        Network::setup_network(*ktn,conns,weights,stat_probs,nodesAvec,nodesBvec,my_kws.transnprobs,my_kws.tau,my_kws.ncomms);
+        Network::setup_network(*ktn,conns,weights,stat_probs,nodesAvec,nodesBvec,my_kws.discretetime,my_kws.branchprobs,my_kws.tau,my_kws.ncomms);
     }
     cout << "discotress> no. of nodes: " << ktn->n_nodes << "   in A: " << ktn->nodesA.size() << "   in B: " << ktn->nodesB.size() << endl;
     cout << "discotress> no. of edges: " << ktn->n_edges << "      no. of communities: " << ktn->ncomms << endl;
     if (my_kws.dumpwaittimes) ktn->dumpwaittimes();
     if (my_kws.initcond) ktn->set_initcond(init_probs);
+    if (my_kws.statereduction && my_kws.pathlengths) { // override mean waiting times to represent mean number of steps to exit
+        for (vector<Node>::iterator it_nodevec=ktn->nodes.begin();it_nodevec!=ktn->nodes.end();++it_nodevec) {
+            it_nodevec->t_esc=1.L; }
+    }
+
+    // set up Traj_Method object (method to propagate trajectories associated with Walker objects)
     cout << "discotress> setting up the object to propagate individual trajectories..." << endl;
+    Traj_args traj_args{my_kws.discretetime,my_kws.statereduction,my_kws.tintvl,my_kws.dumpintvls, \
+                        my_kws.seed,my_kws.debug};
     if (my_kws.traj_method==1) {            // BKL algorithm
-        if (my_kws.branchprobs) { ktn->get_cum_branchprobs();
-        } else if (!my_kws.transnprobs) { ktn->get_tmtx_lin(my_kws.tau); }
-        // wrapper_method_obj->set_standard_kmc(&BKL::bkl);
-        BKL *bkl_ptr = new BKL(*ktn,my_kws.discretetime);
+        ktn->set_accumprobs();
+        BKL *bkl_ptr = new BKL(*ktn,traj_args);
         traj_method_obj = bkl_ptr;
     } else if (my_kws.traj_method==2) {     // kPS algorithm
-        if (my_kws.branchprobs) { ktn->get_tmtx_branch();
-        } else if (!my_kws.transnprobs) { ktn->get_tmtx_lin(my_kws.tau); }
-        KPS *kps_ptr = new KPS(*ktn,my_kws.discretetime,my_kws.nelim,my_kws.tau,my_kws.kpskmcsteps, \
-                    my_kws.adaptivecomms,my_kws.adaptminrate);
+        KPS *kps_ptr = new KPS(*ktn,my_kws.nelim,my_kws.kpskmcsteps,my_kws.adaptivecomms,my_kws.adaptminrate,traj_args);
         if (my_kws.statereduction) kps_ptr->set_statereduction_procs(my_kws.committor,my_kws.absorption,my_kws.fundamentalred, \
                     my_kws.fundamentalirred,my_kws.mfpt,my_kws.gth);
         traj_method_obj = kps_ptr;
     } else if (my_kws.traj_method==3) {     // MCAMC algorithm
-        MCAMC *mcamc_ptr = new MCAMC(*ktn,my_kws.discretetime,my_kws.kpskmcsteps,my_kws.meanrate);
+        MCAMC *mcamc_ptr = new MCAMC(*ktn,my_kws.kpskmcsteps,my_kws.meanrate,traj_args);
         traj_method_obj = mcamc_ptr;
     } else {
         throw exception(); // a trajectory method object must be set
     }
-    traj_method_obj->setup_traj_method(my_kws.tintvl,my_kws.dumpintvls,my_kws.statereduction,my_kws.seed,my_kws.debug);
+
+    // set up Wrapper_Method object (enhanced sampling method to handle set of Walker objects)
     cout << "discotress> setting up the enhanced sampling wrapper object..." << endl;
+    Wrapper_args wrapper_args{my_kws.nwalkers,ktn->nbins,my_kws.nabpaths,my_kws.tintvl,my_kws.maxit,my_kws.adaptivecomms, \
+                              my_kws.seed,my_kws.debug};
     if (my_kws.wrapper_method==0) {        // special wrapper to simulate many short nonequilibrium trajectories for dimensionality reduction
-        DIMREDN *dimredn_ptr = new DIMREDN(*ktn,ntrajsvec,my_kws.dt);
+        wrapper_args.nwalkers=my_kws.nthreads;
+        DIMREDN *dimredn_ptr = new DIMREDN(*ktn,ntrajsvec,my_kws.dt,wrapper_args);
         wrapper_method_obj = dimredn_ptr;
-    } else if (my_kws.wrapper_method==1) { // standard kMC simulation, no enhanced sampling
-        STD_KMC *std_kmc_ptr = new STD_KMC(*ktn,my_kws.adaptivecomms);
+    } else if (my_kws.wrapper_method==1) { // standard A<-B kMC simulation, no enhanced sampling
+        wrapper_args.nwalkers=my_kws.nthreads;
+        STD_KMC *std_kmc_ptr = new STD_KMC(*ktn,wrapper_args);
         wrapper_method_obj = std_kmc_ptr;
     } else if (my_kws.wrapper_method==2) { // WE simulation
-        WE_KMC *we_kmc_ptr = new WE_KMC(*ktn,my_kws.taure,my_kws.adaptivecomms);
+        WE_KMC *we_kmc_ptr = new WE_KMC(*ktn,my_kws.taure,wrapper_args);
         wrapper_method_obj = we_kmc_ptr;
     } else if (my_kws.wrapper_method==3) { // FFS simulation
     } else if (my_kws.wrapper_method==4) { // NEUS-kMC simulation
@@ -140,13 +155,7 @@ Discotress::Discotress () {
     } else {
         throw exception(); // a wrapper method object must be set
     }
-    wrapper_method_obj->setup_wrapper_method(my_kws.nabpaths,my_kws.tintvl,my_kws.maxit,my_kws.seed,my_kws.debug);
-    long double dummy_randno = Wrapper_Method::rand_unif_met(my_kws.seed); // seed this generator
-    if (my_kws.statereduction && my_kws.pathlengths) { // override mean waiting times to represent mean number of steps to exit
-        for (vector<Node>::iterator it_nodevec=ktn->nodes.begin();it_nodevec!=ktn->nodes.end();++it_nodevec) {
-            it_nodevec->t_esc=1.L; }
-    }
-    if (my_kws.debug) debug=true;
+
     cout << "discotress> finished setting up simulation" << endl;
 }
 

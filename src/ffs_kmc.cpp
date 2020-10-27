@@ -27,7 +27,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace std;
 
-FFS_KMC::FFS_KMC(const Network &ktn) {}
+FFS_KMC::FFS_KMC(const Network &ktn, const Wrapper_args &wrapper_args) : Wrapper_Method(wrapper_args) {}
+
 FFS_KMC::~FFS_KMC() {}
 
 void FFS_KMC::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {

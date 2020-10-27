@@ -29,12 +29,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace std;
 
-WE_KMC::WE_KMC(const Network &ktn, double taure, bool adaptivecomms) {
+WE_KMC::WE_KMC(const Network &ktn, double taure, const Wrapper_args &wrapper_args) : Wrapper_Method(wrapper_args) {
 
     cout << "wekmc> running WE-kMC with parameters:\n  resampling time: " << taure << " \tno. of communities: " \
-         << ktn.ncomms << "\n  adaptive definition of communities (y/n): " << adaptivecomms << endl;
-    this->taure=taure; this->adaptivecomms=adaptivecomms;
-    if (!adaptivecomms) walkers.reserve(ktn.ncomms); // quack use proper argument and set accumprobs
+         << ktn.ncomms << endl;
+    this->taure=taure;
 }
 
 WE_KMC::~WE_KMC() {}
@@ -43,10 +42,8 @@ void WE_KMC::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) 
 
     cout << "wekmc> beginning WE-kMC simulation" << endl;
     n_ab=0; int n_wekmcit=0;
-    double tau_r=static_cast<long double>(taure); // next resampling time
-    // setup walkers (set nwalkers here)
-    cout << "wekmc> finished initialising walkers" << endl;
-    while ((n_ab<maxn_abpaths) and (n_wekmcit<maxit)) { // algorithm terminates when max. no. of iterations of resampling procedure have been performed
+    long double tau_r=static_cast<long double>(taure); // next resampling time
+    while ((n_ab<nabpaths) and (n_wekmcit<maxit)) { // algorithm terminates when max. no. of iterations of resampling procedure have been performed
         for (auto &walker: walkers) {
             if (!walker.active) continue;
 //            while (walker.t<tau_r) // quack simulate

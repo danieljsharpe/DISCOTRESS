@@ -44,15 +44,14 @@ struct Walker {
     explicit Walker()=default;
     ~Walker();
     void dump_walker_info(bool,long double,const Node*,bool=false); // write trajectory data to file
-    void dump_tp_distribn(); // append transition path quantities to distributions file
+    void dump_fpp_properties(); // append first passage path properties to file
     void reset_walker_info();
 
     int walker_id; // ID of walker in set of trajectories
     int path_no; // the trajectory iteration for this walker ID
     int comm_curr, comm_prev; // for WE-kMC
-    unsigned long long int k; // path activity
     bool active; // walker is currently a member of the set of active trajectories being propagated
-    bool accumprobs=false; // indicates if the Network on which the Walker is active has accumulated transition probs
+    unsigned long long int k; // path activity
     long double p; // (log) path probability
     long double t; // path time (stochastically sampled)
     long double s; // entropy flow along path
@@ -60,20 +59,33 @@ struct Walker {
     vector<bool> visited;  // element is true when the corresponding bin has been visited along the trajectory
 };
 
+/* arguments to be passed to Wrapper_Method object (base class for methods to handle set of trajectories) constructor */
+struct Wrapper_args {
+    int nwalkers; int nbins; int nabpaths; double tintvl; int maxit; bool adaptivecomms;
+    int seed; bool debug;
+};
+
+/* arguments to be passed to Traj_Method object (base class for methods to propagate individual trajectories */
+struct Traj_args {
+    bool discretetime; bool statereduction;
+    double tintvl; bool dumpintvls;
+    int seed; bool debug;
+};
+
 /* abstract class for wrapper (trajectory handling) enhanced sampling methods */
 class Wrapper_Method {
 
     protected:
 
-    int maxn_abpaths;           // algorithm terminates when this number of A<-B transition paths have been successfully sampled
+    int nabpaths;               // algorithm terminates when this number of A<-B transition paths have been successfully sampled
     int n_ab;                   // number of successfully simulated A<-B transition paths
     int n_traj;                 // total number of B<-B or A<-B paths simulated
     double tintvl;              // time interval for dumping trajectory data
     vector<int> ab_successes;   // vector of counts of bin appearances along A<-B transition paths
     vector<int> ab_failures;    // vector of counts of bin appearances along B<-B unreactive paths
-    vector<double> visitations;  // probability that a bin is visited along an A<-B transition path
+    vector<double> visitations; // probability that a bin is visited along an A<-B transition path
     vector<double> committors;  // forward (A<-B) committor probabilities for bins
-    bool adaptivecomms; // comunities are defined adaptively (or else are set prior to the simulation)
+    bool adaptivecomms;         // communities are defined adaptively (or else are set prior to the simulation)
     int maxit;                  // another termination condition; the maximum number of iterations of the enhanced kMC method
     int seed;                   // seed for random number generator
     bool debug;                 // debug printing on/off
@@ -82,9 +94,8 @@ class Wrapper_Method {
 
     public:
 
-    Wrapper_Method();
+    Wrapper_Method(const Wrapper_args&);
     virtual ~Wrapper_Method();
-    void setup_wrapper_method(int,double,int,int,bool); // set the protected members of the Wrapper_Method class
     virtual void run_enhanced_kmc(const Network&,Traj_Method*)=0; // pure virtual function
     static const Node *get_initial_node(const Network&, Walker&,int); // sample an initial node
     void set_standard_kmc(void(*)(Walker&)); // function to set the kmc_std_method
@@ -103,6 +114,16 @@ class Wrapper_Method {
     }
 };
 
+/* no wrapper enhanced sampling class, simply propagates the dynamics of trajectories using the chosen method */
+class STD_KMC : public Wrapper_Method {
+
+    public:
+
+    STD_KMC(const Network&,const Wrapper_args&);
+    ~STD_KMC();
+    void run_enhanced_kmc(const Network&,Traj_Method*);
+};
+
 /* class to handle the simulation of many short nonequilibrium trajectories, used to obtain data required for coarse-graining */
 class DIMREDN : public Wrapper_Method {
 
@@ -113,23 +134,8 @@ class DIMREDN : public Wrapper_Method {
 
     public:
     
-    DIMREDN(const Network&,vector<int>,long double);
+    DIMREDN(const Network&,vector<int>,long double,const Wrapper_args&);
     ~DIMREDN();
-    void run_enhanced_kmc(const Network&,Traj_Method*);
-};
-
-/* no wrapper enhanced sampling class, simply propagates the dynamics of trajectories using the chosen method */
-class STD_KMC : public Wrapper_Method {
-
-    private:
-
-    Walker walker={walker_id:0,path_no:0,comm_curr:0,comm_prev:0,k:0,active:true,accumprobs:false,\
-                   p:-numeric_limits<long double>::infinity(),t:0.,s:0.}; // method uses only a single walker
-
-    public:
-
-    STD_KMC(const Network&,bool);
-    ~STD_KMC();
     void run_enhanced_kmc(const Network&,Traj_Method*);
 };
 
@@ -138,7 +144,6 @@ class WE_KMC : public Wrapper_Method {
 
     private:
 
-    int nwalkers;
     double taure; // time interval between checking communities and resampling trajectories
     double adaptminrate;
 
@@ -146,7 +151,7 @@ class WE_KMC : public Wrapper_Method {
 
     public:
 
-    WE_KMC(const Network&,double,bool);
+    WE_KMC(const Network&,double,const Wrapper_args&);
     ~WE_KMC();
     void run_enhanced_kmc(const Network&,Traj_Method*);
 };
@@ -159,7 +164,7 @@ class FFS_KMC : public Wrapper_Method {
 
     public:
 
-    FFS_KMC(const Network&);
+    FFS_KMC(const Network&,const Wrapper_args&);
     ~FFS_KMC();
     void run_enhanced_kmc(const Network&,Traj_Method*);
 };
@@ -169,7 +174,7 @@ class NEUS_KMC : public Wrapper_Method {
 
     public:
 
-    NEUS_KMC(const Network&);
+    NEUS_KMC(const Network&,const Wrapper_args&);
     ~NEUS_KMC();
     void run_enhanced_kmc(const Network&,Traj_Method*);
 };
@@ -179,7 +184,7 @@ class MILES_KMC : public Wrapper_Method {
 
     public:
 
-    MILES_KMC(const Network&);
+    MILES_KMC(const Network&,const Wrapper_args&);
     ~MILES_KMC();
     void run_enhanced_kmc(const Network&,Traj_Method*);
 };
@@ -198,11 +203,10 @@ class Traj_Method {
 
     public:
 
-    Traj_Method();
+    Traj_Method(const Traj_args&);
     virtual ~Traj_Method();
     Traj_Method(const Traj_Method&);
     virtual Traj_Method* clone() {}
-    void setup_traj_method(double,bool,bool,int,bool) ; // set the protected members of the Traj_Method class
     void dump_traj(Walker&,bool,bool,long double=numeric_limits<long double>::infinity()); // call function to dump walker info and then update next_tintvl;
     virtual void kmc_iteration(const Network&,Walker&)=0;
     virtual void do_bkl_steps(const Network&,Walker&,long double=numeric_limits<long double>::infinity()) {} // dummy function overridden in KPS and MCAMC to do BKL steps after a basin escape
@@ -215,12 +219,12 @@ class BKL : public Traj_Method {
 
     public:
 
-    BKL(const Network&,bool);
+    BKL(const Network&,const Traj_args&);
     ~BKL();
     BKL(const BKL&);
     BKL* clone() { return new BKL(*this); } // NB this calls copy constructor for BKL
     void kmc_iteration(const Network&,Walker&);
-    static void bkl(Walker&,bool,int);
+    static void bkl(Walker&,bool,bool,int);
 };
 
 /* kinetic path sampling (kPS)
@@ -238,7 +242,6 @@ class KPS : public Traj_Method {
         // (eliminated=1, transient noneliminated=2, absorbing boundary=3, absorbing nonboundary=0)
     vector<int> eliminated_nodes; // vector of IDs of eliminated nodes (in order)
     unordered_map<int,int> nodemap; // map of node IDs from original network to subnetwork
-    long double tau;     // lag time at which transition matrix is evaluated
     int nelim;      // maximum number of nodes of a trapping basin to be eliminated
     int N_c;        // number of nodes connected to the eliminated states of the current trapping basin
     int N, N_B;     // number of eliminated nodes / total number of nodes for the currently active trapping basin
@@ -272,7 +275,7 @@ class KPS : public Traj_Method {
 
     public:
 
-    KPS(const Network&,bool,int,long double,int,bool,double);
+    KPS(const Network&,int,int,bool,double,const Traj_args&);
     ~KPS();
     KPS(const KPS&);
     KPS* clone() { return new KPS(*this); }
@@ -298,7 +301,7 @@ class MCAMC : public Traj_Method {
 
     public:
 
-    MCAMC(const Network&,bool,int,bool);
+    MCAMC(const Network&,int,bool,const Traj_args&);
     ~MCAMC();
     MCAMC(const MCAMC&);
     MCAMC* clone() { return new MCAMC(*this); }

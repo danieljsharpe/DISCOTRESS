@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "keywords.h"
+#include <omp.h>
 #include <string>
 #include <fstream>
 #include <sstream>
@@ -43,21 +44,18 @@ Keywords read_keywords(const char *kw_file) {
             vecstr.emplace_back(token); }
         // PROCESS KEYWORDS
         if (vecstr[0][0]=='!') continue; // comment line
-        if (vecstr[0]=="TRAJ") {
-            if (vecstr[1]=="BKL") {
-                my_kws.traj_method=1;
-            } else if (vecstr[1]=="KPS") {
-                my_kws.traj_method=2;
-            } else if (vecstr[1]=="MCAMC") {
-                my_kws.traj_method=3;
-            } else { cout << "unrecognised TRAJ option" << endl; exit(EXIT_FAILURE); }
+        // main keywords
+        if (vecstr[0]=="NNODES") {
+            my_kws.n_nodes=stoi(vecstr[1]);
+        } else if (vecstr[0]=="NEDGES") {
+            my_kws.n_edges=stoi(vecstr[1]);
         } else if (vecstr[0]=="WRAPPER") {
             if (vecstr[1]=="DIMREDN") {
                 my_kws.wrapper_method=0;
             } else if (vecstr[1]=="NONE") {
                 my_kws.wrapper_method=1;
             } else if (vecstr[1]=="WE") {
-                my_kws.wrapper_method=2;
+                my_kws.wrapper_method=2; 
             } else if (vecstr[1]=="FFS") {
                 my_kws.wrapper_method=3;
             } else if (vecstr[1]=="NEUS") {
@@ -65,90 +63,98 @@ Keywords read_keywords(const char *kw_file) {
             } else if (vecstr[1]=="MILES") {
                 my_kws.wrapper_method=5;
             } else { cout << "unrecognised WRAPPER option" << endl; exit(EXIT_FAILURE); }
-        } else if (vecstr[0]=="NNODES") {
-            my_kws.n_nodes=stoi(vecstr[1]);
-        } else if (vecstr[0]=="NEDGES") {
-            my_kws.n_edges=stoi(vecstr[1]);
-        } else if (vecstr[0]=="NABPATHS") {
-            my_kws.nabpaths=stoi(vecstr[1]);
-        } else if (vecstr[0]=="MAXIT") {
-            my_kws.maxit=stoi(vecstr[1]);
+        } else if (vecstr[0]=="TRAJ") {
+            if (vecstr[1]=="BKL") {
+                my_kws.traj_method=1;
+            } else if (vecstr[1]=="KPS") {
+                my_kws.traj_method=2;
+            } else if (vecstr[1]=="MCAMC") {
+                my_kws.traj_method=3;
+            } else { cout << "unrecognised TRAJ option" << endl; exit(EXIT_FAILURE); }
         } else if (vecstr[0]=="NODESAFILE") {
             my_kws.nodesafile=vecstr[1];
             my_kws.nA=stoi(vecstr[2]);
         } else if (vecstr[0]=="NODESBFILE") {
             my_kws.nodesbfile=vecstr[1];
             my_kws.nB=stoi(vecstr[2]);
-        } else if (vecstr[0]=="DIMREDUCTION") {
-            my_kws.ntrajsfile = new char[vecstr[1].size()+1];
-            copy(vecstr[1].begin(),vecstr[1].end(),my_kws.ntrajsfile);
-            my_kws.ntrajsfile[vecstr[1].size()]='\0';
-            my_kws.dt=stold(vecstr[2]);
-        } else if (vecstr[0]=="TAU") {
-            my_kws.tau=stold(vecstr[1]);
-        } else if (vecstr[0]=="TINTVL") {
-            my_kws.tintvl=stod(vecstr[1]);
-        } else if (vecstr[0]=="INITCONDFILE") {
-            my_kws.initcondfile = new char[vecstr[1].size()+1];
-            copy(vecstr[1].begin(),vecstr[1].end(),my_kws.initcondfile);
-            my_kws.initcondfile[vecstr[1].size()]='\0';
-            my_kws.initcond=true;
-        } else if (vecstr[0]=="COMMSFILE") {
-            my_kws.commsfile = new char[vecstr[1].size()+1];
-            copy(vecstr[1].begin(),vecstr[1].end(),my_kws.commsfile);
-            my_kws.commsfile[vecstr[1].size()]='\0'; // trailing character
-            my_kws.ncomms=stoi(vecstr[2]);
-        } else if (vecstr[0]=="COMMSTARGFILE") {
-            my_kws.commstargfile = new char[vecstr[1].size()+1];
-            copy(vecstr[1].begin(),vecstr[1].end(),my_kws.commstargfile);
-            my_kws.commstargfile[vecstr[1].size()]='\0';
+        // optional keywords relating to simulation parameters and output
         } else if (vecstr[0]=="BINSFILE") {
             my_kws.binsfile = new char[vecstr[1].size()+1];
             copy(vecstr[1].begin(),vecstr[1].end(),my_kws.binsfile);
             my_kws.binsfile[vecstr[1].size()]='\0';
             my_kws.nbins=stoi(vecstr[2]);
+        } else if (vecstr[0]=="COMMSFILE") {
+            my_kws.commsfile = new char[vecstr[1].size()+1];
+            copy(vecstr[1].begin(),vecstr[1].end(),my_kws.commsfile);
+            my_kws.commsfile[vecstr[1].size()]='\0'; // trailing character
+            my_kws.ncomms=stoi(vecstr[2]);
+        } else if (vecstr[0]=="DUMPINTVLS") {
+            my_kws.dumpintvls=true;
+        } else if (vecstr[0]=="INITCONDFILE") {
+            my_kws.initcondfile = new char[vecstr[1].size()+1];
+            copy(vecstr[1].begin(),vecstr[1].end(),my_kws.initcondfile);
+            my_kws.initcondfile[vecstr[1].size()]='\0';
+            my_kws.initcond=true;
+        } else if (vecstr[0]=="MAXIT") {
+            my_kws.maxit=stoi(vecstr[1]);
+        } else if (vecstr[0]=="NABPATHS") {
+            my_kws.nabpaths=stoi(vecstr[1]);
+        } else if (vecstr[0]=="TINTVL") {
+            my_kws.tintvl=stod(vecstr[1]);
+        // optional keywords relating to enhanced sampling methods
         } else if (vecstr[0]=="ADAPTIVECOMMS") {
             my_kws.adaptivecomms=true;
             my_kws.adaptminrate=stod(vecstr[1]);
+        } else if (vecstr[0]=="COMMSTARGFILE") {
+            my_kws.commstargfile = new char[vecstr[1].size()+1];
+            copy(vecstr[1].begin(),vecstr[1].end(),my_kws.commstargfile);
+            my_kws.commstargfile[vecstr[1].size()]='\0';
+        } else if (vecstr[0]=="DIMREDUCTION") {
+            my_kws.ntrajsfile = new char[vecstr[1].size()+1];
+            copy(vecstr[1].begin(),vecstr[1].end(),my_kws.ntrajsfile);
+            my_kws.ntrajsfile[vecstr[1].size()]='\0';
+            my_kws.dt=stold(vecstr[2]);
         } else if (vecstr[0]=="KPSKMCSTEPS") {
             my_kws.kpskmcsteps=stoi(vecstr[1]);
         } else if (vecstr[0]=="MEANRATE") {
             my_kws.meanrate=true;
         } else if (vecstr[0]=="NELIM") {
             my_kws.nelim=stoi(vecstr[1]);
+        } else if (vecstr[0]=="NWALKERS") {
+            my_kws.nwalkers=stoi(vecstr[1]);
         } else if (vecstr[0]=="TAURE") {
             my_kws.taure=stod(vecstr[1]);
-        } else if (vecstr[0]=="COMMITTOR") {
-            my_kws.committor=true;
+        // keywords for state reduction procedures
         } else if (vecstr[0]=="ABSORPTION") {
             my_kws.absorption=true;
-        } else if (vecstr[0]=="FUNDAMENTALRED") {
-            my_kws.fundamentalred=true;
+        } else if (vecstr[0]=="COMMITTOR") {
+            my_kws.committor=true;
         } else if (vecstr[0]=="FUNDAMENTALIRRED") {
             my_kws.fundamentalirred=true;
-        } else if (vecstr[0]=="MFPT") {
-            my_kws.mfpt=true;
+        } else if (vecstr[0]=="FUNDAMENTALRED") {
+            my_kws.fundamentalred=true;
         } else if (vecstr[0]=="GTH") {
             my_kws.gth=true;
+        } else if (vecstr[0]=="MFPT") {
+            my_kws.mfpt=true;
         } else if (vecstr[0]=="PATHLENGTHS") {
             my_kws.pathlengths=true;
-        } else if (vecstr[0]=="TRANSNPROBS") {
-            my_kws.transnprobs=true;
-        } else if (vecstr[0]=="DISCRETETIME") {
-            my_kws.discretetime=true;
+        // other optional keywords
         } else if (vecstr[0]=="BRANCHPROBS") {
             my_kws.branchprobs=true;
-        } else if (vecstr[0]=="NTHREADS") {
-            my_kws.nthreads=stoi(vecstr[1]);
-            assert(my_kws.nthreads>0);
-        } else if (vecstr[0]=="DUMPINTVLS") {
-            my_kws.dumpintvls=true;
         } else if (vecstr[0]=="DEBUG") {
             my_kws.debug=true;
-        } else if (vecstr[0]=="SEED") {
-            my_kws.seed=stoi(vecstr[1]);
+        } else if (vecstr[0]=="DISCRETETIME") {
+            my_kws.discretetime=true;
         } else if (vecstr[0]=="DUMPWAITTIMES") {
             my_kws.dumpwaittimes=true;
+        } else if (vecstr[0]=="NTHREADS") {
+            my_kws.nthreads=stoi(vecstr[1]);
+            assert((my_kws.nthreads>0 && my_kws.nthreads<=omp_get_max_threads()));
+        } else if (vecstr[0]=="SEED") {
+            my_kws.seed=stoi(vecstr[1]);
+        } else if (vecstr[0]=="TAU") {
+            my_kws.tau=stold(vecstr[1]);
         } else {
             cout << "keywords> error: unrecognised keyword: " << vecstr[0] << endl;
             exit(EXIT_FAILURE);
@@ -160,38 +166,36 @@ Keywords read_keywords(const char *kw_file) {
     // check necessary keywords and compatability
     if (my_kws.n_nodes<=0 || my_kws.n_edges<=0 || ((my_kws.nA<=0 || my_kws.nB<=0) && my_kws.wrapper_method!=0)) {
         cout << "keywords> error: network parameters not set correctly" << endl; exit(EXIT_FAILURE); }
-    if ((my_kws.nabpaths<=0 && my_kws.ntrajsfile==nullptr) || (my_kws.dt<=0. && my_kws.wrapper_method==0) || my_kws.maxit<=0) {
+    if ((my_kws.nabpaths<=0 && my_kws.wrapper_method==0) || my_kws.maxit<=0) {
         cout << "keywords> error: termination condition not specified correctly" << endl; exit(EXIT_FAILURE); }
     if (my_kws.commsfile!=nullptr && my_kws.ncomms<=1) {
         cout << "keywords> error: there must be at least two communities in the specified partitioning" << endl; exit(EXIT_FAILURE); }
     if (my_kws.dumpintvls && my_kws.tintvl<=0.) {
-        cout << "keywords> error: must specify valid time interval for dumping trajectory data" << endl; exit(EXIT_FAILURE); }
+        cout << "keywords> error: invalid time interval for dumping trajectory data" << endl; exit(EXIT_FAILURE); }
     if (my_kws.traj_method<=0 || my_kws.wrapper_method<0) {
         cout << "keywords> error: must specify both a wrapper method and a trajectory method" << endl; exit(EXIT_FAILURE); }
-    if ((!my_kws.branchprobs && my_kws.tau<=0.) || (my_kws.transnprobs && (my_kws.branchprobs || my_kws.tau<=0.))) {
-        cout << "keywords> error: if reading in transition probs or otherwise not using branching probs, must specify tau as lag time" << endl;
+    if ((my_kws.discretetime || !my_kws.branchprobs) && my_kws.tau<=0.) {
+        cout << "keywords> error: if reading in transition probs for DTMC or otherwise not using branching probs, must specify tau as lag time" << endl;
         exit(EXIT_FAILURE); }
-    if (my_kws.discretetime && !my_kws.transnprobs) {
-        cout << "keywords> error: to simulate a DTMC, must read in weights as transition probs and set lag time" << endl; exit(EXIT_FAILURE); }
     // set the purpose of the computation to be a state reduction procedure and not a dynamical simulation, if appropriate
     if (my_kws.committor || my_kws.absorption || my_kws.fundamentalred || my_kws.fundamentalirred || my_kws.mfpt || my_kws.gth) {
+        assert(my_kws.nabpaths==1);
         if (my_kws.wrapper_method!=1 || my_kws.traj_method!=2) {
             cout << "keywords> error: to perform a state reduction computation, must set WRAPPER NONE and TRAJ KPS" << endl; exit(EXIT_FAILURE); }
         if (my_kws.ncomms!=2) {
-            cout << "keywords> error: a state reduction computation uses only two communities (not A and A)" << endl; exit(EXIT_FAILURE); }
+            cout << "keywords> error: a state reduction computation uses only two communities (namely, not A and A)" << endl; exit(EXIT_FAILURE); }
         if ((my_kws.gth || my_kws.fundamentalirred) && my_kws.nA!=1) {
             cout << "keywords> error: the GTH and FUND algorithms can be ran only when there is a single node in A" << endl; exit(EXIT_FAILURE); }
         if (my_kws.fundamentalred && (my_kws.committor || my_kws.absorption || my_kws.fundamentalirred || my_kws.mfpt || my_kws.gth)) {
             cout << "keywords> error: computation of the fundamental matrix for a reducible Markov chain is standalone" << endl; exit(EXIT_FAILURE); }
         if (my_kws.n_nodes-my_kws.nA>my_kws.nelim) {
             cout << "keywords> error: for state reduction must set NELIM to ensure that all nodes not in A are eliminated" << endl; exit(EXIT_FAILURE); }
-        if (my_kws.pathlengths && (!my_kws.mfpt || !my_kws.branchprobs)) {
-            cout << "keywords> error: path lengths must be calculated via the MFPT keyword when using branching probs" << endl; exit(EXIT_FAILURE); }
         my_kws.statereduction=true;
+        my_kws.nthreads=1; // use only a single thread for a state reduction computation
     }
     // check specification of wrapper method is valid
     if (my_kws.wrapper_method==0) { // special wrapper method to propagate trajectories required for dimensionality reduction
-        if (my_kws.ntrajsfile==nullptr || my_kws.commsfile==nullptr || my_kws.meanrate || my_kws.initcondfile || \
+        if (my_kws.ntrajsfile==nullptr || my_kws.dt<=0. || my_kws.commsfile==nullptr || my_kws.meanrate || my_kws.initcondfile || \
             my_kws.traj_method==1 || my_kws.nA!=0 || my_kws.nB!=0 || !my_kws.dumpintvls) {
             cout << "keywords> error: dimensionality reduction simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
     } else if (my_kws.wrapper_method==1) { // standard simulation of A<-B transition paths
