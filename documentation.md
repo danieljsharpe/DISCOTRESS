@@ -9,7 +9,7 @@ git checkout https://github.com/danieljsharpe/DISCOTRESS
 
 Then navigate to the directory containing the source code with `cd DISCOTRESS/src` and compile using:
 ```bash
-g++ -std=c++17 discotress.cpp kmc_methods.cpp we_kmc.cpp ffs_kmc.cpp neus_kmc.cpp milestoning.cpp kps.cpp mcamc.cpp keywords.cpp ktn.cpp -o discotress -fopenmp
+g++ -std=c++17 discotress.cpp kmc_methods.cpp we.cpp ffs.cpp neus.cpp milestoning.cpp kps.cpp mcamc.cpp keywords.cpp ktn.cpp -o discotress -fopenmp
 ```
 
 To run the program, simply type the magic word: `discotress`, having provided the necessary input files documented below.
@@ -65,7 +65,8 @@ The following is a list of keywords that must always appear in the _input.kmc_ f
 
 **WRAPPER** `str`  
   mandatory, employ a \`wrapping' enhanced sampling strategy for accelerating the observation of rare events. Options:  
--    **NONE**    \- no enhanced sampling strategy employed
+-    **BTOA**    \- simulate paths initialised in state &120069; and terminating at state &#120068;, no enhanced sampling strategy employed
+-    **FIXEDT**  \- simulate paths of fixed total time, no enhanced sampling strategy employed
 -    **DIMREDN** \- special class to simulate many short nonequilibrium trajectories starting from each community in turn, used for estimation of a coarse-grained Markov chain. See **DIMREDUCTION** keyword for more detail 
 -    **WE**      \- weighted ensemble sampling
 -    **FFS**     \- forward flux sampling
@@ -108,10 +109,10 @@ The following is a list of keywords that specify generic simulation parameters a
   optional. Name of the file containing initial occupation probabilities for nodes in &#120069; that are alternative to the stationary probabilities. The number of entries is assumed to be the same as the specified number of nodes in &#120069;, and the specified order is assumed to be the same also \(cf **NODESBFILE**\). The values must sum to unity.
 
 **MAXIT** `int`  
-  default is inf. The maximum number of iterations of the relevant algorithm to run before the simulation is terminated (if the target number of &#120068; &#8592; &#120069; paths to simulate is not reached). The interpretation of this option depends on the chosen enhanced sampling method. e.g. with **WRAPPER WE**, **MAXIT** is the number of iterations of the resampling procedure. With **WRAPPER NONE** and **TRAJ KPS** or **TRAJ MCAMC**, **MAXIT** is the number of basin escape trajectories simulated.
+  default is inf. The maximum number of iterations of the relevant algorithm to run before the simulation is terminated (if the target number of &#120068; &#8592; &#120069; paths to simulate is not reached). The interpretation of this option depends on the chosen enhanced sampling method. e.g. with **WRAPPER WE**, **MAXIT** is the number of iterations of the resampling procedure. With **WRAPPER BTOA** and **TRAJ KPS** or **TRAJ MCAMC**, **MAXIT** is the number of basin escape trajectories simulated.
 
 **NABPATHS** `int`  
-  mandatory if not **WRAPPER DIMREDN** and if none of the state reduction keywords are specified. The simulation is terminated when this number of &#120068; &#8592; &#120069; paths have been successfully sampled.
+  mandatory if not **WRAPPER DIMREDN** and if none of the state reduction keywords are specified. The simulation is terminated when this number of &#120068; &#8592; &#120069; paths have been successfully sampled. If **WRAPPER FIXEDT**, then this number is the number of paths of fixed total time to be simulated (not necessarily conditioned on the endpoint &#120068; and &#120069; states).
 
 **TINTVL** `double`  
   time interval for dumping trajectory information. Negative value (default) indicates that trajectory data is not written (i.e. files _walker.0.y.dat_ are not output). Zero value specifies that all trajectory information is written. An explicit non-negative value must be set if **WRAPPER DIMREDN**. The exact value of **TINTVL** is ignored if **TRAJ KPS** (in which case trajectory data is written after every basin escape).
@@ -132,8 +133,8 @@ The following is a list of keywords that specify simulation parameters pertainin
   mandatory if **WRAPPER WE** and not **ADAPTIVECOMMS**.
   Name of the file containing the target number of trajectories in each bin (single-column, number of entries equal to the number of communities in the network).
 
-**DIMREDUCTION** `str` `long double`  
-  mandatory if **WRAPPER DIMREDN**, which initialises a special wrapper class that does not perform the usual code function, which is to simulate &#120068; &#8592; &#120069; transition paths, and instead instructs the program to simulate many short trajectories starting from each community, each of length in time equal to the float argument. These trajectories are printed to files _walker.x.y.dat_, where _x_ is the ID of the community, and _y_ is the iteration number for that community. Trajectory information is written to files whenever a trajectory transitions to a new community. The total number of trajectories that are to be simulated starting from each community is listed in the file given as the string arg. This calculation is parallelised, using a number of threads equal to **NTHREADS** (defaults to maximum number of threads available). This calculation is compatible with two algorithms to propagate individual trajectories: **TRAJ KPS**, and **TRAJ MCAMC** (without **MEANRATE**). The communities of nodes must be specified (**COMMSFILE** keyword). **NABPATHS**, **MAXIT**, and **BINSFILE** keywords are ignored. This setup is incompatible with specification of an initial condition via the **INITCONDFILE** keyword, and with the **NODESAFILE** and **NODESBFILE** keywords. Instead, a local equilibrium within the starting community is assumed as the initial probability distribution for each macrostate. Note that **WRAPPER DIMREDN** requires both this keyword and **DUMPINTVLS** to be set.
+**DIMREDUCTION** `str`  
+  mandatory if **WRAPPER DIMREDN**, which initialises a special wrapper class that does not perform the usual code function, which is to simulate &#120068; &#8592; &#120069; transition paths, and instead instructs the program to simulate many short trajectories starting from each community, each of length in time equal to **TRAJT**. These trajectories are printed to files _walker.x.y.dat_, where _x_ is the ID of the community, and _y_ is the iteration number for that community. Trajectory information is written to files whenever a trajectory transitions to a new community. The total number of trajectories that are to be simulated starting from each community is listed in the file given as the string arg. This calculation is parallelised, using a number of threads equal to **NTHREADS** (defaults to maximum number of threads available). This calculation is compatible with two algorithms to propagate individual trajectories: **TRAJ KPS**, and **TRAJ MCAMC** (without **MEANRATE**). The communities of nodes must be specified (**COMMSFILE** keyword). **NABPATHS**, **MAXIT**, and **BINSFILE** keywords are ignored. This setup is incompatible with specification of an initial condition via the **INITCONDFILE** keyword, and with the **NODESAFILE** and **NODESBFILE** keywords. Instead, a local equilibrium within the starting community is assumed as the initial probability distribution for each macrostate. Note that **WRAPPER DIMREDN** requires this keyword, **TRAJT**, and **DUMPINTVLS** to all be set.
 
 **KPSKMCSTEPS** `int`  
   optional. If **TRAJ** is **KPS** or **MCAMC**, specifies the number of standard BKL steps to be performed after a kPS or MCAMC escape from a trapping basin. Default is 0 (pure kPS (or MCAMC), no kMC steps). However, this is not the recommended value. If using **TRAJ KPS** or **TRAJ MCAMC**, for most systems, great gains in simulation efficiency will be achieved by setting **KPSKMCSTEPS** to an appropriate nonzero value. This is because many metastable systems will feature transition regions between metastable states. Therefore, after each basin escape, the trajectory will likely flicker between the two basins. Rather than simulate expensive kPS or MCAMC basin escape iterations for these trivial recrossings, it is much more efficient to perform standard BKL steps. Note that this keyword does not require **BRANCHPROBS** to be set, and can also be used with **DISCRETETIME**. Ignored if **ADAPTIVECOMMS**.
@@ -145,16 +146,22 @@ The following is a list of keywords that specify simulation parameters pertainin
   mandatory if **TRAJ KPS**. The maximum number of nodes that are to be eliminated from the current trapping basin. If **NELIM** exceeds the number of nodes in the largest community, then all states of any trapping basin are always eliminated. Note that **NELIM** determines the number of transition matrices stored for the active subnetwork, and therefore the choice of this keyword (along with the sizes of communities) can strongly affect memory usage.
 
 **NWALKERS** `int`  
-  mandatory if **WRAPPER** is **WE**, **FFS**, **NEUS**, or **MILES**. Specifies the number of walkers (independent trajectories) on the network, which are simulated in parallel (see **NTHREADS**). This keyword is ignored (and therefore does not need to be explicitly set) if **WRAPPER** is **NONE** or **DIMREDN**, in which case the number of walkers is set to **NTHREADS**.
+  mandatory if **WRAPPER** is **WE**, **FFS**, **NEUS**, or **MILES**. Specifies the number of walkers (independent trajectories) on the network, which are simulated in parallel (see **NTHREADS**). This keyword is ignored (and therefore does not need to be explicitly set) if **WRAPPER** is **BTOA** or **DIMREDN**, in which case the number of walkers is set to **NTHREADS**.
+
+**STEADYSTATE** `double`  
+  optional. If **WRAPPER FIXEDT**, indicates that a small number of trajectories (equal to **NTHREADS**) of fixed total time are to be ran, from which statistics for the &#120068; &#8592; &#120069; *equilibrium* (steady state) TPE are to be computed. The argument associated with this keyword specifies the time threshold after which the trajectory is considered to have equilibriated and recording of steady state path statistics begins. The default value for this argument is 0., but this value should be altered to an appropriate finite value. To ensure that the simulation estimates of these steady state properties are unbiased and accurate, the total fixed time of trajectories (set by **TRAJT**) should be long, to ensure that sufficient statistics are obtained, and statistics should be recorded after a suitably long time period has passed (several times the average mixing time [Kemeny constant] of the Markov chain), to ensure that the trajectories have equilibriated prior to recording steady state path statistics.
 
 **TAURE** `double`  
   mandatory if **WRAPPER WE**. The time between resampling trajectories.
+
+**TRAJT** `long double`  
+  mandatory if **WRAPPER** is **FIXEDT** or **DIMREDN**. The maximum time for trajectories when simulating paths of fixed total time.
 
 ----
 
 ## Optional keywords related to exact numerical analysis of the dynamics by state reduction methods
 
-The following keywords are used in combination with the keywords **WRAPPER NONE** and **TRAJ KPS**. Use of any of the following keywords overrides the default functionality of DISCOTRESS, which is to simulate dynamical paths, and instead instructs the program to perform a state reduction procedure to exactly compute one or more dynamical quantities associated with nodes, in a numerically stable manner. **NABPATHS** must be set to 1. The _communities.dat_ file must specify precisely two communities; namely, nodes in the target set &#120068; and nodes not in &#120068;. The **COMMITTOR**, **ABSORPTION**, **MFPT**, and **GTH** keywords can be used together in any combination. The computations performed with the **FUNDAMENTALRED** and **FUNDAMENTALIRRED** keywords are standalone operations.
+The following keywords are used in combination with the keywords **WRAPPER BTOA** and **TRAJ KPS**. Use of any of the following keywords overrides the default functionality of DISCOTRESS, which is to simulate dynamical paths, and instead instructs the program to perform a state reduction procedure to exactly compute one or more dynamical quantities associated with nodes, in a numerically stable manner. **NABPATHS** must be set to 1. The _communities.dat_ file must specify precisely two communities; namely, nodes in the target set &#120068; and nodes not in &#120068;. The **COMMITTOR**, **ABSORPTION**, **MFPT**, and **GTH** keywords can be used together in any combination. The computations performed with the **FUNDAMENTALRED** and **FUNDAMENTALIRRED** keywords are standalone operations.
 
 The memory costs of state reduction computations can be reduced without consequence by setting the type of the `h` members (which represent the numbers of kMC steps for transitions, when using the **KPS** algorithm) of the `Node` and `Edge` structures (defined in the file *ktn.h*) to `int`, since these members are not used in the state reduction methods.
 

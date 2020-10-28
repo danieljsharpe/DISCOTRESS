@@ -215,17 +215,17 @@ long double Wrapper_Method::rand_unif_met(int seed) {
     return unif_real_distrib(generator);
 }
 
-/* Wrapper_Method no enhanced sampling method (ie simulate A<-B transition paths using chosen trajectory propagation method */
-STD_KMC::STD_KMC(const Network &ktn, const Wrapper_args &wrapper_args) : Wrapper_Method(wrapper_args) {
-    cout << "std_kmc> setting up kMC simulation with no enhanced sampling wrapper method" << endl;
+/* Wrapper_Method corresponding to simulation of A<-B paths (using chosen trajectory propagation method) with no enhanced sampling method */
+BTOA::BTOA(const Network &ktn, const Wrapper_args &wrapper_args) : Wrapper_Method(wrapper_args) {
+    cout << "btoa> setting up simulation of A<-B paths with no enhanced sampling method" << endl;
 }
 
-STD_KMC::~STD_KMC() {}
+BTOA::~BTOA() {}
 
-/* main loop to drive a standard kMC simulation (no enhanced sampling wrapper method) */
-void STD_KMC::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {
+/* main loop to drive simulation of A<-B paths with no special enhanced sampling wrapper method */
+void BTOA::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {
 
-    cout << "\nstd_kmc> beginning kMC simulation with no enhanced sampling wrapper method" << endl;
+    cout << "\nbtoa> beginning kMC simulation with no enhanced sampling method" << endl;
     n_ab=0; n_traj=0; int n_it=0;
     #pragma omp parallel
     {
@@ -233,8 +233,6 @@ void STD_KMC::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj)
     Traj_Method *traj_method_local = traj_method_obj->clone(); // copy required within thread because reference types cannot be made firstprivate
     #pragma omp for
     for (int pathno=0;pathno<nabpaths;pathno++) {
-//        #pragma omp critical
-//        cout << "  thread no. " << x << " is dealing with path no. " << pathno << endl;
         for (;;) {
             if (n_it>=maxit) break; // quack this leaves walker files that are not complete A<-B trajectories
             bool donebklsteps=false;
@@ -265,18 +263,34 @@ void STD_KMC::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj)
         }
     }
     }
-    cout << "\nstd_kmc> simulation terminated after " << n_it << " iterations. Simulated " \
+    cout << "\nbtoa> simulation terminated after " << n_it << " iterations. Simulated " \
          << n_ab << " transition paths" << endl;
     if (!adaptivecomms) calc_tp_stats(ktn.nbins); // calc committor and visitation probabilities for bins and write to file
 }
 
+/* Wrapper_Method corresponding to simulation of paths of fixed total time (using chosen trajectory propagation method) with no
+   enhanced sampling method. By considering a single (or a small number of) very long timescale trajectories, this wrapper method
+   can be used to simulate the steady state */
+FIXEDT::FIXEDT(const Network &ktn, long double trajt, bool steadystate, double ssrec, \
+           const Wrapper_args &wrapper_args) : Wrapper_Method(wrapper_args) {
+    cout << "long> setting up simulation of fixed time paths with no enhanced sampling method" << endl;
+    this->trajt=trajt; this->steadystate=steadystate; this->ssrec=ssrec;
+}
+
+FIXEDT::~FIXEDT() {}
+
+/* main loop to drive simulation of paths of fixed total time with no special enhanced sampling wrapper method */
+void FIXEDT::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {
+
+}
+
 /* Wrapper_Method handle simulation of many short nonequilibrium trajectories, used to obtain data required for coarse-graining
    a transition network */
-DIMREDN::DIMREDN(const Network &ktn, vector<int> ntrajsvec, long double dt, \
+DIMREDN::DIMREDN(const Network &ktn, vector<int> ntrajsvec, long double trajt, \
                  const Wrapper_args &wrapper_args) : Wrapper_Method(wrapper_args) {
 
-    cout << "dimredn> constructing DIMREDN class" << endl;
-    this->ntrajsvec=ntrajsvec; this->dt=dt;
+    cout << "dimredn> setting up simulation of short nonequilibrium trajectories initialised from communities" << endl;
+    this->ntrajsvec=ntrajsvec; this->trajt=trajt;
 }
 
 DIMREDN::~DIMREDN() {}
@@ -291,11 +305,11 @@ void DIMREDN::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj)
         #pragma omp critical
         cout << "dimredn> thread no.: " << omp_get_thread_num() << "  handling walker: " << walkers[i].walker_id << endl;
         while (walkers[i].path_no<ntrajsvec[walkers[i].walker_id]) {
-            while (walkers[i].t<=dt) {
+            while (walkers[i].t<=trajt) {
                 traj_method_local->kmc_iteration(ktn,walkers[i]);
-                traj_method_local->dump_traj(walkers[i],false,false,dt);
-                if (walkers[i].t>dt) break;
-                traj_method_local->do_bkl_steps(ktn,walkers[i],dt);
+                traj_method_local->dump_traj(walkers[i],false,false,trajt);
+                if (walkers[i].t>trajt) break;
+                traj_method_local->do_bkl_steps(ktn,walkers[i],trajt);
             }
             walkers[i].reset_walker_info();
             walkers[i].path_no++;
@@ -360,13 +374,10 @@ void BKL::bkl(Walker &walker, bool discretetime, bool accumprobs, int seed) {
     Edge *edgeptr = nullptr;
     long double t; // transition probability of accepted move
     long double prev_cum_t = walker.curr_node->t; // previous accumulated transition probability
-//    cout << "\ncurr node:  " << walker.curr_node->node_id << "    rand no: " << rand_no << "    accumprobs?: " << accumprobs << endl;
-//    cout << "    node.t: " << walker.curr_node->t << endl;
     if (!(prev_cum_t>rand_no)) {
         edgeptr = walker.curr_node->top_from;
         while (edgeptr!=nullptr) {
             if (accumprobs) { // transition probability values are cumulative
-//                cout << "    edge to: " << edgeptr->to_node->node_id << "    t: " << edgeptr->t << endl;
                 if (edgeptr->t>rand_no) { t=edgeptr->t-prev_cum_t; break; }
                 prev_cum_t = edgeptr->t;
             } else { // transition probability values are not cumulative
@@ -386,7 +397,6 @@ void BKL::bkl(Walker &walker, bool discretetime, bool accumprobs, int seed) {
         walker.curr_node = walker.prev_node;
         t = walker.curr_node->t;
     }
-//    cout << "node is now: " << walker.curr_node->node_id << endl;
     // update path quantities
     walker.k++; // dynamical activity (no. of steps)
     walker.p += log(t); // log path probability

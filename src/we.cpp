@@ -29,16 +29,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace std;
 
-WE_KMC::WE_KMC(const Network &ktn, double taure, const Wrapper_args &wrapper_args) : Wrapper_Method(wrapper_args) {
+WE::WE(const Network &ktn, double taure, const Wrapper_args &wrapper_args) : Wrapper_Method(wrapper_args) {
 
     cout << "wekmc> running WE-kMC with parameters:\n  resampling time: " << taure << " \tno. of communities: " \
          << ktn.ncomms << endl;
     this->taure=taure;
 }
 
-WE_KMC::~WE_KMC() {}
+WE::~WE() {}
 
-void WE_KMC::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {
+void WE::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {
 
     cout << "wekmc> beginning WE-kMC simulation" << endl;
     n_ab=0; int n_wekmcit=0;
@@ -54,7 +54,7 @@ void WE_KMC::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) 
     cout << "wekmc> finished WE-kMC simulation" << endl;
 }
 
-void WE_KMC::we_resampling() {
+void WE::we_resampling() {
 
     if (debug) cout << "wekmc> resampling trajectories" << endl;
 }

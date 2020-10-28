@@ -114,13 +114,29 @@ class Wrapper_Method {
     }
 };
 
-/* no wrapper enhanced sampling class, simply propagates the dynamics of trajectories using the chosen method */
-class STD_KMC : public Wrapper_Method {
+/* no special enhanced sampling, simply propagates the dynamics of A<-B trajectories using the chosen method */
+class BTOA : public Wrapper_Method {
 
     public:
 
-    STD_KMC(const Network&,const Wrapper_args&);
-    ~STD_KMC();
+    BTOA(const Network&,const Wrapper_args&);
+    ~BTOA();
+    void run_enhanced_kmc(const Network&,Traj_Method*);
+};
+
+/* no special enhanced sampling, simply propagates the dynamics of trajectories of fixed total time using the chosen method */
+class FIXEDT : public Wrapper_Method {
+
+    private:
+
+    long double trajt;     // maximum total time of each trajectory
+    bool steadystate;      // use only a small number of trajs (=no. of threads) and record dynamical properties for the steady state TPE
+    double ssrec;          // minimum time at which trajs are considered to be equilibriated and recording steady state TPE properties begins
+
+    public:
+
+    FIXEDT(const Network&,long double,bool,double,const Wrapper_args&);
+    ~FIXEDT();
     void run_enhanced_kmc(const Network&,Traj_Method*);
 };
 
@@ -130,7 +146,7 @@ class DIMREDN : public Wrapper_Method {
     private:
 
     vector<int> ntrajsvec; // vector containing number of trajectories to simulate starting from each community in turn
-    long double dt;        // length in time of each trajectory
+    long double trajt;     // maximum total time of each trajectory
 
     public:
     
@@ -139,8 +155,8 @@ class DIMREDN : public Wrapper_Method {
     void run_enhanced_kmc(const Network&,Traj_Method*);
 };
 
-/* Weighted ensemble kMC */
-class WE_KMC : public Wrapper_Method {
+/* Weighted ensemble sampling */
+class WE : public Wrapper_Method {
 
     private:
 
@@ -151,41 +167,42 @@ class WE_KMC : public Wrapper_Method {
 
     public:
 
-    WE_KMC(const Network&,double,const Wrapper_args&);
-    ~WE_KMC();
+    WE(const Network&,double,const Wrapper_args&);
+    ~WE();
     void run_enhanced_kmc(const Network&,Traj_Method*);
 };
 
-/* Forward flux sampling kMC */
-class FFS_KMC : public Wrapper_Method {
+/* Forward flux sampling */
+class FFS : public Wrapper_Method {
 
     private:
 
+    // ...
 
     public:
 
-    FFS_KMC(const Network&,const Wrapper_args&);
-    ~FFS_KMC();
+    FFS(const Network&,const Wrapper_args&);
+    ~FFS();
     void run_enhanced_kmc(const Network&,Traj_Method*);
 };
 
 /* non-equilibrium umbrella sampling kMC */
-class NEUS_KMC : public Wrapper_Method {
+class NEUS : public Wrapper_Method {
 
     public:
 
-    NEUS_KMC(const Network&,const Wrapper_args&);
-    ~NEUS_KMC();
+    NEUS(const Network&,const Wrapper_args&);
+    ~NEUS();
     void run_enhanced_kmc(const Network&,Traj_Method*);
 };
 
 /* milestoning kMC */
-class MILES_KMC : public Wrapper_Method {
+class MILES : public Wrapper_Method {
 
     public:
 
-    MILES_KMC(const Network&,const Wrapper_args&);
-    ~MILES_KMC();
+    MILES(const Network&,const Wrapper_args&);
+    ~MILES();
     void run_enhanced_kmc(const Network&,Traj_Method*);
 };
 

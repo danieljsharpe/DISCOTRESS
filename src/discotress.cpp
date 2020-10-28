@@ -91,7 +91,7 @@ Discotress::Discotress () {
     } else { // simulating trajectories to obtain data for coarse-graining, read in info on number of trajs for each comm
         ntrajsvec = Read_files::read_one_col<int>(my_kws.ntrajsfile);
         if (ntrajsvec.size()!=my_kws.ncomms) throw exception();
-        cout << "discotress> simulating trajectories of time length: " << my_kws.dt << "   for dimensionality reduction" << endl;
+        cout << "discotress> simulating trajectories of max time: " << my_kws.trajt << "   for dimensionality reduction" << endl;
     }
     vector<double> init_probs;
     if (my_kws.initcond) init_probs = Read_files::read_one_col<double>(my_kws.initcondfile);
@@ -138,20 +138,24 @@ Discotress::Discotress () {
     cout << "discotress> setting up the enhanced sampling wrapper object..." << endl;
     Wrapper_args wrapper_args{my_kws.nwalkers,ktn->nbins,my_kws.nabpaths,my_kws.tintvl,my_kws.maxit,my_kws.adaptivecomms, \
                               my_kws.seed,my_kws.debug};
-    if (my_kws.wrapper_method==0) {        // special wrapper to simulate many short nonequilibrium trajectories for dimensionality reduction
+    if (my_kws.wrapper_method==0) {        // standard simulation of A<-B paths, no enhanced sampling
         wrapper_args.nwalkers=my_kws.nthreads;
-        DIMREDN *dimredn_ptr = new DIMREDN(*ktn,ntrajsvec,my_kws.dt,wrapper_args);
+        BTOA *btoa_ptr = new BTOA(*ktn,wrapper_args);
+        wrapper_method_obj = btoa_ptr;
+    } else if (my_kws.wrapper_method==1) { // standard simulation of paths of fixed total time, no enhanced sampling
+        if (my_kws.steadystate) wrapper_args.nwalkers=my_kws.nthreads;
+        FIXEDT *fixedt_ptr = new FIXEDT(*ktn,my_kws.trajt,my_kws.steadystate,my_kws.ssrec,wrapper_args);
+        wrapper_method_obj = fixedt_ptr;
+    } else if (my_kws.wrapper_method==2) { // special wrapper to simulate many short nonequilibrium trajectories for dimensionality reduction
+        wrapper_args.nwalkers=my_kws.nthreads;
+        DIMREDN *dimredn_ptr = new DIMREDN(*ktn,ntrajsvec,my_kws.trajt,wrapper_args);
         wrapper_method_obj = dimredn_ptr;
-    } else if (my_kws.wrapper_method==1) { // standard A<-B kMC simulation, no enhanced sampling
-        wrapper_args.nwalkers=my_kws.nthreads;
-        STD_KMC *std_kmc_ptr = new STD_KMC(*ktn,wrapper_args);
-        wrapper_method_obj = std_kmc_ptr;
-    } else if (my_kws.wrapper_method==2) { // WE simulation
-        WE_KMC *we_kmc_ptr = new WE_KMC(*ktn,my_kws.taure,wrapper_args);
-        wrapper_method_obj = we_kmc_ptr;
-    } else if (my_kws.wrapper_method==3) { // FFS simulation
-    } else if (my_kws.wrapper_method==4) { // NEUS-kMC simulation
-    } else if (my_kws.wrapper_method==5) { // milestoning simulation
+    } else if (my_kws.wrapper_method==3) { // WE simulation
+        WE *we_ptr = new WE(*ktn,my_kws.taure,wrapper_args);
+        wrapper_method_obj = we_ptr;
+    } else if (my_kws.wrapper_method==4) { // FFS simulation
+    } else if (my_kws.wrapper_method==5) { // NEUS-kMC simulation
+    } else if (my_kws.wrapper_method==6) { // milestoning simulation
     } else {
         throw exception(); // a wrapper method object must be set
     }

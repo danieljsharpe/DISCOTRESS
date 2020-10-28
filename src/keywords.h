@@ -47,10 +47,10 @@ struct Keywords {
     /* main keywords (see documentation). Here, -1 represents a value that must be set if the parameter is mandatory given
        the combination of chosen keywords. Values of 0 are default values that are valid in any case */
     int n_nodes=0, n_edges=0; // "NNODES" / "NEDGES" number of nodes / number of (bidirectional) edges in Markov chain
-    /* choice of enhanced sampling kinetic Monte Carlo method to wrap simulation of a trajectory ensemble */
+    /* choice of enhanced sampling method to wrap simulation of a trajectory ensemble */
     int wrapper_method=-1;    // "WRAPPER" enhanced sampling method (note that there is no default)
     /* choice of kinetic Monte Carlo method to propagate individual trajectories */
-    int traj_method=-1;       // "TRAJ" method
+    int traj_method=-1;       // "TRAJ" method (note that there is no default)
     string nodesafile, nodesbfile; // "NODESAFILE" / "NODESBFILE" names of the files containing the IDs of the A and B nodes, respectively
     int nA=0, nB=0;           // "NODESAFILE" / "NODESBFILE" number of nodes in A and B sets, respectively
 
@@ -70,13 +70,16 @@ struct Keywords {
     double adaptminrate=0.;   // "ADAPTIVECOMMS" minimum transition rate to include in the BFS procedure to define a community on-the-fly
     char *commstargfile=nullptr; // "COMMSTARGFILE" name of file where target number of trajectories in each community is defined (WE-kMC)
     char *ntrajsfile=nullptr; // "DIMREDUCTION" name of file where number of short trajectories to be ran from each community are defined
-    long double dt=-1.;       // "DIMREDUCTION" time length for all trajectories, initialised from each community in turn
     int kpskmcsteps=0;        // "KPSKMCSTEPS" number of BKL kMC steps after a trapping basin escape (kPS or MCAMC)
     bool meanrate=false;      // "MEANRATE" use the approximate mean rate method in MCAMC, instead of the exact FPTA method (default)
     int nelim=-1;             // "NELIM" maximum number of states to be eliminated from any trapping basin (kPS)
     int nwalkers=-1;          // "NWALKERS" for certain enhanced sampling (WRAPPER) methods, number of independent trajectories on the network. For
-                              // certain other enhanced sampling methods, this parameter is ignored and overriden to a default value
+                              //  certain other enhanced sampling methods, this parameter is ignored and overriden to a default value
+    bool steadystate=false;   // "STEADYSTATE" indicates that a small number of trajectories are to be used to estimate steady state dynamical properties
+    double ssrec=0.;          // "STEADYSTATE" time interval after which the trajectory is considered to be equilibriated and recording of steady state
+                              //  A<-B transition path ensemble statistics begins
     double taure=0.;          // "TAURE" time between resampling ensemble of trajectories (WE)
+    long double trajt=0.;     // "TRAJT" max time for trajectories (when simulating trajectories of fixed total time)
 
     // keywords for state reduction methods
     bool absorption=false;    // "ABSORPTION" specifies that an absorption probability calculation is to be performed
