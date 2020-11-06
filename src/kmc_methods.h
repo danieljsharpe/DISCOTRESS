@@ -51,9 +51,9 @@ struct Walker {
     int path_no; // the trajectory iteration for this walker ID
     int comm_curr, comm_prev; // for WE-kMC
     bool active; // walker is currently a member of the set of active trajectories being propagated
-    unsigned long long int k; // path activity
+    unsigned long long int k; // path activity (i.e. length / no. of steps)
+    long double t; // path time
     long double p; // (log) path probability
-    long double t; // path time (stochastically sampled)
     long double s; // entropy flow along path
     const Node *prev_node, *curr_node; // pointers to nodes previously and currently occupied by the walker
     vector<bool> visited;  // element is true when the corresponding bin has been visited along the trajectory
@@ -61,7 +61,7 @@ struct Walker {
 
 /* arguments to be passed to Wrapper_Method object (base class for methods to handle set of trajectories) constructor */
 struct Wrapper_args {
-    int nwalkers; int nbins; int nabpaths; double tintvl; int maxit; bool adaptivecomms;
+    int nwalkers; int nbins; int nabpaths; double tintvl; int maxit; bool indepcomms; bool adaptivecomms;
     int seed; bool debug;
 };
 

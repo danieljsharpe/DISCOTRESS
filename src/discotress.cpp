@@ -83,10 +83,10 @@ Discotress::Discotress () {
     }
     vector<int> nodesAvec, nodesBvec;
     vector<int> ntrajsvec;
-    if (my_kws.wrapper_method!=0) { // simulating the A<-B TPE, read in info on A and B sets
+    if (my_kws.wrapper_method!=2) { // simulating the A<-B TPE, read in info on A and B sets
         nodesAvec = Read_files::read_one_col<int>(my_kws.nodesafile.c_str());
         nodesBvec = Read_files::read_one_col<int>(my_kws.nodesbfile.c_str());
-        if (!((nodesAvec.size()==my_kws.nA) || (nodesBvec.size()==my_kws.nB))) throw exception();
+        if ((nodesAvec.size()!=my_kws.nA) || (nodesBvec.size()!=my_kws.nB)) { cout << " oh no" << endl; throw exception(); }
         cout << "discotress> simulating " << my_kws.nabpaths << " transition paths. Max. no. of iterations: " << my_kws.maxit << endl;
     } else { // simulating trajectories to obtain data for coarse-graining, read in info on number of trajs for each comm
         ntrajsvec = Read_files::read_one_col<int>(my_kws.ntrajsfile);
@@ -119,7 +119,7 @@ Discotress::Discotress () {
     Traj_args traj_args{my_kws.discretetime,my_kws.statereduction,my_kws.tintvl,my_kws.dumpintvls, \
                         my_kws.seed,my_kws.debug};
     if (my_kws.traj_method==1) {            // BKL algorithm
-        ktn->set_accumprobs();
+        if (my_kws.accumprobs) ktn->set_accumprobs();
         BKL *bkl_ptr = new BKL(*ktn,traj_args);
         traj_method_obj = bkl_ptr;
     } else if (my_kws.traj_method==2) {     // kPS algorithm
@@ -136,8 +136,10 @@ Discotress::Discotress () {
 
     // set up Wrapper_Method object (enhanced sampling method to handle set of Walker objects)
     cout << "discotress> setting up the enhanced sampling wrapper object..." << endl;
-    Wrapper_args wrapper_args{my_kws.nwalkers,ktn->nbins,my_kws.nabpaths,my_kws.tintvl,my_kws.maxit,my_kws.adaptivecomms, \
-                              my_kws.seed,my_kws.debug};
+    bool indepcomms=false; // walkers correspond to independent communities or milestones
+    if (my_kws.wrapper_method==2 || my_kws.wrapper_method==6) indepcomms=true;
+    Wrapper_args wrapper_args{my_kws.nwalkers,ktn->nbins,my_kws.nabpaths,my_kws.tintvl,my_kws.maxit,indepcomms, \
+                              my_kws.adaptivecomms,my_kws.seed,my_kws.debug};
     if (my_kws.wrapper_method==0) {        // standard simulation of A<-B paths, no enhanced sampling
         wrapper_args.nwalkers=my_kws.nthreads;
         BTOA *btoa_ptr = new BTOA(*ktn,wrapper_args);

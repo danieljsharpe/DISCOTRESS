@@ -93,7 +93,8 @@ void Network::get_tmtx_lin(long double tau) {
 void Network::get_tmtx_branch() {
     cout << "ktn> calculating branching probability matrix" << endl;
     branchprobs=true;
-    for (auto & edge: edges) {
+    for (auto &node: nodes) calc_t_esc(node);
+    for (auto &edge: edges) {
         if (edge.deadts) continue;
         edge.t = exp(edge.k)*edge.from_node->t_esc; }
     for (auto &node: nodes) {
@@ -279,7 +280,7 @@ void Network::update_from_edge(int i, int j) {
     add_from_edge(i,j);
 }
 
-/* calculate the mean waiting time for a node. Note that the mean waiting time is not stored as a log */
+/* calculate the mean waiting time for a node when the Markov chain is parameterised by the branching probability matrix */
 void Network::calc_t_esc(Node &node) {
     Edge *edgeptr;
     long double k_esc = -numeric_limits<long double>::infinity();
@@ -399,16 +400,14 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &conns, \
         ktn.edges[(2*i)+1].rev_edge = &ktn.edges[2*i];
     }
 
-    // set the transition probabilities (if rates were provided) and set lag/mean waiting times (for DTMC/CTMC, respectively)
+    // set the transition probabilities and mean waiting times for a CTMC (if rates were provided)
     if (branchprobs) { ktn.get_tmtx_branch(); } // branching probabilities (non-uniform mean waiting times)
     else if (!discretetime) { ktn.get_tmtx_lin(tau); } // linearised transition probabilities (uniform mean waiting times)
-    for (int i=0;i<ktn.n_nodes;i++) {
-        // for DTMC, nodes have uniform fixed lag time. For CTMC parameterised by linearised transition matrix, nodes have uniform mean waiting times
-        if (!branchprobs) {
+    // set the lag times and self-loop transition probabilities for a DTMC
+    if (discretetime) {
+        for (int i=0;i<ktn.n_nodes;i++) {
             calc_t_selfloop(ktn.nodes[i]);
             ktn.nodes[i].t_esc = tau;
-        } else { // nodes have non-uniform mean waiting times (escape rates) for CTMC parameterised by branching matrix, which has no self-loops
-            calc_t_esc(ktn.nodes[i]);
         }
     }
 

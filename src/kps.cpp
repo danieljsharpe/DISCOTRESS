@@ -809,7 +809,7 @@ void KPS::update_path_quantities(Walker &walker, long double t_esc, const Node *
     for (const auto &node: ktn_kps->nodes) {
         if (!ktn_kps->branchprobs && node.h>0) {
             walker.k += node.h;
-            walker.p += static_cast<long double>(node.h)*log(node.t);
+            walker.p += -1.L*static_cast<long double>(node.h)*log(node.t);
             // no need to update entropy flow along paths because contribution from self-loop transitions is zero
             if (ktn_kps->ncomms>0 && !walker.visited.empty()) walker.visited[node.bin_id]=true;
         }
@@ -817,7 +817,7 @@ void KPS::update_path_quantities(Walker &walker, long double t_esc, const Node *
         while (edgeptr!=nullptr) {
             if (edgeptr->deadts || edgeptr->h==0) { edgeptr=edgeptr->next_from; continue; }
             walker.k += edgeptr->h;
-            walker.p += static_cast<long double>(edgeptr->h)*log(edgeptr->t);
+            walker.p += -1.L*static_cast<long double>(edgeptr->h)*log(edgeptr->t);
             if (ktn_kps->ncomms>0 && !walker.visited.empty()) walker.visited[edgeptr->to_node->bin_id]=true;
             if (!discretetime) {
                 walker.s += static_cast<long double>(edgeptr->h)*(edgeptr->rev_edge->k-edgeptr->k);

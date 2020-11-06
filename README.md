@@ -78,7 +78,6 @@ It is also possible to pre-process the Markov chain to reduce dimensionality and
 
 ## Contact the author
 
-Would you like to request a new feature in DISCOTRESS? Get in touch with your suggestions:
+Would you like to request a new feature in DISCOTRESS? Or simply have a question? Get in touch:
 
-https://github.com/danieljsharpe
 daniel.j.sharpe1995@gmail.com

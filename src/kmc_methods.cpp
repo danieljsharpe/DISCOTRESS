@@ -38,11 +38,11 @@ void Walker::dump_walker_info(bool newpath, long double time, const Node *the_no
     string walker_fname="walker."+to_string(this->walker_id)+"."+to_string(this->path_no)+".dat";
     if (!newpath) { walker_f.open(walker_fname,ios_base::app);
     } else { walker_f.open(walker_fname,ios_base::trunc); }
-    walker_f.setf(ios::right,ios::adjustfield); walker_f.setf(ios::fixed,ios::floatfield); // walker_f.fill('x');
-    walker_f << setw(7) << the_node->node_id << setw(7) << the_node->comm_id << setw(30) << k;
+    walker_f.setf(ios::right,ios::adjustfield); walker_f.setf(ios::scientific,ios::floatfield); // walker_f.fill('x');
     walker_f.precision(10); // walker_f.width(18);
-    walker_f << setw(60) << time;
-    if (!intvl) walker_f << setw(35) << p << setw(20) << s; // when printing walker info at current walker time, also print path prob and entropy flow
+    walker_f << setw(7) << the_node->node_id << setw(7) << the_node->comm_id;
+    walker_f << setw(25) << time << setw(30) << k;
+    if (!intvl) walker_f << setw(25) << p << setw(25) << s; // when printing walker info at current walker time, also print path prob and entropy flow
     walker_f << endl;
 }
 
@@ -50,14 +50,14 @@ void Walker::dump_walker_info(bool newpath, long double time, const Node *the_no
 void Walker::dump_fpp_properties() {
     ofstream pathprops_f;
     pathprops_f.open("fpp_properties.dat",ios_base::app);
-    pathprops_f.setf(ios::right,ios::adjustfield); pathprops_f.setf(ios::fixed,ios::floatfield);
+    pathprops_f.setf(ios::right,ios::adjustfield); pathprops_f.setf(ios::scientific,ios::floatfield);
     pathprops_f.precision(10);
-    pathprops_f << setw(14) << path_no << setw(30) << k << setw(60) << t << setw(35) << p << setw(20) << s << endl;
+    pathprops_f << setw(14) << path_no <<  setw(25) << t << setw(30) << k << setw(25) << p << setw(25) << s << endl;
 }
 
 /* reset path quantities */
 void Walker::reset_walker_info() {
-    k=0; p=-numeric_limits<long double>::infinity(); t=0.L; s=0.L;
+    k=0; t=0.L; p=-numeric_limits<long double>::infinity(); s=0.L;
     prev_node=nullptr; curr_node=nullptr;
 }
 
@@ -65,8 +65,8 @@ void Walker::reset_walker_info() {
 Wrapper_Method::Wrapper_Method(const Wrapper_args &wrapper_args) {
     walkers.resize(wrapper_args.nwalkers);
     for (int i=0;i<wrapper_args.nwalkers;i++) {
-        walkers[i] = {walker_id:i,path_no:0,comm_curr:0,comm_prev:0,active:true, \
-                      k:0,p:-numeric_limits<double>::infinity(),t:0.L,s:0.L};
+        walkers[i] = {walker_id:0,path_no:i,comm_curr:0,comm_prev:0,active:true, \
+                      k:0,t:0.L,p:-numeric_limits<double>::infinity(),s:0.L};
         walkers[i].visited.resize(wrapper_args.nbins);
         fill(walkers[i].visited.begin(),walkers[i].visited.end(),false);
     }
@@ -75,6 +75,10 @@ Wrapper_Method::Wrapper_Method(const Wrapper_args &wrapper_args) {
     this->nabpaths=wrapper_args.nabpaths; this->tintvl=wrapper_args.tintvl;
     this->maxit=wrapper_args.maxit; this->adaptivecomms=wrapper_args.adaptivecomms;
     this->seed=wrapper_args.seed; this->debug=wrapper_args.debug;
+    if (!wrapper_args.indepcomms) return;
+    int i=0;
+    for (vector<Walker>::iterator it_walkers=walkers.begin();it_walkers!=walkers.end();++it_walkers) {
+        (*it_walkers).walker_id=i; (*it_walkers).path_no=0; i++; }
 }
 
 Wrapper_Method::~Wrapper_Method() {}
@@ -129,7 +133,7 @@ const Node *Wrapper_Method::get_initial_node(const Network &ktn, Walker &walker,
     if (node_b==nullptr) throw exception();
     walker.curr_node=&(*node_b);
     walker.prev_node=walker.curr_node;
-    walker.p=node_b->pi-pi_B; // factor in path probability corresponding to initial occupation of node
+    walker.p=-1.L*(node_b->pi-pi_B); // factor in path probability corresponding to initial occupation of node
     if (ktn.nbins>0 && !ktn.nodesB.empty()) walker.visited[node_b->bin_id]=true;
     return node_b;
 }
@@ -246,10 +250,8 @@ void BTOA::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {
                     #pragma omp critical
                     update_tp_stats(walkers[x],walkers[x].curr_node->aorb==-1,!adaptivecomms);
                     if (walkers[x].curr_node->aorb==-1) { // transition path, reset walker
-                        #pragma omp critical
-                        cout << "  transition path    thread: " << x << " path no: " << pathno << endl;
                         walkers[x].reset_walker_info();
-                        walkers[x].path_no++;
+                        walkers[x].path_no += walkers.size();
                         traj_method_local->reset_nodeptrs();
                         break;
                     } else if (ktn.nbins>0) {
@@ -399,10 +401,10 @@ void BKL::bkl(Walker &walker, bool discretetime, bool accumprobs, int seed) {
     }
     // update path quantities
     walker.k++; // dynamical activity (no. of steps)
-    walker.p += log(t); // log path probability
+    walker.p += -1.L*log(t); // log path probability
     if (edgeptr!=nullptr) { // trajectory has advanced to another node (not self-loop transtion), non-zero contribution to path entropy flow
         if (!discretetime) { walker.s += edgeptr->rev_edge->k-edgeptr->k;
-        } else { walker.s += 1.L*log(edgeptr->rev_edge->t/edgeptr->t); } // entropy flow
+        } else if (!accumprobs) { walker.s += log(edgeptr->rev_edge->t/edgeptr->t); } // entropy flow
     }
     // sample transition time
     if (!discretetime) { // continuous-time with non-uniform (branching) or uniform (linearised transn prob mtx) waiting times for nodes

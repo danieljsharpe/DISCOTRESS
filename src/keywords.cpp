@@ -143,6 +143,8 @@ Keywords read_keywords(const char *kw_file) {
         } else if (vecstr[0]=="PATHLENGTHS") {
             my_kws.pathlengths=true;
         // other optional keywords
+        } else if (vecstr[0]=="ACCUMPROBS") {
+            my_kws.accumprobs=true;
         } else if (vecstr[0]=="BRANCHPROBS") {
             my_kws.branchprobs=true;
         } else if (vecstr[0]=="DEBUG") {
