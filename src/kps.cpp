@@ -486,7 +486,7 @@ Network *KPS::get_subnetwork(const Network& ktn, bool resize_edgevec) {
     }
     int m=0, n=0;
     vector<bool> edgemask(2*ktn.n_edges,false);
-    // note that the indices of the edge array in the subnetwork are not in a meaningful order
+    // note that the indices of the edge vector in the subnetwork are not in a meaningful order
     for (auto &node: ktnptr->nodes) {
         n++;
         const Node *node_orig = &ktn.nodes[node.node_id-1];

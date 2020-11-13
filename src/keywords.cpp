@@ -43,7 +43,7 @@ Keywords read_keywords(const char *kw_file) {
         while (getline(ss,token,*delim)) { // collect keyword + args in vector
             vecstr.emplace_back(token); }
         // PROCESS KEYWORDS
-        if (vecstr[0][0]=='!') continue; // comment line
+        if (vecstr.empty() || vecstr[0][0]=='!') continue; // blank or comment line
         // main keywords
         if (vecstr[0]=="NNODES") {
             my_kws.n_nodes=stoi(vecstr[1]);
@@ -64,6 +64,8 @@ Keywords read_keywords(const char *kw_file) {
                 my_kws.wrapper_method=5;
             } else if (vecstr[1]=="MILES") {
                 my_kws.wrapper_method=6;
+            } else if (vecstr[1]=="REA") {
+                my_kws.wrapper_method=7;
             } else { cout << "unrecognised WRAPPER option" << endl; exit(EXIT_FAILURE); }
         } else if (vecstr[0]=="TRAJ") {
             if (vecstr[1]=="BKL") {
@@ -210,18 +212,21 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.traj_method==1 || my_kws.nA!=0 || my_kws.nB!=0 || !my_kws.dumpintvls) {
             cout << "keywords> error: dimensionality reduction simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
     } else if (my_kws.wrapper_method==3) { // WE simulation
-        if (my_kws.taure<=0. || (my_kws.commsfile!=nullptr && !my_kws.adaptivecomms) || \
+        if (my_kws.taure<=0. || (my_kws.commsfile!=nullptr && !my_kws.adaptivecomms) || my_kws.nwalkers<1 || \
             (my_kws.commstargfile!=nullptr && !my_kws.adaptivecomms) || my_kws.traj_method!=1) {
             cout << "keywords> error: WE simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
     } else if (my_kws.wrapper_method==4) { // FFS simulation
         if (my_kws.commsfile==nullptr) {
             cout << "keywords> error: FFS simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
-    } else if (my_kws.wrapper_method==5) { // NEUS simulation
+    } else if (my_kws.wrapper_method==5 || my_kws.nwalkers<1) { // NEUS simulation
         if (my_kws.commsfile==nullptr || my_kws.traj_method!=1) {
             cout << "keywords> error: NEUS simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
-    } else if (my_kws.wrapper_method==6) { // milestoning simulation
+    } else if (my_kws.wrapper_method==6 || my_kws.nwalkers<1) { // milestoning simulation
         if (my_kws.commsfile==nullptr) {
             cout << "keywords> error: milestoning simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
+    } else if (my_kws.wrapper_method==7) { // recursive enumeration algorithm for k shortest paths
+        if (my_kws.nA!=1 || my_kws.nB!=1 || my_kws.nabpaths<1) {
+            cout << "keywords> error: REA k shortest paths computation not specified correctly" << endl; exit(EXIT_FAILURE); }
     }
     // check specification of trajectory method is valid
     if (my_kws.traj_method==1) { // BKL algorithm

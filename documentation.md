@@ -9,7 +9,7 @@ git checkout https://github.com/danieljsharpe/DISCOTRESS
 
 Then navigate to the directory containing the source code with `cd DISCOTRESS/src` and compile using:
 ```bash
-g++ -std=c++17 discotress.cpp kmc_methods.cpp we.cpp ffs.cpp neus.cpp milestoning.cpp kps.cpp mcamc.cpp keywords.cpp ktn.cpp -o discotress -fopenmp
+g++ -std=c++17 discotress.cpp kmc_methods.cpp we.cpp ffs.cpp neus.cpp milestoning.cpp rea.cpp kps.cpp mcamc.cpp keywords.cpp ktn.cpp -o discotress -fopenmp
 ```
 
 To run the program, simply type the magic word: `discotress`, having provided the necessary input files documented below.
@@ -49,7 +49,7 @@ File | Description | Format (columns)
 ---- | ----------- | ----------------
 *fpp\_properties.dat* | properties of simulated &#120068; &#8592; &#120069; paths, together yielding numerical estimates of the probability distributions for path properties in the first passage path ensemble | path no. / path time / path length / ln of path probability / path entropy flow
 *tp\_stats.dat* | bin statistics for the &#120068; &#8592; &#120069; transition path ensemble, written if communities were specified | bin ID / no. of reactive (direct &#120068; &#8592; &#120069;) paths for which bin is visited / no. of paths for which bin is visited and trajectory returned to initial set &#120069; / reactive visitation probability / committor probability
-*walker.x.y.dat* | trajectory information dumped at the specified time intervals (or when a trajectory escapes from a community, depending on options). *x* is the walker ID, *y* is the path number | node ID / community ID / path time / path length / ln of path probability / path entropy flow
+*walker.x.y.dat* | trajectory information dumped at the specified time intervals (or when a trajectory escapes from a community, depending on options). *x* is the walker ID, *y* is the path number | node ID / community ID / path time / path length / path action (negative ln of path probability) / path entropy flow
 
 ## Main keywords
 
@@ -64,7 +64,7 @@ The following is a list of keywords that must always appear in the _input.kmc_ f
   mandatory, number of (bidirectional) edges in the Markov chain.
 
 **WRAPPER** `str`  
-  mandatory, employ a \`wrapping' enhanced sampling strategy for accelerating the observation of rare events. Options:  
+  mandatory, employ a 'wrapping' enhanced sampling strategy for accelerating the observation of rare events. Further detail on wrapper methods is given below. Options:  
 -    **BTOA**    \- simulate paths initialised in state &#120069; and terminating at state &#120068;, no enhanced sampling strategy employed
 -    **FIXEDT**  \- simulate paths of fixed total time, no enhanced sampling strategy employed
 -    **DIMREDN** \- special class to simulate many short nonequilibrium trajectories starting from each community in turn, used for estimation of a coarse-grained Markov chain. See **DIMREDUCTION** keyword for more detail 
@@ -72,19 +72,45 @@ The following is a list of keywords that must always appear in the _input.kmc_ f
 -    **FFS**     \- forward flux sampling
 -    **NEUS**    \- non-equilibrium umbrella sampling
 -    **MILES**   \- milestoning
+-    **REA**     \- recursive enumeration algorithm, a special wrapper method to calculate the highest-probability paths
 
 **TRAJ** `str`  
   mandatory, method for propagating individual trajectories. Options:  
--    **BKL**     \- Bortz-Kalos-Lebowitz \(aka n-fold way\), i.e. standard kinetic Monte Carlo (kMC)
+-    **BKL**     \- Bortz-Kalos-Lebowitz \(aka n-fold way\) algorithm, i.e. standard kinetic Monte Carlo (kMC)
 -    **KPS**     \- kinetic path sampling algorithm
 -    **MCAMC**   \- Monte Carlo with absorbing Markov chains algorithm  
-  Note the following excluded combinations of WRAPPER / TRAJ options: WE / KPS, WE / MCAMC, NEUS / KPS, NEUS / MCAMC, DIMREDN / BKL.
 
 **NODESAFILE** `str` `int`  
   mandatory if not **WRAPPER DIMREDN**, name of the file containing the node IDs (indexed from 1) belonging to the &#120068; (absorbing) set, and number of nodes in the &#120068; set.
 
 **NODESBFILE** `str` `int`  
   mandatory if not **WRAPPER DIMREDN**, name of the file containing the node IDs (indexed from 1) belonging to the &#120069; (initial) set, and number of nodes in the &#120069; set.
+
+----
+
+## Additional detail on wrapper method options
+
+The **WRAPPER** method handles a set of walkers (independent trajectories) that are each propagated by the chosen **TRAJ** method. The following provides further detail on the requirements and considerations relating to each **WRAPPER** method option.
+
+----
+
+**DIMREDN**  
+  instructs the program to simulate many short trajectories (numbers specified via the **DIMREDUCTION** keyword) of fixed total time (specified via the **TRAJT** keyword) initialised from each community in turn. These trajectories are printed to files _walker.x.y.dat_, where _x_ is the ID of the community, and _y_ is the iteration number for that community. Trajectory information is written to files whenever a trajectory transitions to a new community. **DUMPINTVLS** must be set so that appropriate trajectory data is output. The simulation is parallelised, using a number of threads equal to **NTHREADS**. This calculation is compatible with two algorithms to propagate individual trajectories, namely, **TRAJ KPS**, and **TRAJ MCAMC** (without **MEANRATE**). The communities of nodes must be specified (**COMMSFILE** keyword). **NABPATHS**, **MAXIT**, and **BINSFILE** keywords are ignored. This setup is incompatible with specification of an initial condition via the **INITCONDFILE** keyword, and with the **NODESAFILE** and **NODESBFILE** keywords. Instead, a local equilibrium within the starting community is assumed as the initial probability distribution for each macrostate. A script to estimate a coarse-grained discrete- or continuous-time Markov chain from the relevant trajectory information (namely, the times at which communities are occupied) is available [here](https://github.com/danieljsharpe/DISCOTRESS_tools).
+
+**WE**  
+  the weighted ensemble method accelerates the sampling of &#120068; &#8592; &#120069; paths by using a splitting and culling procedure to maintain a specified number of walkers in each of the specified communties (given via the **COMMSTARGFILE** keyword if known *a priori*, otherwise the **ADAPTIVECOMMS** keyword must be set). Can only be used with **TRAJ BKL**.
+
+**FFS**  
+  the forward flux sampling method accelerates the sampling of &#120068; &#8592; &#120069; paths by ratcheting across nested interfaces.
+
+**NEUS**  
+  the non-equilibrium umbrella sampling method accelerates the sampling of &#120068; &#8592; &#120069; steady state paths by simulating walkers confined to cells. Can only be used with **TRAJ BKL**.
+
+**MILES**  
+  the milestoning method accelerates the sampling of &#120068; &#8592; &#120069; steady state paths by simulating walkers initialised at milestones (interfaces between macrostates) hitting adjacent milestones.
+
+**REA**  
+  the recursive enumeration algorithm (REA) determines the highest-probability &#120068; &#8592; &#120069; paths using a *k* shortest paths algorithm wherein the edge costs are given by the contributions of individual transitions to the total path action. There must be only a single initial (source) node and a single absorbing (sink) node (*cf*. the **NODESAFILE** and **NODESBFILE** keywords). The choice of **TRAJ** method option is arbitrary since an explicit simulation is not performed. **NABPATHS** is interpreted as the number of highest-probability paths to be computed (i.e. = *k*). The output file *fpp_properties.dat* lists the properties of the dominant *k* first passage paths, stated in order of decreasing probability (increasing path action). If communities are specified (note that this increases the memory and time complexity of the REA) then the list of communities that are visited along the *k*-th highest-probability first passage path are printed to the output file *visits.k.dat*.
 
 ----
 
@@ -134,7 +160,7 @@ The following is a list of keywords that specify simulation parameters pertainin
   Name of the file containing the target number of trajectories in each bin (single-column, number of entries equal to the number of communities in the network).
 
 **DIMREDUCTION** `str`  
-  mandatory if **WRAPPER DIMREDN**, which initialises a special wrapper class that does not perform the usual code function, which is to simulate &#120068; &#8592; &#120069; transition paths, and instead instructs the program to simulate many short trajectories starting from each community, each of length in time equal to **TRAJT**. These trajectories are printed to files _walker.x.y.dat_, where _x_ is the ID of the community, and _y_ is the iteration number for that community. A script to estimate a coarse-grained discrete- or continuous-time Markov chain from the relevant trajectory information (namely, the times at which communities are occupied) is available [here](https://github.com/danieljsharpe/DISCOTRESS_tools/tree/master/discotress_coarsegrainer). Trajectory information is written to files whenever a trajectory transitions to a new community. The total number of trajectories that are to be simulated starting from each community is listed in the file given as the string arg. This calculation is parallelised, using a number of threads equal to **NTHREADS** (defaults to maximum number of threads available). This calculation is compatible with two algorithms to propagate individual trajectories: **TRAJ KPS**, and **TRAJ MCAMC** (without **MEANRATE**). The communities of nodes must be specified (**COMMSFILE** keyword). **NABPATHS**, **MAXIT**, and **BINSFILE** keywords are ignored. This setup is incompatible with specification of an initial condition via the **INITCONDFILE** keyword, and with the **NODESAFILE** and **NODESBFILE** keywords. Instead, a local equilibrium within the starting community is assumed as the initial probability distribution for each macrostate. Note that **WRAPPER DIMREDN** requires this keyword, **TRAJT**, and **DUMPINTVLS** to all be set.
+  mandatory if **WRAPPER DIMREDN**, which initialises a special wrapper class that does not perform the usual code function, which is to simulate &#120068; &#8592; &#120069; transition paths, and instead instructs the program to simulate many short trajectories starting from each community, each of length in time equal to **TRAJT**. The total number of trajectories that are to be simulated starting from each community is listed in the file given as the string arg (single-column format, length equal to number of communities, set via the **COMMSFILE** keyword).
 
 **KPSKMCSTEPS** `int`  
   optional. If **TRAJ** is **KPS** or **MCAMC**, specifies the number of standard BKL steps to be performed after a kPS or MCAMC escape from a trapping basin. Default is 0 (pure kPS (or MCAMC), no kMC steps). However, this is not the recommended value. If using **TRAJ KPS** or **TRAJ MCAMC**, for most systems, great gains in simulation efficiency will be achieved by setting **KPSKMCSTEPS** to an appropriate nonzero value. This is because many metastable systems will feature transition regions between metastable states. Therefore, after each basin escape, the trajectory will likely flicker between the two basins. Rather than simulate expensive kPS or MCAMC basin escape iterations for these trivial recrossings, it is much more efficient to perform standard BKL steps. Note that this keyword does not require **BRANCHPROBS** to be set, and can also be used with **DISCRETETIME**. Ignored if **ADAPTIVECOMMS**.

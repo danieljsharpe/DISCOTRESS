@@ -63,18 +63,18 @@ void Walker::reset_walker_info() {
 
 /* set members of the base class for methods to deal with the set of walkers (independent trajectories) */
 Wrapper_Method::Wrapper_Method(const Wrapper_args &wrapper_args) {
+    this->nabpaths=wrapper_args.nabpaths; this->tintvl=wrapper_args.tintvl;
+    this->maxit=wrapper_args.maxit; this->adaptivecomms=wrapper_args.adaptivecomms;
+    this->seed=wrapper_args.seed; this->debug=wrapper_args.debug;
+    if (wrapper_args.nwalkers==0) return; // nwalkers=0 for REA, where walkers, visitations, committors etc vectors are not used
     walkers.resize(wrapper_args.nwalkers);
     for (int i=0;i<wrapper_args.nwalkers;i++) {
-        walkers[i] = {walker_id:0,path_no:i,comm_curr:0,comm_prev:0,active:true, \
-                      k:0,t:0.L,p:-numeric_limits<double>::infinity(),s:0.L};
+        walkers[i] = {walker_id:0,path_no:i,k:0,t:0.L,p:-numeric_limits<double>::infinity(),s:0.L};
         walkers[i].visited.resize(wrapper_args.nbins);
         fill(walkers[i].visited.begin(),walkers[i].visited.end(),false);
     }
     visitations.resize(wrapper_args.nbins); committors.resize(wrapper_args.nbins);
     ab_successes.resize(wrapper_args.nbins); ab_failures.resize(wrapper_args.nbins);
-    this->nabpaths=wrapper_args.nabpaths; this->tintvl=wrapper_args.tintvl;
-    this->maxit=wrapper_args.maxit; this->adaptivecomms=wrapper_args.adaptivecomms;
-    this->seed=wrapper_args.seed; this->debug=wrapper_args.debug;
     if (!wrapper_args.indepcomms) return;
     int i=0;
     for (vector<Walker>::iterator it_walkers=walkers.begin();it_walkers!=walkers.end();++it_walkers) {

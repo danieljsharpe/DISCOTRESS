@@ -45,7 +45,7 @@ void WE::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {
     long double tau_r=static_cast<long double>(taure); // next resampling time
     while ((n_ab<nabpaths) and (n_wekmcit<maxit)) { // algorithm terminates when max. no. of iterations of resampling procedure have been performed
         for (auto &walker: walkers) {
-            if (!walker.active) continue;
+//            if (!walker.active) continue;
 //            while (walker.t<tau_r) // quack simulate
         }
         tau_r += taure;

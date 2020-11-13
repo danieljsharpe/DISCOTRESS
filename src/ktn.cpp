@@ -322,7 +322,7 @@ void Network::set_initcond(const vector<double> &init_probs) {
     this->init_probs=init_probs;
 }
 
-/* update the Network object pointed to by the ktn argument to include an additional edge (with index k in the edges array)
+/* update the Network object pointed to by the ktn argument to include an additional edge (with index k in the edges vector)
    connecting from_node and to_node */
 void Network::add_edge_network(Network *ktn, Node &from_node, Node &to_node, int k) {
     (ktn->edges[k]).from_node = &from_node;
@@ -361,23 +361,19 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &conns, \
     }
     tot_pi = exp(tot_pi);
     if (abs(tot_pi-1.)>1.E-10) {
-        cout << "ktn> Error: total equilibrium probabilities of nodes is: " << tot_pi << " =/= 1." << endl;
+        cout << "ktn> error: total equilibrium probabilities of nodes is: " << tot_pi << " =/= 1." << endl;
         throw Network::Ktn_exception(); }
 
     // network topology setup
     for (int i=0;i<ktn.n_edges;i++) {
         ktn.edges[2*i].edge_id = 2*i;
         ktn.edges[(2*i)+1].edge_id = (2*i)+1;
-        if (conns[i].first == conns[i].second) { // "dead" transition state (dangling node)
-            cout << "ktn> warning: transition state " << i << " is dead" << endl;
-            ktn.edges[2*i].deadts = true;
-            ktn.edges[(2*i)+1].deadts = true;
-            ktn.n_dead++;
-            continue;
-        } else {
-            ktn.edges[2*i].deadts = false;
-            ktn.edges[(2*i)+1].deadts = false;
-        }
+        if (conns[i].first==conns[i].second) {
+            cout << "ktn> error: self-loop transitions must not be specified in the topology files" << endl; exit(EXIT_FAILURE); }
+        if (conns[i].first<1 || conns[i].second<1 || conns[i].first>ktn.n_nodes || conns[i].second>ktn.n_nodes) {
+            cout << "ktn> error: encountered invalid node ID in edge_conns.dat file" << endl; exit(EXIT_FAILURE); }
+        ktn.edges[2*i].deadts = false;
+        ktn.edges[(2*i)+1].deadts = false;
         if (!discretetime) { // edge weights are transition rates
             ktn.edges[2*i].k = weights[i].first;
             ktn.edges[(2*i)+1].k = weights[i].second;

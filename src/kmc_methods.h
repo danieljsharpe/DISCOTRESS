@@ -49,8 +49,6 @@ struct Walker {
 
     int walker_id; // ID of walker in set of trajectories
     int path_no; // the trajectory iteration for this walker ID
-    int comm_curr, comm_prev; // for WE-kMC
-    bool active; // walker is currently a member of the set of active trajectories being propagated
     unsigned long long int k; // path activity (i.e. length / no. of steps)
     long double t; // path time
     long double p; // (log) path probability
@@ -89,7 +87,7 @@ class Wrapper_Method {
     int maxit;                  // another termination condition; the maximum number of iterations of the enhanced kMC method
     int seed;                   // seed for random number generator
     bool debug;                 // debug printing on/off
-    vector<Walker> walkers;     // list of active trajectories (walkers) on the network
+    vector<Walker> walkers;     // list of independent trajectories (walkers) on the network
     void (*kmc_func)(Walker&);  // function pointer to kMC algorithm for propagating the trajectory   
 
     public:
@@ -206,6 +204,27 @@ class MILES : public Wrapper_Method {
     void run_enhanced_kmc(const Network&,Traj_Method*);
 };
 
+/* recursive enumeration algorithm for k shortest paths problem */
+class REA : public Wrapper_Method {
+
+    private:
+
+    const Node *source, *sink; // pointers to source and sink nodes
+    vector<vector<Walker>> shortest_paths; // k-th shortest paths to all nodes of the network
+    vector<vector<Walker*>> candidate_paths; // pointers to possible candidates for next shortest path to each node of the network
+
+    void dijkstra(const Network&);
+    void next_path(const Network&,const Node&,int);
+    void add_candidate(int,int,int);
+    void print_visits(const Walker&);
+
+    public:
+
+    REA(const Network&,const Wrapper_args&);
+    ~REA();
+    void run_enhanced_kmc(const Network&, Traj_Method*);
+};
+
 /* abstract class for methods to propagate individual trajectories */
 class Traj_Method {
 
@@ -254,7 +273,7 @@ class KPS : public Traj_Method {
     Network *ktn_kps=nullptr; // pointer to the subnetwork of the TN that kPS internally uses and transforms
     Network *ktn_kps_orig=nullptr; // pointer to the original subnetwork of the TN
     Network *ktn_kps_gt=nullptr; // pointer to the graph-transformed subnetwork (used if recycling GT of a basin)
-    Network *ktn_l=nullptr, *ktn_u=nullptr; // pointers to arrays used in LU-style decomposition of transition matrix
+    Network *ktn_l=nullptr, *ktn_u=nullptr; // pointers to Network objects used in LU-style decomposition of transition matrix
     vector<int> basin_ids; // used to indicate the set to which each node belongs for the current kPS iteration
         // (eliminated=1, transient noneliminated=2, absorbing boundary=3, absorbing nonboundary=0)
     vector<int> eliminated_nodes; // vector of IDs of eliminated nodes (in order)

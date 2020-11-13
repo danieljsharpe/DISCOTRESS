@@ -33,13 +33,13 @@ class Discotress;
 struct Node;
 
 struct Edge {
-    int edge_id; // position of the TS in the edges array
+    int edge_id; // position of the TS in the edges vector
     unsigned long long int h=0; // no. of kMC moves along the edge (used in kPS)
     int label=0; // label indicates node ID of GT iteration at which edge becomes dead (in kPS)
     long double k; // (log) transition rate
     long double t; // transition probability
     long double dt; // change in transition probability (used in kPS)
-    bool deadts=false; // indicates TS only linked to one node ("dangling TS") or is otherwise deleted
+    bool deadts=false; // indicates that edge is redundant or otherwise deleted from the network
     Node *to_node=nullptr;
     Node *from_node=nullptr;
     Edge *next_to=nullptr;
