@@ -155,6 +155,8 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.discretetime=true;
         } else if (vecstr[0]=="DUMPWAITTIMES") {
             my_kws.dumpwaittimes=true;
+        } else if (vecstr[0]=="NOLOOP") {
+            my_kws.noloop=true;
         } else if (vecstr[0]=="NTHREADS") {
             my_kws.nthreads=stoi(vecstr[1]);
             assert((my_kws.nthreads>0 && my_kws.nthreads<=omp_get_max_threads()));
@@ -225,7 +227,8 @@ Keywords read_keywords(const char *kw_file) {
         if (my_kws.commsfile==nullptr) {
             cout << "keywords> error: milestoning simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
     } else if (my_kws.wrapper_method==7) { // recursive enumeration algorithm for k shortest paths
-        if (my_kws.nA!=1 || my_kws.nB!=1 || my_kws.nabpaths<1) {
+        if (my_kws.nA!=1 || my_kws.nB!=1 || my_kws.nabpaths<1 || (my_kws.discretetime && !my_kws.noloop) || \
+            (!my_kws.discretetime && !my_kws.branchprobs)) {
             cout << "keywords> error: REA k shortest paths computation not specified correctly" << endl; exit(EXIT_FAILURE); }
     }
     // check specification of trajectory method is valid
@@ -235,7 +238,7 @@ Keywords read_keywords(const char *kw_file) {
         if ((my_kws.commsfile==nullptr && !my_kws.adaptivecomms) || my_kws.nelim<=0) {
             cout << "keywords> error: kPS algorithm not specified correctly" << endl; exit(EXIT_FAILURE); }
     } else if (my_kws.traj_method==3) { // MCAMC algorithm
-        if (my_kws.branchprobs) {
+        if (my_kws.branchprobs || my_kws.noloop) {
             cout << "keywords> error: MCAMC algorithm not specified correctly" << endl; exit(EXIT_FAILURE); }
     }
 

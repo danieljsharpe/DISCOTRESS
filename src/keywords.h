@@ -97,6 +97,7 @@ struct Keywords {
     bool discretetime=false;  // "DISCRETETIME" edge weights are read in as transition probabilities (instead of log transition rates). The provided
                               //                edge weights therefore represent a discrete-time Markov chain (DTMC) at lag time tau
     bool dumpwaittimes=false; // "DUMPWAITTIMES" print waiting times for nodes to file "meanwaitingtimes.dat"
+    bool noloop=false;        // "NOLOOP" (for a DTMC) renormalize lag times for nodes and outgoing transition probabilities to subsume self-loops
     int nthreads=omp_get_max_threads(); // number of threads to use in parallel calculations
     int seed=17;              // "SEED" seed for random number generators
     long double tau=-1.;      // "TAU" lag time (DTMC) or mean waiting time in linearised transition matrix (CTMC if not using branching probabilities)

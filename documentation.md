@@ -9,7 +9,7 @@ git checkout https://github.com/danieljsharpe/DISCOTRESS
 
 Then navigate to the directory containing the source code with `cd DISCOTRESS/src` and compile using:
 ```bash
-g++ -std=c++17 discotress.cpp kmc_methods.cpp we.cpp ffs.cpp neus.cpp milestoning.cpp rea.cpp kps.cpp mcamc.cpp keywords.cpp ktn.cpp -o discotress -fopenmp
+g++ -std=c++17 discotress.cpp kmc_methods.cpp we.cpp ffs.cpp neus.cpp milestoning.cpp rea.cpp kps.cpp mcamc.cpp keywords.cpp network.cpp -o discotress -fopenmp
 ```
 
 To run the program, simply type the magic word: `discotress`, having provided the necessary input files documented below.
@@ -110,7 +110,7 @@ The **WRAPPER** method handles a set of walkers (independent trajectories) that 
   the milestoning method accelerates the sampling of &#120068; &#8592; &#120069; steady state paths by simulating walkers initialised at milestones (interfaces between macrostates) hitting adjacent milestones.
 
 **REA**  
-  the recursive enumeration algorithm (REA) determines the highest-probability &#120068; &#8592; &#120069; paths using a *k* shortest paths algorithm wherein the edge costs are given by the contributions of individual transitions to the total path action. There must be only a single initial (source) node and a single absorbing (sink) node (*cf*. the **NODESAFILE** and **NODESBFILE** keywords). The choice of **TRAJ** method option is arbitrary since an explicit simulation is not performed. **NABPATHS** is interpreted as the number of highest-probability paths to be computed (i.e. = *k*). The output file *fpp_properties.dat* lists the properties of the dominant *k* first passage paths, stated in order of decreasing probability (increasing path action). If communities are specified (note that this increases the memory and time complexity of the REA) then the list of communities that are visited along the *k*-th highest-probability first passage path are printed to the output file *visits.k.dat*.
+  the recursive enumeration algorithm (REA) determines the highest-probability &#120068; &#8592; &#120069; paths using a *k* shortest paths algorithm wherein the edge costs are given by the contributions of individual transitions to the total path action. There must be only a single initial (source) node and a single absorbing (sink) node (*cf*. the **NODESAFILE** and **NODESBFILE** keywords). The choice of **TRAJ** method option is arbitrary since an explicit simulation is not performed. **NABPATHS** is interpreted as the number of highest-probability paths to be computed (i.e. = *k*). The highest-probability path is written to the file *shortest_path.dat* in the usual *walker.x.y.dat* format (see above), except that the path is printed backwards. The output file *fpp_properties.dat* lists the properties of the dominant *k* first passage paths from the source to the sink node, stated in order of decreasing probability (increasing path action). If bins are specified (note that this increases the memory and time complexity of the REA) then the list of bins that are visited along the *k*-th highest-probability first passage path is printed to the output file *visits.k.dat* for all *k*. For a DTMC (keyword **DISCRETETIME**), **NOLOOP** must be set, and for a CTMC (default), **BRANCHPROBS** must be set, so that shortest paths do not contain self-loop transitions for nodes.
 
 ----
 
@@ -234,6 +234,9 @@ The memory costs of state reduction computations can be reduced without conseque
 
 **DUMPWAITTIMES**  
   dump the mean waiting times for nodes to the file _meanwaitingtimes.dat_.
+
+**NOLOOP**  
+  if **DISCRETETIME**, the average numbers of self-loop transitions for nodes are accounted for implicitly by renormalization of outgoing transition probabilities and the lag time. Thus the lag time for transitions from nodes becomes node-dependent, and represents an *expectation* with respect to the numbers of self-loop transitions before escape from a node. The length of a path then represents the number of transitions between *different* nodes (as is the case for a CTMC parameterized by a branching probability matrix), often referred to as the *dynamical activity*. When using **TRAJ BKL**, this keyword will increase the fficiency of the simulation, since the self-loop transitions for nodes are not explicitly taken. However, when using this option, only the mean of the simulated first passage time distribution is meaningful. Not compatible with **TRAJ MCAMC**.
 
 **NTHREADS** `int`  
   number of threads to use in parallel calculations. Defaults to max. no. of threads available. Keyword is overridden and set equal to one when performing a state reduction computation.

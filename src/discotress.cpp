@@ -64,7 +64,7 @@ Discotress::Discotress () {
         cout << "discotress> simulating a continuous-time Markov chain" << endl;
     }
     omp_set_num_threads(my_kws.nthreads);
-    cout << "discotress> simulation will use " << my_kws.nthreads << " threads" << endl;
+    cout << "discotress> simulation will use max of " << my_kws.nthreads << " threads" << endl;
     long double dummy_randno = Wrapper_Method::rand_unif_met(my_kws.seed); // seed this generator
     if (my_kws.debug) debug=true;
 
@@ -100,10 +100,11 @@ Discotress::Discotress () {
     cout << "discotress> setting up the Markovian network data object..." << endl;
     ktn = new Network(my_kws.n_nodes,my_kws.n_edges);
     if (my_kws.commsfile!=nullptr) {
-        Network::setup_network(*ktn,conns,weights,stat_probs,nodesAvec,nodesBvec,my_kws.discretetime,my_kws.branchprobs, \
-            my_kws.tau,my_kws.ncomms,communities,bins);
+        Network::setup_network(*ktn,conns,weights,stat_probs,nodesAvec,nodesBvec,my_kws.discretetime,my_kws.noloop, \
+            my_kws.branchprobs,my_kws.tau,my_kws.ncomms,communities,bins);
     } else {
-        Network::setup_network(*ktn,conns,weights,stat_probs,nodesAvec,nodesBvec,my_kws.discretetime,my_kws.branchprobs,my_kws.tau,my_kws.ncomms);
+        Network::setup_network(*ktn,conns,weights,stat_probs,nodesAvec,nodesBvec,my_kws.discretetime,my_kws.noloop, \
+            my_kws.branchprobs,my_kws.tau,my_kws.ncomms);
     }
     cout << "discotress> no. of nodes: " << ktn->n_nodes << "   in A: " << ktn->nodesA.size() << "   in B: " << ktn->nodesB.size() << endl;
     cout << "discotress> no. of edges: " << ktn->n_edges << "      no. of communities: " << ktn->ncomms << endl;
@@ -122,7 +123,7 @@ Discotress::Discotress () {
         if (my_kws.accumprobs) ktn->set_accumprobs();
         BKL *bkl_ptr = new BKL(*ktn,traj_args);
         traj_method_obj = bkl_ptr;
-    } else if (my_kws.traj_method==2) {     // kPS algorithm
+    } else if (my_kws.traj_method==2) {     // KPS algorithm
         KPS *kps_ptr = new KPS(*ktn,my_kws.nelim,my_kws.kpskmcsteps,my_kws.adaptivecomms,my_kws.adaptminrate,traj_args);
         if (my_kws.statereduction) kps_ptr->set_statereduction_procs(my_kws.committor,my_kws.absorption,my_kws.fundamentalred, \
                     my_kws.fundamentalirred,my_kws.mfpt,my_kws.gth);
@@ -160,7 +161,7 @@ Discotress::Discotress () {
     } else if (my_kws.wrapper_method==6) { // milestoning simulation
     } else if (my_kws.wrapper_method==7) { // recursive enumeration algorithm for k shortest paths problem
         wrapper_args.nwalkers=0; // REA class does not store paths in walkers vector, instead has its own arrays
-        REA *rea_ptr = new REA(*ktn,wrapper_args);
+        REA *rea_ptr = new REA(*ktn,my_kws.discretetime,wrapper_args);
         wrapper_method_obj = rea_ptr;
     } else {
         throw exception(); // a wrapper method object must be set
@@ -199,7 +200,7 @@ void Discotress::print_discotress_end() {
          << "              ====++++XXXXXX  XX++    ##     |                                  |\n" \
          << "              ==++++++++XXXXXX++##==XX##     |               using              |\n" \
          << "            ##==####++++++++++####==XX##   __|                                  |\n" \
-         << "            ##++++==##++++++####  ####  __|      D  I  S  C  O  T  R  E  S  S   |\n" \
+         << "            ##++++==##++++++####  ####  __|           D I S C O T R E S S       |\n" \
          << "            ##++++++##++++++==##  ==    \\______                              __|\n" \
          << "          ##++++++++==##++++####               |_____________________________|   \n" \
          << "          ##++++++++XX##++++==##                                                 \n" \

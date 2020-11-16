@@ -1,5 +1,5 @@
 /*
-Custom data structure for representing a Markov chain (kinetic transition network, KTN)
+Custom data structure for representing a finite Markov chain
 
 This file is a part of DISCOTRESS, a software package to simulate the dynamics on arbitrary continuous- and discrete-time Markov chains (CTMCs and DTMCs).
 Copyright (C) 2020 Daniel J. Sharpe
@@ -18,8 +18,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef __KTN_H_INCLUDED__
-#define __KTN_H_INCLUDED__
+#ifndef __NETWORK_H_INCLUDED__
+#define __NETWORK_H_INCLUDED__
 
 #include <set>
 #include <exception>
@@ -124,17 +124,18 @@ struct Network {
     void get_tmtx_lin(long double); // calculate the linearised transition probability matrix
     void get_tmtx_branch(); // calculate the branching transition probability matrix
     void set_accumprobs(); // set transition probabilities to accumulated branching probability values (for optimisation in kMC)
+    void renormalize_selfloops(); // (for a DTMC) renormalize escape (lag) times and outgoing transition probs to subsume self-loops
     void set_initcond(const vector<double>&); // set initial probabilities for nodes in set B
     static void add_edge_network(Network*,Node&,Node&,int);
     static void setup_network(Network&,const vector<pair<int,int>>&,const vector<pair<long double,long double>>&, \
-        const vector<long double>&,const vector<int>&,const vector<int>&,bool,bool,long double,int,const vector<int>& = {}, \
+        const vector<long double>&,const vector<int>&,const vector<int>&,bool,bool,bool,long double,int,const vector<int>& = {}, \
         const vector<int>& = {});
 
     vector<Node> nodes;
     vector<Edge> edges; // note that this vector contains two entries for forward and reverse transitions for each pair of nodes
 
-    struct Ktn_exception {
-        const char * what () const throw () { return "ktn> thrown Ktn exception, terminating"; }
+    struct Network_exception {
+        const char * what () const throw () { return "network> thrown Ktn exception, terminating"; }
     };
 
     int n_nodes, n_edges; // number of nodes and bidirectional edges (not including self-loops)

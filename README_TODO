@@ -1,0 +1,15 @@
+check for bugs with:
+valgrind --leak_check=yes discotress
+
+
+To do:
+-deadts member of Edge class only gets used in un-eliminating node in kPS (indicates that an edge no longer exists in the restored network) and
+ in subsequent calculation of updated numbers of i<-j transitions. The h member of the Node and Edge classes only get used in kPS if not
+ statereduction, and the dt member of the Edge class only gets used in kPS with certain state reduction methods.
+ Could try and optimize memory usage and performance in these regards.
+
+-discretetime is a member of Traj_Method but branchprobs is a member of Network; be consistent!
+
+-in order for noloop to work, KPS needs to loop over nodes when incrementing path time
+
+Known bugs:

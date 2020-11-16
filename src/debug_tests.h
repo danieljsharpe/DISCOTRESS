@@ -21,7 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef __DEBUG_TESTS_H_INCLUDED__
 #define __DEBUG_TESTS_H_INCLUDED__
 
-#include "ktn.h"
+#include "network.h"
 #include <iostream>
 #include <cmath>
 

@@ -3,6 +3,7 @@
 Welcome to the **DISCOTRESS** (DIscrete State COntinuous Time Rare Event Simulation Suite) program, developed by Daniel J. Sharpe.
 
 ![Getting from B to A in a Markov chain](https://github.com/danieljsharpe/danieljsharpe/blob/master/discotress_network_annotated.png?raw=true)
+<p align="center">Probability fluxes (edge thickness), visitation probabilities (node opacity), and stationary probabilities (node size) for the transition from an initial set of nodes, &#120069;, to an absorbing (target) set of nodes, &#120068;, in a Markov chain.</p>
 
 **DISCOTRESS** is a software package to simulate and analyse the dynamics for arbitrary Markov chains. **DISCOTRESS** is designed to enable simulation and analysis of the dynamics for discrete- and continuous-time finite Markov chains (DTMCs and CTMCs, respectively) that are nearly reducible. Such Markov chains exhibit strong metastability; that is, there exists a comparatively slow (i.e. low probability) process. In this rare event regime, which is frequently encountered in realistic modeling tasks, standard simulation algorithms are unfeasible owing to their inefficiency, and linear algebra methods for the exact computation of dynamical quantities fail to converge or lead to a severe propagation of numerical error. The advanced methods implemented in DISCOTRESS circumvent these problems.
 
@@ -10,7 +11,7 @@ Discrete-state DTMCs and CTMCs are widely applied models for the stochastic dyna
 
 ## What can I do with DISCOTRESS?
 
-A host of simulation algorithms to sample paths are built in to **DISCOTRESS** [1,2], including standard kinetic Monte Carlo (BKL), kinetic path sampling (kPS), Monte Carlo with absorbing Markov chains (MCAMC), milestoning, and weighted ensemble (WE) sampling. The software also includes algorithms to perform exact numerical analysis. The flexibility of the software and the relative advantages of the different algorithms allow for a variety of problems to be treated. **DISCOTRESS** can be used to:
+A host of simulation algorithms to sample paths are built in to **DISCOTRESS** [1,2], including standard kinetic Monte Carlo (BKL), kinetic path sampling (kPS), Monte Carlo with absorbing Markov chains (MCAMC), milestoning, and weighted ensemble (WE) sampling. The software also includes algorithms to perform exact numerical analysis. The flexibility of the software and the relative advantages of the different algorithms allow for a variety of problems to be solved. **DISCOTRESS** can be used to:
 
 - sample the ensemble of &#120068; &#8592; &#120069; first passage paths (the FPPE) from an initial set of nodes in the Markov chain, denoted &#120069;, to an absorbing (target) set of nodes, denoted &#120068; [1,2].
 - simulate probability distributions of path properties for the &#120068; &#8592; &#120069; FPPE, including the first passage time (FPT) [1,2], path probability [4], and entropy flow distributions of paths.
@@ -25,13 +26,13 @@ A host of simulation algorithms to sample paths are built in to **DISCOTRESS** [
 **Requirements:** C++17  
 **Dependencies:** OpenMP
 
-Refer to the [documentation](https://github.com/danieljsharpe/DISCOTRESS/blob/master/documentation.md) for a list of keywords that may be included in the file *input.kmc*, a description of the other input and output files and their formats, and the compilation command.
+Refer to the [documentation](https://github.com/danieljsharpe/DISCOTRESS/blob/master/documentation.md) for a list of keywords that may be included in the main input file *input.kmc*, a description of the other input and output files and their formats, and instructions for downloading and compiling the software.
 
 Try running the [tutorial examples](https://github.com/danieljsharpe/DISCOTRESS_tutorials) to get started!
 
 Use the available [analysis scripts](https://github.com/danieljsharpe/DISCOTRESS_tools) to find out what it all means.
 
-Read the [FAQs](https://github.com/danieljsharpe/DISCOTRESS/blob/master/documentation.md) for hints and tips.
+Read the [FAQs](https://github.com/danieljsharpe/DISCOTRESS/blob/master/FAQs.md) for hints and tips.
 
 ## Citations
 
@@ -43,11 +44,11 @@ Please cite relevant articles describing particular functionality of DISCOTRESS 
 - [3] D. J. Sharpe and D. J. Wales, Numerical analysis of first passage processes in metastable finite Markov chains, (in preparation).
 - [4] D. J. Sharpe and D. J. Wales, Graph transformation algorithm for the expectation of first passage path properties in finite Markov chains, (in preparation).
 - [5] D. J. Sharpe and D. J. Wales, Dimensionality reduction of Markov chains using efficient dynamical simulations, (in preparation).
-- [6] D. Kannan\*, D. J. Sharpe\*, T. D. Swinburne and D. J. Wales, Optimal dimensionality reduction of Markov chains using graph transformation, (in press).
-- [7] D. Kannan, D. J. Sharpe, T. D. Swinburne and D. J. Wales, Coarse-graining continuous-time Markov chains with graph transformation, (in preparation).
+- [6] D. Kannan\*, D. J. Sharpe\*, T. D. Swinburne, and D. J. Wales, Optimal dimensionality reduction of Markov chains using graph transformation, (in press).
+- [7] D. Kannan, D. J. Sharpe, T. D. Swinburne, and D. J. Wales, Coarse-graining continuous-time Markov chains with graph transformation, (in preparation).
 
 Further example applications can be found in the following publications:
-- [8] T. D. Swinburne, D. Kannan, D. J. Sharpe and D. J. Wales, [Rare events and first passage time statistics from the energy landscape](https://doi.org/10.1063/5.0016244), J. Chem. Phys. 153, 134115.
+- [8] T. D. Swinburne, D. Kannan, D. J. Sharpe, and D. J. Wales, [Rare events and first passage time statistics from the energy landscape](https://doi.org/10.1063/5.0016244), J. Chem. Phys. 153, 134115.
 
 More publications for DISCOTRESS are forthcoming.
 

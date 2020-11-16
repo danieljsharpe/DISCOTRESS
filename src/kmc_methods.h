@@ -22,7 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef __KMC_METHODS_H_INCLUDED__
 #define __KMC_METHODS_H_INCLUDED__
 
-#include "ktn.h"
+#include "network.h"
 #include <limits>
 #include <utility>
 #include <unordered_map>
@@ -209,18 +209,20 @@ class REA : public Wrapper_Method {
 
     private:
 
-    const Node *source, *sink; // pointers to source and sink nodes
+    bool discretetime;
+    const Node *source_node, *sink_node; // pointers to source and sink nodes
     vector<vector<Walker>> shortest_paths; // k-th shortest paths to all nodes of the network
-    vector<vector<Walker*>> candidate_paths; // pointers to possible candidates for next shortest path to each node of the network
+    vector<vector<pair<Walker*,Edge*>>> candidate_paths; // pointers to possible candidates for next shortest path to each node of the network
 
     void dijkstra(const Network&);
     void next_path(const Network&,const Node&,int);
     void add_candidate(int,int,int);
-    void print_visits(const Walker&);
+    void print_dijkstra();
+    void print_visits(const Walker*);
 
     public:
 
-    REA(const Network&,const Wrapper_args&);
+    REA(const Network&,bool,const Wrapper_args&);
     ~REA();
     void run_enhanced_kmc(const Network&, Traj_Method*);
 };

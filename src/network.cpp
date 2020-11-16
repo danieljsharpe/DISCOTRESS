@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "ktn.h"
+#include "network.h"
 #include <vector>
 #include <queue>
 #include <cmath>
@@ -76,9 +76,9 @@ void Network::dumpwaittimes() {
 /* update the Nodes and Edges of the Network data structure to contain transition probabibilities
    calculated from the linearised transition probabibility matrix */
 void Network::get_tmtx_lin(long double tau) {
-    cout << "ktn> calculating linearised transition probability matrix at lag time: " << tau << endl;
+    cout << "network> calculating linearised transition probability matrix at lag time: " << tau << endl;
     for (auto &node: nodes) {
-        if (tau>node.t_esc) throw Ktn_exception(); // value of tau does not give stochastic matrix
+        if (tau>node.t_esc) throw Network_exception(); // value of tau does not give stochastic matrix
         node.t = 1.L-(tau/node.t_esc);
         node.t_esc = tau; // mean waiting times are all equal in the linearised transition matrix
     }
@@ -91,7 +91,7 @@ void Network::get_tmtx_lin(long double tau) {
 
 /* the transition probabilities are calculated as the branching probabilities */
 void Network::get_tmtx_branch() {
-    cout << "ktn> calculating branching probability matrix" << endl;
+    cout << "network> calculating branching probability matrix" << endl;
     branchprobs=true;
     for (auto &node: nodes) calc_t_esc(node);
     for (auto &edge: edges) {
@@ -105,14 +105,14 @@ void Network::get_tmtx_branch() {
             if (!edgeptr->deadts) { cum_t += edgeptr->t; }
             edgeptr=edgeptr->next_from;
         }
-        if (abs(cum_t-1.)>1.E-14) throw Ktn_exception(); // transition probabilities do not give stochastic matrix
+        if (abs(cum_t-1.)>1.E-14) throw Network_exception(); // transition probabilities do not give stochastic matrix
     }
 }
 
 /* resort edges into decreasing order of transition probabilities, and set the transition
    probabilities as the accumulated values. This is for optimisation of the rejection-free kMC algorithm (BKL) */
 void Network::set_accumprobs() {
-    cout << "ktn> calculating accumulated transition probabilities" << endl;
+    cout << "network> calculating accumulated transition probabilities" << endl;
     accumprobs=true;
     for (auto &node: nodes) {
         Edge *edgeptr = node.top_from;
@@ -138,13 +138,19 @@ void Network::set_accumprobs() {
             edgeptr->t += prev_cum_t;
             edgeptr=edgeptr->next_from;
         }
-        if (abs(cum_t-1.)>1.E-16) throw Ktn_exception();
+        if (abs(cum_t-1.)>1.E-16) throw Network_exception();
     }
+}
+
+/* for a DTMC, renormalize lag times for nodes, as well as all outgoing transition probabilities, to subsume the average number of
+   self-loop transitions before a node is escaped */
+void Network::renormalize_selfloops() {
+    cout << "network> renormalizing DTMC to subsume average effect of self-loop transitions" << endl;
 }
 
 // delete node i 
 void Network::del_node(int i) {
-    if (nodes[i].eliminated) throw Ktn_exception();
+    if (nodes[i].eliminated) throw Network_exception();
     Edge *edgeptr;
     edgeptr = nodes[i].top_to;
     while (edgeptr!=nullptr) {
@@ -193,7 +199,7 @@ void Network::del_to_edge(int i) {
         }
         tot_edges--;
     } else {
-        throw Ktn_exception();
+        throw Network_exception();
     }
 }
 
@@ -207,7 +213,7 @@ void Network::del_from_edge(int i) {
         }
         tot_edges--;
     } else {
-        throw Ktn_exception();
+        throw Network_exception();
     }
     nodes[i].udeg--;
 }
@@ -216,7 +222,7 @@ void Network::del_from_edge(int i) {
 void Network::del_spec_to_edge(int i, int j) {
     Edge *edgeptr; Edge *edgeptr_prev = nullptr;
     bool edge_exists = false;
-    if (nodes[i].top_to==nullptr) throw Ktn_exception();
+    if (nodes[i].top_to==nullptr) throw Network_exception();
     edgeptr = nodes[i].top_to;
     while (edgeptr!=nullptr) {
         if (edgeptr->edge_id==j) {
@@ -233,14 +239,14 @@ void Network::del_spec_to_edge(int i, int j) {
         edgeptr_prev = edgeptr;
         edgeptr = edgeptr->next_to;
     }
-    if (!edge_exists) throw Ktn_exception();
+    if (!edge_exists) throw Network_exception();
 }
 
 // delete FROM edge with edge_id j for node i
 void Network::del_spec_from_edge(int i, int j) {
     Edge *edgeptr; Edge *edgeptr_prev = nullptr;
     bool edge_exists = false;
-    if (nodes[i].top_from==nullptr) throw Ktn_exception();
+    if (nodes[i].top_from==nullptr) throw Network_exception();
     edgeptr = nodes[i].top_from;
     while (edgeptr!=nullptr) {
         if (edgeptr->edge_id==j) {
@@ -257,7 +263,7 @@ void Network::del_spec_from_edge(int i, int j) {
         edgeptr_prev = edgeptr;
         edgeptr = edgeptr->next_from;
     }
-    if (!edge_exists) throw Ktn_exception();
+    if (!edge_exists) throw Network_exception();
 }
 
 // update edge with edge_id j so that it now points TO node i
@@ -305,19 +311,19 @@ void Network::calc_t_selfloop(Node &node) {
 
 /* calculate the net flux along an edge and its reverse edge */
 long double Network::calc_net_flux(Edge &edge) {
-    if (edge.rev_edge==nullptr) throw Network::Ktn_exception();
+    if (edge.rev_edge==nullptr) throw Network::Network_exception();
     if (!((edge.to_node->node_id==edge.rev_edge->from_node->node_id) || \
-          (edge.from_node->node_id==edge.rev_edge->to_node->node_id))) throw Network::Ktn_exception();
+          (edge.from_node->node_id==edge.rev_edge->to_node->node_id))) throw Network::Network_exception();
     return exp(edge.k+edge.from_node->pi)-exp(edge.rev_edge->k+edge.to_node->pi);
 }
 
 /* set the vector specifying the initial probabilities of nodes in set B (if different from relative stationary probabilities) */
 void Network::set_initcond(const vector<double> &init_probs) {
 
-    if (init_probs.size()!=nodesB.size()) throw Network::Ktn_exception();
+    if (init_probs.size()!=nodesB.size()) throw Network::Network_exception();
     double p_tot=0.;
     for (const auto &p: init_probs) p_tot+=p;
-    if (abs(p_tot-1.)>1.E-10) throw Network::Ktn_exception();
+    if (abs(p_tot-1.)>1.E-10) throw Network::Network_exception();
     initcond=true;
     this->init_probs=init_probs;
 }
@@ -334,15 +340,15 @@ void Network::add_edge_network(Network *ktn, Node &from_node, Node &to_node, int
 /* set up the Markov chain (kinetic transition network, KTN) */
 void Network::setup_network(Network& ktn, const vector<pair<int,int>> &conns, \
         const vector<pair<long double,long double>> &weights, const vector<long double> &stat_probs, \
-        const vector<int> &nodesinA, const vector<int> &nodesinB, bool discretetime, bool branchprobs, \
+        const vector<int> &nodesinA, const vector<int> &nodesinB, bool discretetime, bool noloop, bool branchprobs, \
         long double tau, int ncomms, const vector<int> &comms, const vector<int> &bins) {
 
-    cout << "ktn> constructing nodes and edges of Markovian network from vectors" << endl;
+    cout << "network> constructing nodes and edges of Markovian network from vectors" << endl;
     if (!((conns.size()==ktn.n_edges) || (weights.size()==ktn.n_edges) || \
          (stat_probs.size()==ktn.n_nodes) || \
-         (!comms.empty() && comms.size()==ktn.n_nodes))) throw Network::Ktn_exception();
+         (!comms.empty() && comms.size()==ktn.n_nodes))) throw Network::Network_exception();
     if (discretetime) {
-        cout << "ktn> interpreting edge weights as transition probabilities at a lag time: " << tau << endl;
+        cout << "network> interpreting edge weights as transition probabilities at a lag time: " << tau << endl;
         ktn.tau=tau; }
     ktn.ncomms=ncomms;
     if (!comms.empty()) ktn.comm_sizes.resize(ncomms);
@@ -353,7 +359,7 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &conns, \
             ktn.nodes[i].comm_id = comms[i];
             ktn.nodes[i].bin_id = bins[i];
             ktn.comm_sizes[comms[i]]++;
-            if (comms[i]>=ncomms) throw Ktn_exception();
+            if (comms[i]>=ncomms) throw Network_exception();
             if (bins[i]+1>ktn.nbins) ktn.nbins=bins[i]+1;
         }
         ktn.nodes[i].pi = stat_probs[i];
@@ -361,17 +367,17 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &conns, \
     }
     tot_pi = exp(tot_pi);
     if (abs(tot_pi-1.)>1.E-10) {
-        cout << "ktn> error: total equilibrium probabilities of nodes is: " << tot_pi << " =/= 1." << endl;
-        throw Network::Ktn_exception(); }
+        cout << "network> error: total equilibrium probabilities of nodes is: " << tot_pi << " =/= 1." << endl;
+        throw Network::Network_exception(); }
 
     // network topology setup
     for (int i=0;i<ktn.n_edges;i++) {
         ktn.edges[2*i].edge_id = 2*i;
         ktn.edges[(2*i)+1].edge_id = (2*i)+1;
         if (conns[i].first==conns[i].second) {
-            cout << "ktn> error: self-loop transitions must not be specified in the topology files" << endl; exit(EXIT_FAILURE); }
+            cout << "network> error: self-loop transitions must not be specified in the topology files" << endl; exit(EXIT_FAILURE); }
         if (conns[i].first<1 || conns[i].second<1 || conns[i].first>ktn.n_nodes || conns[i].second>ktn.n_nodes) {
-            cout << "ktn> error: encountered invalid node ID in edge_conns.dat file" << endl; exit(EXIT_FAILURE); }
+            cout << "network> error: encountered invalid node ID in edge_conns.dat file" << endl; exit(EXIT_FAILURE); }
         ktn.edges[2*i].deadts = false;
         ktn.edges[(2*i)+1].deadts = false;
         if (!discretetime) { // edge weights are transition rates
@@ -405,16 +411,17 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &conns, \
             calc_t_selfloop(ktn.nodes[i]);
             ktn.nodes[i].t_esc = tau;
         }
+        if (noloop) ktn.renormalize_selfloops();
     }
 
     // set endpoint states
     for (int i=0;i<nodesinA.size();i++) {
-        if (nodesinA[i]>ktn.n_nodes) throw Ktn_exception();
+        if (nodesinA[i]>ktn.n_nodes) throw Network_exception();
         ktn.nodes[nodesinA[i]-1].aorb = -1;
         ktn.nodesA.insert(&ktn.nodes[nodesinA[i]-1]);
     }
     for (int i=0;i<nodesinB.size();i++) {
-        if (nodesinB[i]>ktn.n_nodes) throw Ktn_exception();
+        if (nodesinB[i]>ktn.n_nodes) throw Network_exception();
         ktn.nodes[nodesinB[i]-1].aorb = 1;
         ktn.nodesB.insert(&ktn.nodes[nodesinB[i]-1]);
     }
@@ -422,13 +429,13 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &conns, \
        number of initial (B) nodes is equal to the number of nodes in that community - i.e. (I \cup B) is allowed to
        be a single community */
     if (!comms.empty() && !nodesinA.empty()) { // community IDs of A (and of B) nodes should be consistent
-        if (ktn.nodesA.size()!=ktn.comm_sizes[(*ktn.nodesA.begin())->comm_id]) throw Ktn_exception();
+        if (ktn.nodesA.size()!=ktn.comm_sizes[(*ktn.nodesA.begin())->comm_id]) throw Network_exception();
         int commA=(*ktn.nodesA.begin())->comm_id;
         for (set<const Node*>::iterator it_set=ktn.nodesA.begin();it_set!=ktn.nodesA.end();++it_set) {
-            if ((*it_set)->comm_id!=commA) throw Ktn_exception(); }
+            if ((*it_set)->comm_id!=commA) throw Network_exception(); }
         int commB=(*ktn.nodesB.begin())->comm_id;
         for (set<const Node*>::iterator it_set=ktn.nodesB.begin();it_set!=ktn.nodesB.end();++it_set) {
-            if ((*it_set)->comm_id!=commB) throw Ktn_exception(); }
+            if ((*it_set)->comm_id!=commB) throw Network_exception(); }
     }
-    cout << "ktn> finished setting up Markovian network data structure" << endl;
+    cout << "network> finished setting up Markovian network data structure" << endl;
 }
