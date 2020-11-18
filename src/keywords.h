@@ -105,6 +105,8 @@ struct Keywords {
     // implicitly set switches
     bool initcond=false;      // "INITCOND" specifies if a nonequilibrium initial condition for the nodes in set B has been set
     bool statereduction=false; // is true when the purpose of the computation is to perform a state reduction procedure
+
+    void check_keywords();    // function to check that keyword specification is appropriate
 };
 
 Keywords read_keywords(const char *);

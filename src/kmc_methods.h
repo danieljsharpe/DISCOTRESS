@@ -212,11 +212,12 @@ class REA : public Wrapper_Method {
     bool discretetime;
     const Node *source_node, *sink_node; // pointers to source and sink nodes
     vector<vector<Walker>> shortest_paths; // k-th shortest paths to all nodes of the network
-    vector<vector<pair<Walker*,Edge*>>> candidate_paths; // pointers to possible candidates for next shortest path to each node of the network
+    vector<vector<pair<const Walker*,const Edge*>>> candidate_paths; // pointers to possible candidates for next shortest path to each node of the network
 
     void dijkstra(const Network&);
-    void next_path(const Network&,const Node&,int);
-    void add_candidate(int,int,int);
+    void next_path(const Node&,int);
+    void add_candidate(const Walker*,const Edge*);
+    void select_candidate(const Node&,int);
     void print_dijkstra();
     void print_visits(const Walker*);
 

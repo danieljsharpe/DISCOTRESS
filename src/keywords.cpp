@@ -171,76 +171,77 @@ Keywords read_keywords(const char *kw_file) {
     }
     kw_f.close();
     cout << "keywords> finished reading keywords" << endl;
+    my_kws.check_keywords();
+    return my_kws;
+}
 
-    // check necessary keywords and compatability
-    if (my_kws.n_nodes<=0 || my_kws.n_edges<=0 || ((my_kws.nA<=0 || my_kws.nB<=0) && my_kws.wrapper_method!=2)) {
+/* function to check necessary keywords and keyword compatability */
+void Keywords::check_keywords() {
+    if (n_nodes<=0 || n_edges<=0 || ((nA<=0 || nB<=0) && wrapper_method!=2)) {
         cout << "keywords> error: network parameters not set correctly" << endl; exit(EXIT_FAILURE); }
-    if ((my_kws.nabpaths<=0 && my_kws.wrapper_method!=2) || my_kws.maxit<=0) {
+    if ((nabpaths<=0 && wrapper_method!=2) || maxit<=0) {
         cout << "keywords> error: termination condition not specified correctly" << endl; exit(EXIT_FAILURE); }
-    if (my_kws.commsfile!=nullptr && my_kws.ncomms<=1) {
+    if (commsfile!=nullptr && ncomms<=1) {
         cout << "keywords> error: there must be at least two communities in the specified partitioning" << endl; exit(EXIT_FAILURE); }
-    if (my_kws.dumpintvls && my_kws.tintvl<=0.) {
+    if (dumpintvls && tintvl<=0.) {
         cout << "keywords> error: invalid time interval for dumping trajectory data" << endl; exit(EXIT_FAILURE); }
-    if (my_kws.traj_method<=0 || my_kws.wrapper_method<0) {
+    if (traj_method<=0 || wrapper_method<0) {
         cout << "keywords> error: must specify both a wrapper method and a trajectory method" << endl; exit(EXIT_FAILURE); }
-    if ((my_kws.discretetime || !my_kws.branchprobs) && my_kws.tau<=0.) {
+    if ((discretetime || !branchprobs) && tau<=0.) {
         cout << "keywords> error: if reading in transition probs for DTMC or otherwise not using branching probs, must specify tau as lag time" << endl;
         exit(EXIT_FAILURE); }
     // set the purpose of the computation to be a state reduction procedure and not a dynamical simulation, if appropriate
-    if (my_kws.committor || my_kws.absorption || my_kws.fundamentalred || my_kws.fundamentalirred || my_kws.mfpt || my_kws.gth) {
-        assert(my_kws.nabpaths==1);
-        if (my_kws.wrapper_method!=0 || my_kws.traj_method!=2) {
+    if (committor || absorption || fundamentalred || fundamentalirred || mfpt || gth) {
+        assert(nabpaths==1);
+        if (wrapper_method!=0 || traj_method!=2) {
             cout << "keywords> error: to perform a state reduction computation, must set WRAPPER BTOA and TRAJ KPS" << endl; exit(EXIT_FAILURE); }
-        if (my_kws.ncomms!=2) {
+        if (ncomms!=2) {
             cout << "keywords> error: a state reduction computation uses only two communities (namely, not A and A)" << endl; exit(EXIT_FAILURE); }
-        if ((my_kws.gth || my_kws.fundamentalirred) && my_kws.nA!=1) {
+        if ((gth || fundamentalirred) && nA!=1) {
             cout << "keywords> error: the GTH and FUND algorithms can be ran only when there is a single node in A" << endl; exit(EXIT_FAILURE); }
-        if (my_kws.fundamentalred && (my_kws.committor || my_kws.absorption || my_kws.fundamentalirred || my_kws.mfpt || my_kws.gth)) {
+        if (fundamentalred && (committor || absorption || fundamentalirred || mfpt || gth)) {
             cout << "keywords> error: computation of the fundamental matrix for a reducible Markov chain is standalone" << endl; exit(EXIT_FAILURE); }
-        if (my_kws.n_nodes-my_kws.nA>my_kws.nelim) {
+        if (n_nodes-nA>nelim) {
             cout << "keywords> error: for state reduction must set NELIM to ensure that all nodes not in A are eliminated" << endl; exit(EXIT_FAILURE); }
-        my_kws.statereduction=true;
-        my_kws.nthreads=1; // use only a single thread for a state reduction computation
+        statereduction=true;
+        nthreads=1; // use only a single thread for a state reduction computation
     }
     // check specification of wrapper method is valid
-    if (my_kws.wrapper_method==0) { // standard simulation of paths initialised in state B and terminating when state A is hit
+    if (wrapper_method==0) { // standard simulation of paths initialised in state B and terminating when state A is hit
         // ...
-    } else if (my_kws.wrapper_method==1) { // standard simulation of paths with fixed total time
-        assert(my_kws.trajt>my_kws.ssrec);
-        if (my_kws.trajt<=0. || my_kws.ssrec<0.) {
+    } else if (wrapper_method==1) { // standard simulation of paths with fixed total time
+        assert(trajt>ssrec);
+        if (trajt<=0. || ssrec<0.) {
             cout << "keywords> error: simulation of fixed-time paths not specified correctly" << endl; exit(EXIT_FAILURE); }
-    } else if (my_kws.wrapper_method==2) { // special wrapper method to propagate trajectories required for dimensionality reduction
-        if (my_kws.ntrajsfile==nullptr || my_kws.trajt<=0. || my_kws.commsfile==nullptr || my_kws.meanrate || my_kws.initcondfile || \
-            my_kws.traj_method==1 || my_kws.nA!=0 || my_kws.nB!=0 || !my_kws.dumpintvls) {
+    } else if (wrapper_method==2) { // special wrapper method to propagate trajectories required for dimensionality reduction
+        if (ntrajsfile==nullptr || trajt<=0. || commsfile==nullptr || meanrate || initcondfile || \
+            traj_method==1 || nA!=0 || nB!=0 || !dumpintvls) {
             cout << "keywords> error: dimensionality reduction simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
-    } else if (my_kws.wrapper_method==3) { // WE simulation
-        if (my_kws.taure<=0. || (my_kws.commsfile!=nullptr && !my_kws.adaptivecomms) || my_kws.nwalkers<1 || \
-            (my_kws.commstargfile!=nullptr && !my_kws.adaptivecomms) || my_kws.traj_method!=1) {
+    } else if (wrapper_method==3) { // WE simulation
+        if (taure<=0. || (commsfile!=nullptr && !adaptivecomms) || nwalkers<1 || \
+            (commstargfile!=nullptr && !adaptivecomms) || traj_method!=1) {
             cout << "keywords> error: WE simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
-    } else if (my_kws.wrapper_method==4) { // FFS simulation
-        if (my_kws.commsfile==nullptr) {
+    } else if (wrapper_method==4) { // FFS simulation
+        if (commsfile==nullptr) {
             cout << "keywords> error: FFS simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
-    } else if (my_kws.wrapper_method==5 || my_kws.nwalkers<1) { // NEUS simulation
-        if (my_kws.commsfile==nullptr || my_kws.traj_method!=1) {
+    } else if (wrapper_method==5 || nwalkers<1) { // NEUS simulation
+        if (commsfile==nullptr || traj_method!=1) {
             cout << "keywords> error: NEUS simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
-    } else if (my_kws.wrapper_method==6 || my_kws.nwalkers<1) { // milestoning simulation
-        if (my_kws.commsfile==nullptr) {
+    } else if (wrapper_method==6 || nwalkers<1) { // milestoning simulation
+        if (commsfile==nullptr) {
             cout << "keywords> error: milestoning simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
-    } else if (my_kws.wrapper_method==7) { // recursive enumeration algorithm for k shortest paths
-        if (my_kws.nA!=1 || my_kws.nB!=1 || my_kws.nabpaths<1 || (my_kws.discretetime && !my_kws.noloop) || \
-            (!my_kws.discretetime && !my_kws.branchprobs)) {
+    } else if (wrapper_method==7) { // recursive enumeration algorithm for k shortest paths
+        if (nA!=1 || nB!=1 || nabpaths<1 || (discretetime && !noloop) || (!discretetime && !branchprobs)) {
             cout << "keywords> error: REA k shortest paths computation not specified correctly" << endl; exit(EXIT_FAILURE); }
     }
     // check specification of trajectory method is valid
-    if (my_kws.traj_method==1) { // BKL algorithm
+    if (traj_method==1) { // BKL algorithm
         // ...
-    } else if (my_kws.traj_method==2) { // kPS algorithm
-        if ((my_kws.commsfile==nullptr && !my_kws.adaptivecomms) || my_kws.nelim<=0) {
+    } else if (traj_method==2) { // kPS algorithm
+        if ((commsfile==nullptr && !adaptivecomms) || nelim<=0) {
             cout << "keywords> error: kPS algorithm not specified correctly" << endl; exit(EXIT_FAILURE); }
-    } else if (my_kws.traj_method==3) { // MCAMC algorithm
-        if (my_kws.branchprobs || my_kws.noloop) {
+    } else if (traj_method==3) { // MCAMC algorithm
+        if (branchprobs || noloop) {
             cout << "keywords> error: MCAMC algorithm not specified correctly" << endl; exit(EXIT_FAILURE); }
     }
-
-    return my_kws;
 }

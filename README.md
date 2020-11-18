@@ -3,7 +3,7 @@
 Welcome to the **DISCOTRESS** (DIscrete State COntinuous Time Rare Event Simulation Suite) program, developed by Daniel J. Sharpe.
 
 ![Getting from B to A in a Markov chain](https://github.com/danieljsharpe/danieljsharpe/blob/master/discotress_network_annotated.png?raw=true)
-<p align="center">Probability fluxes (edge thickness), visitation probabilities (node opacity), and stationary probabilities (node size) for the transition from an initial set of nodes, &#120069;, to an absorbing (target) set of nodes, &#120068;, in a Markov chain.</p>
+<p align="center"><i>Probability fluxes (edge thickness), visitation probabilities (node opacity), and stationary probabilities (node size) for the transition from an initial set of nodes, &#120069;, to an absorbing (target) set of nodes, &#120068;, in a Markov chain.</i></p>
 
 **DISCOTRESS** is a software package to simulate and analyse the dynamics for arbitrary Markov chains. **DISCOTRESS** is designed to enable simulation and analysis of the dynamics for discrete- and continuous-time finite Markov chains (DTMCs and CTMCs, respectively) that are nearly reducible. Such Markov chains exhibit strong metastability; that is, there exists a comparatively slow (i.e. low probability) process. In this rare event regime, which is frequently encountered in realistic modeling tasks, standard simulation algorithms are unfeasible owing to their inefficiency, and linear algebra methods for the exact computation of dynamical quantities fail to converge or lead to a severe propagation of numerical error. The advanced methods implemented in DISCOTRESS circumvent these problems.
 
