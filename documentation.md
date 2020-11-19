@@ -110,7 +110,7 @@ The **WRAPPER** method handles a set of walkers (independent trajectories) that 
   the milestoning method accelerates the sampling of &#120068; &#8592; &#120069; steady state paths by simulating walkers initialised at milestones (interfaces between macrostates) hitting adjacent milestones.
 
 **REA**  
-  the recursive enumeration algorithm (REA) determines the highest-probability &#120068; &#8592; &#120069; paths using a *k* shortest paths algorithm wherein the edge costs are given by the contributions of individual transitions to the total path action. There must be only a single initial (source) node and a single absorbing (sink) node (*cf*. the **NODESAFILE** and **NODESBFILE** keywords). The choice of **TRAJ** method option is arbitrary since an explicit simulation is not performed. **NABPATHS** is interpreted as the number of highest-probability paths to be computed (i.e. = *k*). The highest-probability path is written to the file *shortest_path.dat* in the usual *walker.x.y.dat* format (see above), except that the path is printed backwards. The output file *fpp_properties.dat* lists the properties of the dominant *k* first passage paths from the source to the sink node, stated in order of decreasing probability (increasing path action). If bins are specified (note that this increases the memory and time complexity of the REA) then the list of bins that are visited along the *k*-th highest-probability first passage path is printed to the output file *visits.k.dat* for all *k*. For a DTMC (keyword **DISCRETETIME**), **NOLOOP** must be set, and for a CTMC (default), **BRANCHPROBS** must be set, so that shortest paths do not contain self-loop transitions for nodes. Hence, the entropy flow along shortest paths is not computed for DTMCs.
+  the recursive enumeration algorithm (REA) determines the highest-probability &#120068; &#8592; &#120069; paths using a *k* shortest paths algorithm wherein the edge costs are given by the contributions of individual transitions to the total path action. There must be only a single initial (source) node and a single absorbing (sink) node (*cf*. the **NODESAFILE** and **NODESBFILE** keywords). The choice of **TRAJ** method option is arbitrary since an explicit simulation is not performed. **NABPATHS** is interpreted as the number of highest-probability paths to be computed (i.e. = *k*). If the **WRITEREA** keyword is specified, then trajectory data for the *k* highest-probability paths are written to the files *shortest_path.k.dat* in the usual *walker.x.y.dat* format (see above), except that the paths are printed backwards. The output file *fpp_properties.dat* lists the properties of the dominant *k* first passage paths from the source to the sink node, stated in order of decreasing probability (increasing path action). For a DTMC (keyword **DISCRETETIME**), **NOLOOP** must be set, and for a CTMC (default), **BRANCHPROBS** must be set, so that shortest paths do not contain self-loop transitions for nodes. Hence, the entropy flow along shortest paths is not computed for DTMCs.
 
 ----
 
@@ -182,6 +182,9 @@ The following is a list of keywords that specify simulation parameters pertainin
 
 **TRAJT** `long double`  
   mandatory if **WRAPPER** is **FIXEDT** or **DIMREDN**. The maximum time for trajectories when simulating paths of fixed total time.
+
+**WRITEREA**  
+  if **WRAPPER REA**, write output trajectory files *shortest_path.k.dat*, in the usual *walker.x.y.dat* format (see above) except backwards, for each of the *k* shortest paths.
 
 ----
 

@@ -161,7 +161,7 @@ Discotress::Discotress () {
     } else if (my_kws.wrapper_method==6) { // milestoning simulation
     } else if (my_kws.wrapper_method==7) { // recursive enumeration algorithm for k shortest paths problem
         wrapper_args.nwalkers=0; // REA class does not store paths in walkers vector, instead has its own arrays
-        REA *rea_ptr = new REA(*ktn,my_kws.discretetime,wrapper_args);
+        REA *rea_ptr = new REA(*ktn,my_kws.discretetime,my_kws.writerea,wrapper_args);
         wrapper_method_obj = rea_ptr;
     } else {
         throw exception(); // a wrapper method object must be set

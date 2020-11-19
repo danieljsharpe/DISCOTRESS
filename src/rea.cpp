@@ -28,9 +28,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace std;
 
-REA::REA(const Network &ktn, bool discretetime, const Wrapper_args &wrapper_args) : Wrapper_Method(wrapper_args) {
+REA::REA(const Network &ktn, bool discretetime, bool writerea, const Wrapper_args &wrapper_args) : Wrapper_Method(wrapper_args) {
     cout << "rea> using the REA to determine the " << wrapper_args.nabpaths << " highest-probability paths" << endl;
-    this->discretetime=discretetime;
+    this->discretetime=discretetime; this->writerea=writerea;
     source_node = *ktn.nodesB.begin(); // NB there is only a single source node
     sink_node = *ktn.nodesA.begin(); // NB there is only a single sink node
     shortest_paths.resize(ktn.n_nodes); candidate_paths.resize(ktn.n_nodes);
@@ -43,17 +43,12 @@ REA::REA(const Network &ktn, bool discretetime, const Wrapper_args &wrapper_args
                and is stored as the element:    shortest_paths[curr_node->node_id-1][path_no-1] */
             shortest_paths[i][k-1] = { walker_id:0,path_no:k,k:0,t:0.L, \
                                        p:numeric_limits<long double>::infinity(),s:0.L,prev_node:nullptr,curr_node:&ktn.nodes[i] };
-            shortest_paths[i][k-1].visited.resize(wrapper_args.nbins);
-            fill(shortest_paths[i][k-1].visited.begin(),shortest_paths[i][k-1].visited.end(),false);
         }
         candidate_paths[i].resize(ktn.nodes[i].udeg); // edges are bidirectional, so in- and out-degrees of nodes are the same
         for (int j=0;j<ktn.nodes[i].udeg;j++) {
             candidate_paths[i][j].first=nullptr; candidate_paths[i][j].second=nullptr;
         }
     }
-    if (!ktn.nbins>0) return;
-    for (int k=1;k<wrapper_args.nabpaths+1;k++) { // sink (target) node is visited along all shortest paths to sink node
-        shortest_paths[sink_node->node_id-1][k-1].visited[sink_node->bin_id]=true; } // this is needed for writing visits.x.dat files
 }
 
 REA::~REA() {}
@@ -61,12 +56,9 @@ REA::~REA() {}
 void REA::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {
 
     dijkstra(ktn); // find shortest (i.e. highest-probability) path
-    print_dijkstra(); // write shortest path to output file
     for (int k=2;k<nabpaths+1;k++) next_path(*sink_node,k); // main loop of REA
-    for (int k=1;k<nabpaths+1;k++) {
-        shortest_paths[sink_node->node_id-1][k-1].dump_fpp_properties();
-        if (ktn.nbins>0) print_visits(&shortest_paths[sink_node->node_id-1][k-1]);
-    }
+    for (int k=1;k<nabpaths+1;k++) shortest_paths[sink_node->node_id-1][k-1].dump_fpp_properties();
+    if (writerea) print_shortest_paths(); // print the k shortest paths to the sink node
 }
 
 /* compute the first shortest path from the source node to all other nodes using Dijkstra's algorithm */
@@ -92,10 +84,6 @@ void REA::dijkstra(const Network& ktn) {
                 if (!discretetime) shortest_paths[m][0].s = shortest_paths[n][0].s + (edgeptr->rev_edge->k-edgeptr->k);
                 shortest_paths[m][0].prev_node = curr_node; // set previous node in shortest path tree
                 shortest_paths[m][0].walker_id = 1;
-                for (int j=0;j<ktn.nbins;j++) { // update boolean values representing bin visits
-                    if (j==n) { shortest_paths[m][0].visited[j]=true;
-                    } else if (j!=sink_node->node_id-1) { shortest_paths[m][0].visited[j] = shortest_paths[n][0].visited[j]; }
-                }
             }
             edgeptr=edgeptr->next_from;
         }
@@ -121,10 +109,13 @@ void REA::next_path(const Node &vnode, int k) {
         // loop over nodes with edges to node v
         edgeptr = vnode.top_to;
         while (edgeptr!=nullptr) {
-            if (vnode==*source_node || !(*(shortest_paths[vnode.node_id-1][0].prev_node)==*(edgeptr->from_node))) {
+            unode = edgeptr->from_node;
+            // we are interested in first passage paths; the sink node cannot be a predecessor in any shortest path to any node
+            if (*unode==*sink_node) { edgeptr=edgeptr->next_to; continue; }
+            if (vnode==*source_node || !(*(shortest_paths[vnode.node_id-1][0].prev_node)==*unode)) {
                 /* from_node is not the predecessor of v in the shortest path tree, add the union of:
                    { 1st shortest path to node u } \cup node v    as a possible candidate for the next shortest path to node v */
-                add_candidate(&shortest_paths[vnode.node_id-1][0],edgeptr);
+                add_candidate(&shortest_paths[unode->node_id-1][0],edgeptr);
             }
             edgeptr=edgeptr->next_to;
         }
@@ -138,7 +129,7 @@ void REA::next_path(const Node &vnode, int k) {
     unode = shortest_paths[vnode.node_id-1][k-2].prev_node;
     k1 = shortest_paths[vnode.node_id-1][k-2].walker_id;
     if (debug) cout << "node u: " << unode->node_id << " k1: " << k1 << endl;
-    /* if the (k1+1)-th shortest path to node u has not yet been computed, then compute it with a recursive call to next_path() */
+    // if the (k1+1)-th shortest path to node u has not yet been computed, then compute it with a recursive call to next_path()
     if (shortest_paths[unode->node_id-1][k1].prev_node==nullptr) next_path(*unode,k1+1);
     // at this point, the (k1+1)-th shortest path to node u should now have been determined */
     if (shortest_paths[unode->node_id-1][k1].prev_node==nullptr) {
@@ -156,8 +147,8 @@ void REA::next_path(const Node &vnode, int k) {
     select_candidate: select_candidate(vnode,k); // find the candidate for the next (i.e. k-th) shortest path to node v with the lowest cost
 }
 
-/* add the union of: { k-th shortest path to node u } \cup node v,   where u is the node from which the uvedge begins,
-   as a possible candidate for the next shortest path to node v  */
+/* add the union of: { k-th shortest path to node u } \cup node v,   where u/v are the to/from nodes associated with uvedge, respectively,
+   and the corresponding path to node u is pointed to by cand_path,   as a possible candidate for the next shortest path to node v  */
 void REA::add_candidate(const Walker *cand_path, const Edge *uvedge) {
     if (debug) {
         cout << "add_candidate() to node: " << uvedge->to_node->node_id \
@@ -184,15 +175,18 @@ void REA::select_candidate(const Node &vnode, int k) {
     int m=-1; long double mincost=numeric_limits<long double>::infinity();
     for (int i=0;i<vnode.udeg;i++) { // loop over candidate paths
         if (candidate_paths[v-1][i].first==nullptr) continue; // empty space in list of candidate paths
-        cout << "  i: " << i << " u: " << candidate_paths[v-1][i].first->prev_node->node_id << "  path no. : " << candidate_paths[v-1][i].first->prev_node->node_id \
-             << "  cost: " << candidate_paths[v-1][i].first->p - log(candidate_paths[v-1][i].second->t) << endl;
+        if (debug) {
+            cout << "  idx: " << i << endl; cout << "    path no. : " << candidate_paths[v-1][i].first->path_no \
+                 << "    to node u: " << candidate_paths[v-1][i].first->curr_node->node_id << endl;
+            cout << "    cost of  { path to u } cup v: " << candidate_paths[v-1][i].first->p - log(candidate_paths[v-1][i].second->t) << endl;
+        }
         if (candidate_paths[v-1][i].first->p - log(candidate_paths[v-1][i].second->t) < mincost) {
             m=i; // m represents the index of the best candidate path in the list of all candidate paths for node v
             mincost = candidate_paths[v-1][i].first->p - log(candidate_paths[v-1][i].second->t);
         }
     }
     if (m<0) { cout << "rea> error: no candidates for next shortest path to node " << vnode.node_id << endl; exit(EXIT_FAILURE); }
-    if (debug) cout << "m: " << m << "    mincost: " << mincost << endl;
+    if (debug) cout << "  selected candidate idx m: " << m << "    mincost: " << mincost << endl;
     // assign the properties of the best candidate path to the k-th shortest path to node v
     shortest_paths[v-1][k-1].p = candidate_paths[v-1][m].first->p - log(candidate_paths[v-1][m].second->t);
     shortest_paths[v-1][k-1].k = candidate_paths[v-1][m].first->k + 1;
@@ -203,39 +197,30 @@ void REA::select_candidate(const Node &vnode, int k) {
     }
     shortest_paths[v-1][k-1].prev_node = candidate_paths[v-1][m].second->from_node;
     shortest_paths[v-1][k-1].walker_id = candidate_paths[v-1][m].first->path_no;
-    for (int j=0;candidate_paths[v-1][m].first->visited.size();j++) {
-        if (j==v-1) { shortest_paths[v-1][k-1].visited[j]=true;
-        } else if (j!=sink_node->node_id-1) { shortest_paths[v-1][k-1].visited[j] = candidate_paths[v-1][m].first->visited[j]; }
-    }
     // delete the selected candidate path from the list
     candidate_paths[v-1][m].first=nullptr; candidate_paths[v-1][m].second=nullptr;
 }
 
-/* print the first shortest path, determined by Dijkstra's algorithm, by tracing the shortest path tree */
-void REA::print_dijkstra() {
-    if (debug) cout << "print_dijkstra()" << endl;
-    ofstream spath_f;
-    string spath_fname="shortest_path.dat";
-    spath_f.open(spath_fname,ios_base::trunc);
-    spath_f.setf(ios::right,ios::adjustfield); spath_f.setf(ios::scientific,ios::floatfield);
-    spath_f.precision(10);
-    const Node *curr_node = sink_node;
-    const Walker* curr_path;
-    while (curr_node!=nullptr) {
-        curr_path = &shortest_paths[curr_node->node_id-1][0];
-        spath_f << setw(7) << curr_node->node_id << setw(7) << curr_node->bin_id;
-        spath_f << setw(25) << curr_path->t << setw(30) << curr_path->k << setw(25) << curr_path->p << setw(25) << curr_path->s << endl;
-        curr_node=shortest_paths[curr_node->node_id-1][0].prev_node;
+/* print the k shortest paths to the sink node from the source node by tracing the elements in the array of the k shortest paths
+   to all nodes (note that the paths are therefore printed backwards) */
+void REA::print_shortest_paths() {
+    if (debug) cout << "print_shortest_paths()" << endl;
+    const Walker *walker;
+    for (int k=1;k<nabpaths+1;k++) {
+        ofstream spath_f;
+        string spath_fname="shortest_path."+to_string(k)+".dat";
+        spath_f.open(spath_fname,ios_base::trunc);
+        spath_f.setf(ios::right,ios::adjustfield); spath_f.setf(ios::scientific,ios::floatfield);
+        spath_f.precision(10);
+        // start from k-th shortest path to sink node and loop to trace back through the k shortest paths array
+        walker = &shortest_paths[sink_node->node_id-1][k-1];
+        while (true) {
+            // print path information
+            spath_f << setw(7) << walker->curr_node->node_id << setw(7) << walker->curr_node->comm_id;
+            spath_f << setw(25) << walker->t << setw(30) << walker->k << setw(25) << walker->p << setw(25) << walker->s << endl;
+            if (walker->prev_node==nullptr) break;
+            // find parent path of current path in k shortest paths array
+            walker = &shortest_paths[walker->prev_node->node_id-1][walker->walker_id-1];
+        }
     }
-}
-
-/* write the nodes that are visited along a shortest path to the sink (target) node to an output file */
-void REA::print_visits(const Walker *walker) {
-    if (debug) cout << "print_visits()" << endl;
-    ofstream visits_f;
-    string visits_fname="visits."+to_string(walker->path_no)+".dat";
-    visits_f.open(visits_fname,ios_base::trunc);
-    int i=0;
-    for (auto inpath: walker->visited) {
-        if (inpath) visits_f << i << endl; i++; }
 }

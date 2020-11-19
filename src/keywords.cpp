@@ -129,6 +129,8 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.taure=stod(vecstr[1]);
         } else if (vecstr[0]=="TRAJT") {
             my_kws.trajt=stold(vecstr[1]);
+        } else if (vecstr[0]=="WRITEREA") {
+            my_kws.writerea=true;
         // keywords for state reduction procedures
         } else if (vecstr[0]=="ABSORPTION") {
             my_kws.absorption=true;
@@ -224,11 +226,11 @@ void Keywords::check_keywords() {
     } else if (wrapper_method==4) { // FFS simulation
         if (commsfile==nullptr) {
             cout << "keywords> error: FFS simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
-    } else if (wrapper_method==5 || nwalkers<1) { // NEUS simulation
-        if (commsfile==nullptr || traj_method!=1) {
+    } else if (wrapper_method==5) { // NEUS simulation
+        if (commsfile==nullptr || traj_method!=1 || nwalkers<1) {
             cout << "keywords> error: NEUS simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
-    } else if (wrapper_method==6 || nwalkers<1) { // milestoning simulation
-        if (commsfile==nullptr) {
+    } else if (wrapper_method==6) { // milestoning simulation
+        if (commsfile==nullptr || nwalkers<1) {
             cout << "keywords> error: milestoning simulation not specified correctly" << endl; exit(EXIT_FAILURE); }
     } else if (wrapper_method==7) { // recursive enumeration algorithm for k shortest paths
         if (nA!=1 || nB!=1 || nabpaths<1 || (discretetime && !noloop) || (!discretetime && !branchprobs)) {

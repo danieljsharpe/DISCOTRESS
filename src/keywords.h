@@ -80,6 +80,7 @@ struct Keywords {
                               //  A<-B transition path ensemble statistics begins
     double taure=0.;          // "TAURE" time between resampling ensemble of trajectories (WE)
     long double trajt=0.;     // "TRAJT" max time for trajectories (when simulating trajectories of fixed total time)
+    bool writerea=false;      // "WRITEREA" if WRAPPER REA, write trajectory data for the k shortest paths to output files
 
     // keywords for state reduction methods
     bool absorption=false;    // "ABSORPTION" specifies that an absorption probability calculation is to be performed

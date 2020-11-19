@@ -210,6 +210,7 @@ class REA : public Wrapper_Method {
     private:
 
     bool discretetime;
+    bool writerea;
     const Node *source_node, *sink_node; // pointers to source and sink nodes
     vector<vector<Walker>> shortest_paths; // k-th shortest paths to all nodes of the network
     vector<vector<pair<const Walker*,const Edge*>>> candidate_paths; // pointers to possible candidates for next shortest path to each node of the network
@@ -218,12 +219,11 @@ class REA : public Wrapper_Method {
     void next_path(const Node&,int);
     void add_candidate(const Walker*,const Edge*);
     void select_candidate(const Node&,int);
-    void print_dijkstra();
-    void print_visits(const Walker*);
+    void print_shortest_paths();
 
     public:
 
-    REA(const Network&,bool,const Wrapper_args&);
+    REA(const Network&,bool,bool,const Wrapper_args&);
     ~REA();
     void run_enhanced_kmc(const Network&, Traj_Method*);
 };
