@@ -86,7 +86,10 @@ Discotress::Discotress () {
     if (my_kws.wrapper_method!=2) { // simulating the A<-B TPE, read in info on A and B sets
         nodesAvec = Read_files::read_one_col<int>(my_kws.nodesafile.c_str());
         nodesBvec = Read_files::read_one_col<int>(my_kws.nodesbfile.c_str());
-        if ((nodesAvec.size()!=my_kws.nA) || (nodesBvec.size()!=my_kws.nB)) { cout << " oh no" << endl; throw exception(); }
+        if ((nodesAvec.size()!=my_kws.nA) || (nodesBvec.size()!=my_kws.nB)) {
+            cout << "discotress> error: expected numbers of A and B nodes not consistent with lists of nodes in files" << endl;
+            throw exception();
+        }
         cout << "discotress> simulating " << my_kws.nabpaths << " transition paths. Max. no. of iterations: " << my_kws.maxit << endl;
     } else { // simulating trajectories to obtain data for coarse-graining, read in info on number of trajs for each comm
         ntrajsvec = Read_files::read_one_col<int>(my_kws.ntrajsfile);
@@ -96,7 +99,7 @@ Discotress::Discotress () {
     vector<double> init_probs;
     if (my_kws.initcond) init_probs = Read_files::read_one_col<double>(my_kws.initcondfile);
 
-    // set up the Markov chain (KTN) data structure
+    // set up the Markov chain (Network) data structure
     cout << "discotress> setting up the Markovian network data object..." << endl;
     ktn = new Network(my_kws.n_nodes,my_kws.n_edges);
     if (my_kws.commsfile!=nullptr) {
@@ -125,8 +128,11 @@ Discotress::Discotress () {
         traj_method_obj = bkl_ptr;
     } else if (my_kws.traj_method==2) {     // KPS algorithm
         KPS *kps_ptr = new KPS(*ktn,my_kws.nelim,my_kws.kpskmcsteps,my_kws.adaptivecomms,my_kws.adaptminrate,traj_args);
-        if (my_kws.statereduction) kps_ptr->set_statereduction_procs(my_kws.committor,my_kws.absorption,my_kws.fundamentalred, \
-                    my_kws.fundamentalirred,my_kws.mfpt,my_kws.gth);
+        if (my_kws.statereduction) {
+            SR_args sr_args{my_kws.absorption,my_kws.committor,my_kws.fundamentalirred,my_kws.fundamentalred, \
+                            my_kws.gth,my_kws.mfpt};
+            kps_ptr->set_statereduction_procs(sr_args);
+        }
         traj_method_obj = kps_ptr;
     } else if (my_kws.traj_method==3) {     // MCAMC algorithm
         MCAMC *mcamc_ptr = new MCAMC(*ktn,my_kws.kpskmcsteps,my_kws.meanrate,traj_args);

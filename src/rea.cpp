@@ -71,9 +71,10 @@ void REA::dijkstra(const Network& ktn) {
     shortest_paths[curr_node->node_id-1][0].p=0.L;
     // main loop for Dijkstra's algorithm
     for (int i=0;i<ktn.n_nodes;i++) {
+        const Edge *edgeptr=curr_node->top_from;
+        if (*curr_node==*sink_node) goto find_next_node; // sink_node cannot be a predecessor of any other node in the shortest path tree, skip
         n=curr_node->node_id-1;
         insptree[n]=true;
-        const Edge *edgeptr=curr_node->top_from;
         while (edgeptr!=nullptr) { // loop over outgoing edges
             m=edgeptr->to_node->node_id-1;
             if (shortest_paths[n][0].p - 1.L*log(edgeptr->t) < shortest_paths[m][0].p) {
@@ -87,6 +88,7 @@ void REA::dijkstra(const Network& ktn) {
             }
             edgeptr=edgeptr->next_from;
         }
+        find_next_node: {}
         // find node with current lowest shortest path cost
         long double mincost=numeric_limits<long double>::infinity();
         for (int j=0;j<ktn.n_nodes;j++) {

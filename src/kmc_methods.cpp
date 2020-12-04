@@ -267,7 +267,7 @@ void BTOA::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {
     }
     cout << "\nbtoa> simulation terminated after " << n_it << " iterations. Simulated " \
          << n_ab << " transition paths" << endl;
-    if (!adaptivecomms) calc_tp_stats(ktn.nbins); // calc committor and visitation probabilities for bins and write to file
+    if (!traj_method_obj->statereduction && !adaptivecomms) calc_tp_stats(ktn.nbins); // calc committor and visitation probs for bins and write to file
 }
 
 /* Wrapper_Method corresponding to simulation of paths of fixed total time (using chosen trajectory propagation method) with no
@@ -322,6 +322,7 @@ void DIMREDN::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj)
     }
 }
 
+/* constructor for Traj_Method class */
 Traj_Method::Traj_Method(const Traj_args &traj_args) {
     this->discretetime=traj_args.discretetime; this->statereduction=traj_args.statereduction;
     this->tintvl=traj_args.tintvl; this->dumpintvls=traj_args.dumpintvls;
@@ -330,7 +331,8 @@ Traj_Method::Traj_Method(const Traj_args &traj_args) {
 
 Traj_Method::~Traj_Method() {}
 
-Traj_Method::Traj_Method(const Traj_Method& traj_method_obj) {
+/* copy constructor for Traj_Method class */
+Traj_Method::Traj_Method(const Traj_Method &traj_method_obj) {
     this->discretetime=traj_method_obj.discretetime; this->statereduction=traj_method_obj.statereduction;
     this->tintvl=traj_method_obj.tintvl; this->dumpintvls=traj_method_obj.dumpintvls;
     this->seed=traj_method_obj.seed; this->debug=traj_method_obj.debug;

@@ -117,6 +117,7 @@ struct Network {
     void del_spec_from_edge(int,int);
     void update_to_edge(int,int);
     void update_from_edge(int,int);
+    static long double calc_gt_factor(const Node&); // calc (1-T_{nn})^{-1} factors needed in graph transformation
     static void calc_t_esc(Node&);
     static void calc_t_selfloop(Node&);
     static long double calc_net_flux(Edge&);
@@ -135,7 +136,7 @@ struct Network {
     vector<Edge> edges; // note that this vector contains two entries for forward and reverse transitions for each pair of nodes
 
     struct Network_exception {
-        const char * what () const throw () { return "network> thrown Ktn exception, terminating"; }
+        const char * what () const throw () { return "network> fatal error in Network object"; }
     };
 
     int n_nodes, n_edges; // number of nodes and bidirectional edges (not including self-loops)

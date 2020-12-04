@@ -63,11 +63,18 @@ struct Wrapper_args {
     int seed; bool debug;
 };
 
-/* arguments to be passed to Traj_Method object (base class for methods to propagate individual trajectories */
+/* arguments to be passed to Traj_Method object (base class for methods to propagate individual trajectories) */
 struct Traj_args {
     bool discretetime; bool statereduction;
     double tintvl; bool dumpintvls;
     int seed; bool debug;
+};
+
+/* arguments for state reduction procedures, is a member of a Traj_Method object but only used in KPS derived class */
+struct SR_args{
+    bool absorption; bool committor;
+    bool fundamentalirred; bool fundamentalred;
+    bool gth; bool mfpt;
 };
 
 /* abstract class for wrapper (trajectory handling) enhanced sampling methods */
@@ -290,8 +297,7 @@ class KPS : public Traj_Method {
     bool adaptivecomms;
     double adaptminrate; // maximum allowed rate in finding a community on-the-fly
     int kpskmcsteps; // number of kMC steps to run after each kPS trapping basin escape trajectory sampled
-    // series of truth values specify which state reduction procedures to perform
-    bool committor=false, absorption=false, fundamentalred=false, fundamentalirred=false, mfpt=false, gth=false;
+    SR_args sr_args{false,false,false,false,false,false}; // object containing bool values specifying which state reduction procedures to perform
     vector<long double> mfpt_vals; // vector of MFPTs (elem is non-zero for non-absorbing nodes)
     long double mu; // sum of (unnormalised) stationary probabilities in GTH algorithm
 
@@ -318,9 +324,8 @@ class KPS : public Traj_Method {
     ~KPS();
     KPS(const KPS&);
     KPS* clone() { return new KPS(*this); }
-    void set_statereduction_procs(bool,bool,bool,bool,bool,bool);
+    void set_statereduction_procs(const SR_args&);
     void kmc_iteration(const Network&,Walker&);
-    static long double calc_gt_factor(Node*);
     static void reset_kmc_hop_counts(Network&);
     static long double gamma_distribn(unsigned long long int,long double,int);
     static unsigned long long int binomial_distribn(unsigned long long int,long double,int);

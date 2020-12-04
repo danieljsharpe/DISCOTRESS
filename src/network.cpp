@@ -29,6 +29,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace std;
 
+Node::Node() {}
+
+Node::~Node() {}
+
+/* copy constructor for Node copies properties but not pointers to Edge types */
+Node::Node(const Node &node) {
+    node_id=node.node_id; comm_id=node.comm_id; aorb=node.aorb;
+    udeg=node.udeg; eliminated=node.eliminated;
+    t_esc=node.t_esc; t=node.t; pi=node.pi;
+}
+
+/* constructor for Network class */
 Network::Network(int nnodes, int nedges) {
     nodes.resize(nnodes); n_nodes=nnodes;
     edges.resize(2*nedges); n_edges=nedges;
@@ -36,6 +48,7 @@ Network::Network(int nnodes, int nedges) {
 
 Network::~Network() {}
 
+/* copy constructor for Network class */
 Network::Network(const Network &ktn) {
     n_nodes=ktn.n_nodes; n_edges=ktn.n_edges;
     nodes.resize(n_nodes); edges.resize(n_edges);
@@ -53,15 +66,18 @@ Network::Network(const Network &ktn) {
     }
 }
 
-Node::Node() {}
+/* calculate the factor (1-T_{nn}) needed in the elimination of the n-th node in graph transformation */
+long double Network::calc_gt_factor(const Node &node_elim) {
 
-Node::~Node() {}
-
-/* copy constructor for Node copies properties but not pointers to Edge types */
-Node::Node(const Node &node) {
-    node_id=node.node_id; comm_id=node.comm_id; aorb=node.aorb;
-    udeg=node.udeg; eliminated=node.eliminated;
-    t_esc=node.t_esc; t=node.t; pi=node.pi;
+    long double factor=0.L; // equal to (1-T_{nn})
+    if (node_elim.t>0.99) { // loop over neighbouring edges to maintain numerical precision
+        const Edge *edgeptr = node_elim.top_from;
+        while (edgeptr!=nullptr) {
+            if (!(edgeptr->deadts || edgeptr->to_node->eliminated)) factor += edgeptr->t;
+            edgeptr=edgeptr->next_from;
+        }
+    } else { factor=1.L-node_elim.t; }
+    return factor;
 }
 
 /* print mean waiting times for nodes to file */
@@ -146,6 +162,14 @@ void Network::set_accumprobs() {
    self-loop transitions before a node is escaped */
 void Network::renormalize_selfloops() {
     cout << "network> renormalizing DTMC to subsume average effect of self-loop transitions" << endl;
+    for (Node &node: nodes) {
+        long double factor = Network::calc_gt_factor(node);
+        node.t = 0.L; node.t_esc *= 1.L/factor;
+        Edge *edgeptr = node.top_from;
+        while (edgeptr!=nullptr) {
+            edgeptr->t *= 1.L/factor; edgeptr=edgeptr->next_from;
+        }
+    }
 }
 
 // delete node i 
