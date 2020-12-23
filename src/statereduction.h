@@ -48,7 +48,6 @@ void KPS::calc_committor(const Network& ktn) {
         while (edgeptr!=nullptr) {
             if (edgeptr->deadts || edgeptr->to_node->eliminated) {
                 edgeptr=edgeptr->next_from; continue; }
-            cout << "from: " << edgeptr->from_node->node_id << " to: " << edgeptr->to_node->node_id << endl;
             if (edgeptr->to_node->aorb==-1) { // node in A
                 q_ab += edgeptr->t;
             } else if (edgeptr->to_node->aorb==1) { // node in B
@@ -61,7 +60,6 @@ void KPS::calc_committor(const Network& ktn) {
         q_ab_vals[node.node_id-1] = q_ab;
         q_ba_vals[node.node_id-1] = q_ba;
     }
-    cout << "doing committor probabilities for endpoint nodes" << endl;
     /* committor probabilities for endpoint nodes */
     for (int i=0;i<ktn.n_nodes;i++) {
         if (nodemask[i] && ktn.nodes[i].aorb==0) { continue; // intermediate nodes have all been accounted for

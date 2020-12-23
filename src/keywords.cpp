@@ -125,6 +125,11 @@ Keywords read_keywords(const char *kw_file) {
             my_kws.nelim=stoi(vecstr[1]);
         } else if (vecstr[0]=="NWALKERS") {
             my_kws.nwalkers=stoi(vecstr[1]);
+	} else if (vecstr[0]=="REANOTIRRED") {
+	    my_kws.reanotirred=true;
+	} else if (vecstr[0]=="STEADYSTATE") {
+	    my_kws.steadystate=true;
+	    my_kws.ssrec=stod(vecstr[1]);
         } else if (vecstr[0]=="TAURE") {
             my_kws.taure=stod(vecstr[1]);
         } else if (vecstr[0]=="TRAJT") {

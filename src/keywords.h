@@ -74,10 +74,12 @@ struct Keywords {
     bool meanrate=false;      // "MEANRATE" use the approximate mean rate method in MCAMC, instead of the exact FPTA method (default)
     int nelim=-1;             // "NELIM" maximum number of states to be eliminated from any trapping basin (kPS)
     int nwalkers=-1;          // "NWALKERS" for certain enhanced sampling (WRAPPER) methods, number of independent trajectories on the network. For
-                              //  certain other enhanced sampling methods, this parameter is ignored and overriden to a default value
+                              //      certain other enhanced sampling methods, this parameter is ignored and overriden to a default value
+    bool reanotirred=false;   // "REANOTIRRED" prevents throwing of errors when a candidate path cannot be found in the REA (expected behaviour for
+                              //      reducible, but not irreducible, Markov chains)
     bool steadystate=false;   // "STEADYSTATE" indicates that a small number of trajectories are to be used to estimate steady state dynamical properties
     double ssrec=0.;          // "STEADYSTATE" time interval after which the trajectory is considered to be equilibriated and recording of steady state
-                              //  A<-B transition path ensemble statistics begins
+                              //      A<-B transition path ensemble statistics begins
     double taure=0.;          // "TAURE" time between resampling ensemble of trajectories (WE)
     long double trajt=0.;     // "TRAJT" max time for trajectories (when simulating trajectories of fixed total time)
     bool writerea=false;      // "WRITEREA" if WRAPPER REA, write trajectory data for the k shortest paths to output files

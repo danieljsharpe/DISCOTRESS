@@ -331,6 +331,7 @@ void Network::calc_t_selfloop(Node &node) {
         if (!edgeptr->deadts) node.t -= edgeptr->t;
         edgeptr = edgeptr->next_from;
     }
+    if (node.t<0.) throw Network_exception();
 }
 
 /* calculate the net flux along an edge and its reverse edge */

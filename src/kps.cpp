@@ -47,7 +47,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace std;
 
-/* constructor for KPS class */
+/* constructor for KPS derived class */
 KPS::KPS(const Network &ktn, int nelim, int kpskmcsteps, bool adaptivecomms, double adaptminrate, \
          const Traj_args &traj_args) : Traj_Method(traj_args) {
 

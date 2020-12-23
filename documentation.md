@@ -110,7 +110,7 @@ The **WRAPPER** method handles a set of walkers (independent trajectories) that 
   the milestoning method accelerates the sampling of &#120068; &#8592; &#120069; steady state paths by simulating walkers initialised at milestones (interfaces between macrostates) hitting adjacent milestones.
 
 **REA**  
-  the recursive enumeration algorithm (REA) determines the highest-probability &#120068; &#8592; &#120069; paths using a *k* shortest paths algorithm wherein the edge costs are given by the contributions of individual transitions to the total path action. There must be only a single initial (source) node and a single absorbing (sink) node (*cf*. the **NODESAFILE** and **NODESBFILE** keywords). The choice of **TRAJ** method option is arbitrary since an explicit simulation is not performed. **NABPATHS** is interpreted as the number of highest-probability paths to be computed (i.e. = *k*). If the **WRITEREA** keyword is specified, then trajectory data for the *k* highest-probability paths are written to the files *shortest_path.k.dat* in the usual *walker.x.y.dat* format (see above), except that the paths are printed backwards. The output file *fpp_properties.dat* lists the properties of the dominant *k* first passage paths from the source to the sink node, stated in order of decreasing probability (increasing path action). For a DTMC (keyword **DISCRETETIME**), **NOLOOP** must be set, and for a CTMC (default), **BRANCHPROBS** must be set, so that shortest paths do not contain self-loop transitions for nodes. Hence, the entropy flow along shortest paths is not computed for DTMCs.
+  the recursive enumeration algorithm (REA) determines the highest-probability &#120068; &#8592; &#120069; paths using a *k* shortest paths algorithm wherein the edge costs are given by the contributions of individual transitions to the total path action. There must be only a single initial (source) node and a single absorbing (sink) node (*cf*. the **NODESAFILE** and **NODESBFILE** keywords). The choice of **TRAJ** method option is arbitrary since an explicit simulation is not performed. **NABPATHS** is interpreted as the number of highest-probability paths to be computed (i.e. = *k*). If the **REANOTIRRED** keyword is specified, then the Markov chain is taken to be reducible, and the REA will not throw an error in the case that no candidate paths to a node exist (the default behaviour, suitable for irreducible Markov chains, is to throw an error in this circumstance). If no candidate paths to the target node can be found and the **REANOTIRRED** keyword is specified, then the program will exit the REA loop and print the set of paths that have been determined (which is then the complete set of A<-B paths). If the **WRITEREA** keyword is specified, then trajectory data for the *k* highest-probability paths are written to the files *shortest_path.k.dat* in the usual *walker.x.y.dat* format (see above), except that the paths are printed backwards. The output file *fpp_properties.dat* lists the properties of the dominant *k* first passage paths from the source to the sink node, stated in order of decreasing probability (increasing path action). For a DTMC (keyword **DISCRETETIME**), **NOLOOP** must be set, and for a CTMC (default), **BRANCHPROBS** must be set, so that shortest paths do not contain self-loop transitions for nodes. Hence, the entropy flow along shortest paths is not computed for DTMCs.
 
 ----
 
@@ -166,13 +166,16 @@ The following is a list of keywords that specify simulation parameters pertainin
   optional. If **TRAJ** is **KPS** or **MCAMC**, specifies the number of standard BKL steps to be performed after a kPS or MCAMC escape from a trapping basin. Default is 0 (pure kPS (or MCAMC), no kMC steps). However, this is not the recommended value. If using **TRAJ KPS** or **TRAJ MCAMC**, for most systems, great gains in simulation efficiency will be achieved by setting **KPSKMCSTEPS** to an appropriate nonzero value. This is because many metastable systems will feature transition regions between metastable states. Therefore, after each basin escape, the trajectory will likely flicker between the two basins. Rather than simulate expensive kPS or MCAMC basin escape iterations for these trivial recrossings, it is much more efficient to perform standard BKL steps. Note that this keyword does not require **BRANCHPROBS** to be set, and can also be used with **DISCRETETIME**. Ignored if **ADAPTIVECOMMS**.
 
 **MEANRATE**  
-  optional. If **TRAJ MCAMC**, the calculation uses the approximate mean rate method, as opposed to the default exact first passage time analysis (FPTA) method.
+  optional. If **TRAJ MCAMC**, the calculation uses the approximate mean rate method, as opposed to the default exact first passage time analysis (FPTA) method. Default false.
 
 **NELIM** `int`  
   mandatory if **TRAJ KPS**. The maximum number of nodes that are to be eliminated from the current trapping basin. If **NELIM** exceeds the number of nodes in the largest community, then all states of any trapping basin are always eliminated. Note that **NELIM** determines the number of transition matrices stored for the active subnetwork, and therefore the choice of this keyword (along with the sizes of communities) can strongly affect memory usage.
 
 **NWALKERS** `int`  
   mandatory if **WRAPPER** is **WE**, **FFS**, **NEUS**, or **MILES**. Specifies the number of walkers (independent trajectories) on the network, which are simulated in parallel (see **NTHREADS**). This keyword is ignored (and therefore does not need to be explicitly set) if **WRAPPER** is **BTOA** or **DIMREDN**, in which case the number of walkers is set to **NTHREADS**.
+
+**REANOTIRRED**  
+  if **WRAPPER REA**, specifies that candidate paths to nodes may not necessarily exist (this situation may occur when the Markov chain is not irreducible). Hence, errors are not thrown in this circumstance (unlike the default behaviour), and the main loop of the REA is exited in the event that no more paths to the target node exist. Default false.
 
 **STEADYSTATE** `double`  
   optional. If **WRAPPER FIXEDT**, indicates that a small number of trajectories (equal to **NTHREADS**) of fixed total time are to be ran, from which statistics for the &#120068; &#8592; &#120069; *equilibrium* (steady state) TPE are to be computed. The argument associated with this keyword specifies the time threshold after which the trajectory is considered to have equilibriated and recording of steady state path statistics begins. The default value for this argument is 0., but this value should be altered to an appropriate finite value. To ensure that the simulation estimates of these steady state properties are unbiased and accurate, the total fixed time of trajectories (set by **TRAJT**) should be long, to ensure that sufficient statistics are obtained, and statistics should be recorded after a suitably long time period has passed (several times the average mixing time [Kemeny constant] of the Markov chain), to ensure that the trajectories have equilibriated prior to recording steady state path statistics.
@@ -184,7 +187,7 @@ The following is a list of keywords that specify simulation parameters pertainin
   mandatory if **WRAPPER** is **FIXEDT** or **DIMREDN**. The maximum time for trajectories when simulating paths of fixed total time.
 
 **WRITEREA**  
-  if **WRAPPER REA**, write output trajectory files *shortest_path.k.dat*, in the usual *walker.x.y.dat* format (see above) except backwards, for each of the *k* shortest paths.
+  if **WRAPPER REA**, write output trajectory files *shortest_path.k.dat*, in the usual *walker.x.y.dat* format (see above) except backwards, for each of the *k* shortest paths. Default false.
 
 ----
 
@@ -224,13 +227,13 @@ The memory costs of state reduction computations can be reduced without conseque
 ----
 
 **ACCUMPROBS**  
-  if **TRAJ BKL**, the edges for transitions from each node are ordered according to decreasing transition probability. This optimizes the performance of the BKL algorithm, so is generally recommended, but the path entropy flow is then not output.
+  if **TRAJ BKL**, the edges for transitions from each node are ordered according to decreasing transition probability. This optimizes the performance of the BKL algorithm, so is generally recommended, but the path entropy flow is then not output. Default false.
 
 **BRANCHPROBS**  
   when simulating a CTMC, this keyword indicates that the transition probabilities used internally in the program are the branching probabilities. In this case, there are no self-loops and the mean waiting times are uniform. Otherwise, the linearised transition probability matrix is used, and **TAU** must be set. The **TRAJ BKL** and **TRAJ KPS** methods are more efficient when the branching probabilities are used, so this keyword is generally recommended. This keyword is ignored if **TRAJ MCAMC**. This keyword is not compatible with **DISCRETETIME**.
 
 **DEBUG**  
-  enable extra printing and tests to aid debugging.
+  enable extra printing and tests to aid debugging. Default false.
 
 **DISCRETETIME**  
   the edge weights read from *edge\_weights.dat* are taken to be the transition probabilities of a DTMC. This overrides the default behaviour, which is to assume that *edge\_weights.dat* is a list of (log) transition rates parameterising a continuous-time Markov chain (CTMC). Only the probabilities for transitions between *different* nodes need to be specified in the *edge\_weights.dat* file. The self-loop transition probabilities for nodes are inferred to be the difference of the sum of probabilities for outgoing transitions from unity. For a DTMC, **TAU** must be provided, and is interpreted as the (fixed) lag time (i.e. all transitions are associated with a constant time step **TAU**, rather than an exponential distribution with mean **TAU**). Note that this keyword is compatible with all **TRAJ** options and state reduction procedures.
@@ -239,7 +242,7 @@ The memory costs of state reduction computations can be reduced without conseque
   dump the mean waiting times for nodes to the file _meanwaitingtimes.dat_.
 
 **NOLOOP**  
-  if **DISCRETETIME**, the average numbers of self-loop transitions for nodes are accounted for implicitly by renormalization of outgoing transition probabilities and the lag time. Thus the lag time for transitions from nodes becomes node-dependent, and represents an *expectation* with respect to the numbers of self-loop transitions before escape from a node. The length of a path then represents the number of transitions between *different* nodes (as is the case for a CTMC parameterized by a branching probability matrix), often referred to as the *dynamical activity*. When using **TRAJ BKL**, this keyword will increase the efficiency of the simulation, since the self-loop transitions for nodes are not explicitly taken. However, when using this option, only the mean of the simulated first passage time distribution is meaningful. Not compatible with **TRAJ MCAMC**.
+  if **DISCRETETIME**, the average numbers of self-loop transitions for nodes are accounted for implicitly by renormalization of outgoing transition probabilities and the lag time. Thus the lag time for transitions from nodes becomes node-dependent, and represents an *expectation* with respect to the numbers of self-loop transitions before escape from a node. The length of a path then represents the number of transitions between *different* nodes (as is the case for a CTMC parameterized by a branching probability matrix), often referred to as the *dynamical activity*. When using **TRAJ BKL**, this keyword will increase the efficiency of the simulation, since the self-loop transitions for nodes are not explicitly taken. However, when using this option, only the mean of the simulated first passage time distribution is meaningful. Not compatible with **TRAJ MCAMC**. Default false.
 
 **NTHREADS** `int`  
   number of threads to use in parallel calculations. Defaults to max. no. of threads available. Keyword is overridden and set equal to one when performing a state reduction computation.

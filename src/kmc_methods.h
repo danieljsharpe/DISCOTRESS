@@ -41,7 +41,7 @@ struct Walker {
 
     public:
 
-    explicit Walker()=default;
+//    explicit Walker()=default;
     ~Walker();
     void dump_walker_info(bool,long double,const Node*,bool=false); // write trajectory data to file
     void dump_fpp_properties(); // append first passage path properties to file
@@ -217,20 +217,22 @@ class REA : public Wrapper_Method {
     private:
 
     bool discretetime;
-    bool writerea;
+    bool writerea;    // write all trajectory information for shortest paths
+    bool reanotirred; // if true, indicates that candidate paths to nodes may not exist (i.e. set of shortest paths to one or more nodes may be finite)
     const Node *source_node, *sink_node; // pointers to source and sink nodes
     vector<vector<Walker>> shortest_paths; // k-th shortest paths to all nodes of the network
     vector<vector<pair<const Walker*,const Edge*>>> candidate_paths; // pointers to possible candidates for next shortest path to each node of the network
+    vector<bool> nomorecands; // if Markov chain is not irreducible, record nodes for which no more candidate paths are available
 
     void dijkstra(const Network&);
     void next_path(const Node&,int);
     void add_candidate(const Walker*,const Edge*);
     void select_candidate(const Node&,int);
-    void print_shortest_paths();
+    void print_shortest_paths(int);
 
     public:
 
-    REA(const Network&,bool,bool,const Wrapper_args&);
+    REA(const Network&,bool,bool,bool,const Wrapper_args&);
     ~REA();
     void run_enhanced_kmc(const Network&, Traj_Method*);
 };

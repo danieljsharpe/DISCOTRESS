@@ -229,7 +229,7 @@ BTOA::~BTOA() {}
 /* main loop to drive simulation of A<-B paths with no special enhanced sampling wrapper method */
 void BTOA::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {
 
-    cout << "\nbtoa> beginning kMC simulation with no enhanced sampling method" << endl;
+    cout << "\n\nbtoa> beginning kMC simulation with no enhanced sampling method" << endl;
     n_ab=0; n_traj=0; int n_it=0;
     #pragma omp parallel
     {
@@ -300,7 +300,7 @@ DIMREDN::~DIMREDN() {}
 /* main loop to simulate many short nonequilibrium trajectories of fixed length starting from each community in turn */
 void DIMREDN::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {
 
-    cout << "dimredn> beginning simulation to obtain trajectory data for dimensionality reduction" << endl;
+    cout << "\n\ndimredn> beginning simulation to obtain trajectory data for dimensionality reduction" << endl;
     #pragma omp parallel for default(shared)
     for (int i=0;i<ktn.ncomms;i++) {
         Traj_Method *traj_method_local = traj_method_obj->clone(); // copy required within thread because reference types cannot be made firstprivate

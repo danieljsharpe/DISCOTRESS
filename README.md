@@ -37,18 +37,18 @@ Read the [FAQs](https://github.com/danieljsharpe/DISCOTRESS/blob/master/FAQs.md)
 ## Citations
 
 If you use the DISCOTRESS software in your publication, please cite the following articles:
-- [1] D. J. Sharpe and D. J. Wales, [Efficient and exact sampling of transition path ensembles on Markovian networks](https://doi.org/10.1063/5.0012128), J. Chem. Phys. 153, 024121.
+- [1] D. J. Sharpe and D. J. Wales, [Efficient and exact sampling of transition path ensembles on Markovian networks](https://doi.org/10.1063/5.0012128), J. Chem. Phys. 153, 024121 (2020).
 - [2] D. J. Sharpe and D. J. Wales, Pathways and dynamical observables in metastable Markov chains, (in preparation).
 
 Please cite relevant articles describing particular functionality of DISCOTRESS if you use these features:
 - [3] D. J. Sharpe and D. J. Wales, Numerical analysis of first passage processes in metastable finite Markov chains, (in preparation).
-- [4] D. J. Sharpe and D. J. Wales, Graph transformation algorithm for the expectation of first passage path properties in finite Markov chains, (in preparation).
+- [4] D. J. Sharpe and D. J. Wales, Graph transformation and shortest paths algorithms for finite Markov chains, (submitted).
 - [5] D. J. Sharpe and D. J. Wales, Dimensionality reduction of Markov chains using efficient dynamical simulations, (in preparation).
-- [6] D. Kannan\*, D. J. Sharpe\*, T. D. Swinburne, and D. J. Wales, Optimal dimensionality reduction of Markov chains using graph transformation, (in press).
-- [7] D. Kannan, D. J. Sharpe, T. D. Swinburne, and D. J. Wales, Coarse-graining continuous-time Markov chains with graph transformation, (in preparation).
+- [6] D. Kannan\*, D. J. Sharpe\*, T. D. Swinburne, and D. J. Wales, [Optimal dimensionality reduction of Markov chains using graph transformation](https://doi.org/10.1063/5.0025174), J. Chem. Phys. 153, 244108 (2020).
+- [7] D. Kannan, D. J. Sharpe, T. D. Swinburne, and D. J. Wales, Dimensionality reduction of Markov chains using renormalization, (in preparation).
 
 Further example applications can be found in the following publications:
-- [8] T. D. Swinburne, D. Kannan, D. J. Sharpe, and D. J. Wales, [Rare events and first passage time statistics from the energy landscape](https://doi.org/10.1063/5.0016244), J. Chem. Phys. 153, 134115.
+- [8] T. D. Swinburne, D. Kannan, D. J. Sharpe, and D. J. Wales, [Rare events and first passage time statistics from the energy landscape](https://doi.org/10.1063/5.0016244), J. Chem. Phys. 153, 134115 (2020).
 
 More publications for DISCOTRESS are forthcoming.
 
