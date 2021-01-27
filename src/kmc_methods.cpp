@@ -229,7 +229,7 @@ BTOA::~BTOA() {}
 /* main loop to drive simulation of A<-B paths with no special enhanced sampling wrapper method */
 void BTOA::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {
 
-    cout << "\n\nbtoa> beginning kMC simulation with no enhanced sampling method" << endl;
+    cout << "\n\nbtoa> beginning simulation of A<-B paths with no enhanced sampling method" << endl;
     n_ab=0; n_traj=0; int n_it=0;
     #pragma omp parallel
     {
@@ -238,7 +238,7 @@ void BTOA::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {
     #pragma omp for
     for (int pathno=0;pathno<nabpaths;pathno++) {
         for (;;) {
-            if (n_it>=maxit) break; // quack this leaves walker files that are not complete A<-B trajectories
+            if (n_it>maxit) break; // quack this leaves walker files that are not complete A<-B trajectories
             bool donebklsteps=false;
             traj_method_local->kmc_iteration(ktn,walkers[x]);
             if (traj_method_local->statereduction) break; // if the purpose of the computation was to perform a state reduction procedure, quit here
@@ -275,7 +275,7 @@ void BTOA::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {
    can be used to simulate the steady state */
 FIXEDT::FIXEDT(const Network &ktn, long double trajt, bool steadystate, double ssrec, \
            const Wrapper_args &wrapper_args) : Wrapper_Method(wrapper_args) {
-    cout << "long> setting up simulation of fixed time paths with no enhanced sampling method" << endl;
+    cout << "fixedt> setting up simulation of fixed time paths with no enhanced sampling method" << endl;
     this->trajt=trajt; this->steadystate=steadystate; this->ssrec=ssrec;
 }
 
@@ -284,6 +284,68 @@ FIXEDT::~FIXEDT() {}
 /* main loop to drive simulation of paths of fixed total time with no special enhanced sampling wrapper method */
 void FIXEDT::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {
 
+    cout << "\n\nfixedt> beginning simulation of paths of fixed time" << endl;
+    int n_it=0;
+    int noahits=0; // number of times that the A (target) set is hit
+    long double tot_trajt=0.L; // total time spent collecting A<-B steady state path statistics
+    bool fromb; // if true, indicates that the trajectory segment is traveling having last occupied B and not A
+    #pragma omp parallel
+    {
+    int x = omp_get_thread_num();
+    Traj_Method *traj_method_local = traj_method_obj->clone(); // copy required within thread because reference types cannot be made firstprivate
+    #pragma omp for
+    for (int pathno=0;pathno<nabpaths;pathno++) {
+	if (steadystate && ssrec>0.) { fromb=false; // for transition path stats, only count traj segment starting from B when equilibriation time period has passed
+	} else if (ssrec>0.) { fromb=true; }
+        while (walkers[x].t<trajt) { // continue simulation of trajectory until desired time is reached
+	    if (n_it>maxit) break; // quack this leaves walker files that do not meet the specified fixed trajectory time
+	    bool donebklsteps=false;
+//	    cout << "  taking step" << endl;
+            traj_method_local->kmc_iteration(ktn,walkers[x]);
+	    traj_method_local->dump_traj(walkers[x],false,false);
+            #pragma omp atomic
+	    n_it++;
+            check_if_endpoint: // if STEADYSTATE keyword is set, check collection of transition path bin statistics
+	        if (ktn.nbins>0 && steadystate && walkers[x].t>ssrec) { // equilibriation period has passed, bin statistics can be recorded
+//                cout << "  checking for endpoint" << endl;
+		if (walkers[x].curr_node->aorb==-1) {
+		    if (fromb) update_tp_stats(walkers[x],true,true); // trajectory segment has hit A from B; record bin statistics
+//	            if (fromb) cout << "    TRAJ PASSED FROM B TO A" << endl;
+		    fromb=false; // traj segment is now transitioning from A, not B (so bin stats should not be recorded until the traj hits B again)
+		    if (walkers[x].prev_node->aorb!=-1) { // hit A from outside A; counts towards estimate of steady-state MFPT
+	                #pragma omp atomic
+			noahits++;
+		    }
+		} else if (walkers[x].curr_node->aorb==1) { // trajectory segment is in B; reset vector of visited states
+//                    cout << "    TRAJ IN B" << endl;
+		    fromb=true; // the trajectory segment is starting from B, so bin statistics should be recorded
+                    fill(walkers[x].visited.begin(),walkers[x].visited.end(),false);
+		    walkers[x].visited[walkers[x].curr_node->bin_id]=true;
+		}
+		}
+		if (donebklsteps) continue;
+	    // do BKL steps
+	    if (walkers[x].t<trajt) {
+//		cout << "  doing BKL steps" << endl;
+	        traj_method_local->do_bkl_steps(ktn,walkers[x]);
+		donebklsteps=true;
+		goto check_if_endpoint;
+	    }
+        }
+	tot_trajt += walkers[x].t-ssrec; // increment total time spent collecting trajectory statistics
+	// reset trajectory
+	walkers[x].reset_walker_info();
+	walkers[x].path_no += walkers.size();
+	if (ktn.nbins>0) fill(walkers[x].visited.begin(),walkers[x].visited.end(),false);
+	traj_method_local->reset_nodeptrs();
+    }
+    }
+    cout << "fixedt> simulation terminated after " << n_it << " iterations" << endl;
+    if (steadystate) {
+        long double mfptss = static_cast<double>(noahits)/tot_trajt;
+        cout << "fixedt> simulation estimate for steady-state MFPT:    " << mfptss << endl;
+    }
+    if (ktn.nbins>0) calc_tp_stats(ktn.nbins);
 }
 
 /* Wrapper_Method handle simulation of many short nonequilibrium trajectories, used to obtain data required for coarse-graining
@@ -342,8 +404,7 @@ void Traj_Method::dump_traj(Walker &walker, bool transnpath, bool newpath, long 
     if (!transnpath && !newpath && tintvl>0. && walker.t<next_tintvl && walker.t<maxtime) return;
     if (tintvl>=0. && dumpintvls && (walker.t>=next_tintvl || walker.t>maxtime)) {
         walker.dump_walker_info(newpath,next_tintvl,walker.prev_node,true);
-    }
-    if (tintvl>=0. && (transnpath || !dumpintvls || walker.t>maxtime)) {
+    } else if (tintvl>=0. && (transnpath || !dumpintvls || walker.t>maxtime)) {
         walker.dump_walker_info(newpath,walker.t,walker.curr_node,dumpintvls);
     }
     if (transnpath) { walker.dump_fpp_properties(); return; }
