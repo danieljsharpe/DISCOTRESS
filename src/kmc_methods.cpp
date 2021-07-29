@@ -285,7 +285,7 @@ FIXEDT::~FIXEDT() {}
 void FIXEDT::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) {
 
     cout << "\n\nfixedt> beginning simulation of paths of fixed time" << endl;
-    int n_it=0;
+    n_ab=0; int n_it=0;
     int noahits=0; // number of times that the A (target) set is hit
     long double tot_trajt=0.L; // total time spent collecting A<-B steady state path statistics
     bool fromb; // if true, indicates that the trajectory segment is traveling having last occupied B and not A
@@ -300,37 +300,37 @@ void FIXEDT::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) 
         while (walkers[x].t<trajt) { // continue simulation of trajectory until desired time is reached
 	    if (n_it>maxit) break; // quack this leaves walker files that do not meet the specified fixed trajectory time
 	    bool donebklsteps=false;
-//	    cout << "  taking step" << endl;
             traj_method_local->kmc_iteration(ktn,walkers[x]);
 	    traj_method_local->dump_traj(walkers[x],false,false);
+	    cout << "node is now: " << walkers[x].curr_node->node_id << endl;
             #pragma omp atomic
 	    n_it++;
             check_if_endpoint: // if STEADYSTATE keyword is set, check collection of transition path bin statistics
 	        if (ktn.nbins>0 && steadystate && walkers[x].t>ssrec) { // equilibriation period has passed, bin statistics can be recorded
-//                cout << "  checking for endpoint" << endl;
 		if (walkers[x].curr_node->aorb==-1) {
+		    if (fromb) cout << "    TRAJ PASSED FROM B TO A" << endl;
 		    if (fromb) update_tp_stats(walkers[x],true,true); // trajectory segment has hit A from B; record bin statistics
-//	            if (fromb) cout << "    TRAJ PASSED FROM B TO A" << endl;
 		    fromb=false; // traj segment is now transitioning from A, not B (so bin stats should not be recorded until the traj hits B again)
 		    if (walkers[x].prev_node->aorb!=-1) { // hit A from outside A; counts towards estimate of steady-state MFPT
 	                #pragma omp atomic
 			noahits++;
 		    }
 		} else if (walkers[x].curr_node->aorb==1) { // trajectory segment is in B; reset vector of visited states
-//                    cout << "    TRAJ IN B" << endl;
+		    cout << "    TRAJ IN B" << endl;
 		    fromb=true; // the trajectory segment is starting from B, so bin statistics should be recorded
                     fill(walkers[x].visited.begin(),walkers[x].visited.end(),false);
 		    walkers[x].visited[walkers[x].curr_node->bin_id]=true;
 		}
 		}
 		if (donebklsteps) continue;
+/*
 	    // do BKL steps
 	    if (walkers[x].t<trajt) {
-//		cout << "  doing BKL steps" << endl;
 	        traj_method_local->do_bkl_steps(ktn,walkers[x]);
 		donebklsteps=true;
 		goto check_if_endpoint;
 	    }
+*/
         }
 	tot_trajt += walkers[x].t-ssrec; // increment total time spent collecting trajectory statistics
 	// reset trajectory
@@ -342,6 +342,7 @@ void FIXEDT::run_enhanced_kmc(const Network &ktn, Traj_Method *traj_method_obj) 
     }
     cout << "fixedt> simulation terminated after " << n_it << " iterations" << endl;
     if (steadystate) {
+	cout << "fixedt> simulated " << n_ab << " A<-B steady-state transition paths" << endl;
         long double mfptss = static_cast<double>(noahits)/tot_trajt;
         cout << "fixedt> simulation estimate for steady-state MFPT:    " << mfptss << endl;
     }

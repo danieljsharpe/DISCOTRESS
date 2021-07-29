@@ -16,10 +16,10 @@ A host of simulation algorithms to sample paths are built in to **DISCOTRESS** [
 - sample the ensemble of &#120068; &#8592; &#120069; first passage paths (the FPPE) from an initial set of nodes in the Markov chain, denoted &#120069;, to an absorbing (target) set of nodes, denoted &#120068; [1,2].
 - simulate probability distributions of path properties for the &#120068; &#8592; &#120069; FPPE, including the first passage time (FPT) [1,2], path probability [4], and entropy flow distributions of paths.
 - simulate statistics associated with nodes (or groups thereof) for the ensemble of direct &#120068; &#8592; &#120069; transition paths (the TPE), namely committor and visitation probabilities [1,2]. These quantities can be calculated for both the nonequilbrium and equilibrium (steady state) TPEs [3].
-- obtain dynamical quantities characterising the &#120068; &#8592; &#120069; nonequilibrium and equilibrium FPPE and TPE exactly, including MFPTs, committor and absorption probabilities, expected numbers of node visits, and node visitation probabilities, using numerically stable state reduction methods [2,3].
+- obtain dynamical quantities characterising the &#120068; &#8592; &#120069; nonequilibrium and equilibrium FPPE and TPE exactly, including MFPTs, committor and absorption probabilities, expected numbers of node visits, and node visitation probabilities, using numerically stable state reduction methods [2,3,5].
 - obtain dynamical quantities characterising the dynamics in the infinite-time limit, namely the stationary distribution and the average mixing time, using numerically stable state reduction methods [2,3].
 - determine the set of &#120068; &#8592; &#120069; first passage paths with the highest probabilities, using a *k* shortest paths algorithm [4].
-- estimate and validate a coarse-grained Markov chain constructed from multiple short nonequilibrium trajectories [5].
+- estimate and validate a coarse-grained Markov chain constructed from multiple short nonequilibrium trajectories [6].
 
 ## How do I get started?
 
@@ -38,19 +38,23 @@ Read the [FAQs](https://github.com/danieljsharpe/DISCOTRESS/blob/master/FAQs.md)
 
 If you use the DISCOTRESS software in your publication, please cite the following articles:
 - [1] D. J. Sharpe and D. J. Wales, [Efficient and exact sampling of transition path ensembles on Markovian networks](https://doi.org/10.1063/5.0012128), J. Chem. Phys. 153, 024121 (2020).
-- [2] D. J. Sharpe and D. J. Wales, Pathways and dynamical observables in metastable Markov chains, (in preparation).
+- [2] D. J. Sharpe and D. J. Wales, Nearly reducible finite Markov chains: theory and algorithms, J. Chem. Phys. (in press).
 
 Please cite relevant articles describing particular functionality of DISCOTRESS if you use these features:
-- [3] D. J. Sharpe and D. J. Wales, Numerical analysis of first passage processes in metastable finite Markov chains, (in preparation).
-- [4] D. J. Sharpe and D. J. Wales, Graph transformation and shortest paths algorithms for finite Markov chains, (submitted).
-- [5] D. J. Sharpe and D. J. Wales, Dimensionality reduction of Markov chains using efficient dynamical simulations, (in preparation).
-- [6] D. Kannan\*, D. J. Sharpe\*, T. D. Swinburne, and D. J. Wales, [Optimal dimensionality reduction of Markov chains using graph transformation](https://doi.org/10.1063/5.0025174), J. Chem. Phys. 153, 244108 (2020).
-- [7] D. Kannan, D. J. Sharpe, T. D. Swinburne, and D. J. Wales, Dimensionality reduction of Markov chains using renormalization, (in preparation).
+- [3] D. J. Sharpe and D. J. Wales, [Numerical analysis of first passage processes in finite Markov chains exhibiting metastability](https://doi.org/10.1103/PhysRevE.104.015301), Phys. Rev. E 104, 015301 (2021).
+- [4] D. J. Sharpe and D. J. Wales, [Graph transformation and shortest paths algorithms for finite Markov chains](https://doi.org/10.1103/PhysRevE.103.063306), Phys. Rev. E 103, 063306 (2021).
+- [5] D. J. Sharpe and D. J. Wales, Efficient computation of state visitation probabilities in finite Markov chains, (in preparation).
+- [6] D. J. Sharpe and D. J. Wales, Dimensionality reduction of Markov chains using efficient dynamical simulations, (in preparation).
+- [7] D. Kannan\*, D. J. Sharpe\*, T. D. Swinburne, and D. J. Wales, [Optimal dimensionality reduction of Markov chains using graph transformation](https://doi.org/10.1063/5.0025174), J. Chem. Phys. 153, 244108 (2020).
+- [8] D. Kannan, D. J. Sharpe, T. D. Swinburne, and D. J. Wales, Dimensionality reduction of Markov chains using renormalization, (in preparation).
 
 Further example applications can be found in the following publications:
-- [8] T. D. Swinburne, D. Kannan, D. J. Sharpe, and D. J. Wales, [Rare events and first passage time statistics from the energy landscape](https://doi.org/10.1063/5.0016244), J. Chem. Phys. 153, 134115 (2020).
+- [9] T. D. Swinburne, D. Kannan, D. J. Sharpe, and D. J. Wales, [Rare events and first passage time statistics from the energy landscape](https://doi.org/10.1063/5.0016244), J. Chem. Phys. 153, 134115 (2020).
+- [10] D. J. Sharpe and D. J. Wales, Paths to extinction in a stochastic Lotka-Volterra model of ecological competition (in preparation).
 
 More publications for DISCOTRESS are forthcoming.
+
+Please contact me directly to obtain copies of preprints.
 
 For additional citations related to the various simulation and state reduction algorithms implemented in DISCOTRESS, please see the individual .cpp files in the source code.
 

@@ -120,7 +120,7 @@ class Read_files {
 
     // read a two-column file
     template <typename T>
-    static vector<pair<T,T>> read_two_col(const char *inpfname) {
+    static vector<pair<T,T>> read_two_col(const char *inpfname, int nlines=0) {
 
     string line;
     ifstream inp_f;
@@ -143,12 +143,16 @@ class Read_files {
         }
     }
     inp_f.close();
+    if (nlines!=0 && vec_data.size()!=nlines) {
+        cout << "keywords> error: no. of lines in file " << inpfname << " not consistent with specified input" << endl;
+        throw exception();
+    }
     return vec_data;
     }
 
     // read a one-column file
     template <typename T>
-    static vector<T> read_one_col(const char *inpfname) {
+    static vector<T> read_one_col(const char *inpfname, int nlines=0) {
 
     string line;
     vector<T> vec_data;
@@ -167,6 +171,10 @@ class Read_files {
         }
     }
     inp_f.close();
+    if (nlines!=0 && vec_data.size()!=nlines) {
+        cout << "keywords> error: no. of lines in file " << inpfname << " not consistent with specified input" << endl;
+	throw exception();
+    }
     return vec_data;
     }
 

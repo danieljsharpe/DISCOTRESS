@@ -12,4 +12,8 @@ To do:
 Other comments:
 -discretetime is a member of Traj_Method but branchprobs is a member of Network; I think this makes sense though
 
+
 Known bugs:
+-STEADYSTATE (WRAPPER FIXEDT) simulations do not compute committor probabilities (NB committor probs will be same as for noneq result)
+-in FIXEDT, if STEADYSTATE, I think hits to A (for calculating SS MFPT) are counted twice if no BKL steps are taken
+-committor probabilities for initial state wrong if there is a direct connection between nodes of the initial and absorbing sets

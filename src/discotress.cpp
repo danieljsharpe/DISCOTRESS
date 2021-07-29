@@ -72,32 +72,27 @@ Discotress::Discotress () {
     cout << "discotress> reading input data files..." << endl;
     const char *conns_fname="edge_conns.dat", *wts_fname="edge_weights.dat", \
                *stat_probs_fname = "stat_prob.dat";
-    vector<pair<int,int>> conns = Read_files::read_two_col<int>(conns_fname);
-    vector<pair<long double,long double>> weights = Read_files::read_two_col<long double>(wts_fname);
-    vector<long double> stat_probs = Read_files::read_one_col<long double>(stat_probs_fname);
+    vector<pair<int,int>> conns = Read_files::read_two_col<int>(conns_fname,my_kws.n_edges);
+    vector<pair<long double,long double>> weights = Read_files::read_two_col<long double>(wts_fname,my_kws.n_edges);
+    vector<long double> stat_probs = Read_files::read_one_col<long double>(stat_probs_fname,my_kws.n_nodes);
     vector<int> communities, bins;
     if (my_kws.commsfile!=nullptr) {
-        communities = Read_files::read_one_col<int>(my_kws.commsfile);
-        if (my_kws.binsfile!=nullptr) { bins = Read_files::read_one_col<int>(my_kws.binsfile);
+        communities = Read_files::read_one_col<int>(my_kws.commsfile,my_kws.n_nodes);
+        if (my_kws.binsfile!=nullptr) { bins = Read_files::read_one_col<int>(my_kws.binsfile,my_kws.n_nodes);
         } else { bins = communities; } // copy community vector to bin vector
     }
     vector<int> nodesAvec, nodesBvec;
     vector<int> ntrajsvec;
     if (my_kws.wrapper_method!=2) { // simulating the A<-B TPE, read in info on A and B sets
-        nodesAvec = Read_files::read_one_col<int>(my_kws.nodesafile.c_str());
-        nodesBvec = Read_files::read_one_col<int>(my_kws.nodesbfile.c_str());
-        if ((nodesAvec.size()!=my_kws.nA) || (nodesBvec.size()!=my_kws.nB)) {
-            cout << "discotress> error: expected numbers of A and B nodes not consistent with lists of nodes in files" << endl;
-            throw exception();
-        }
+        nodesAvec = Read_files::read_one_col<int>(my_kws.nodesafile.c_str(),my_kws.nA);
+        nodesBvec = Read_files::read_one_col<int>(my_kws.nodesbfile.c_str(),my_kws.nB);
         cout << "discotress> simulating " << my_kws.nabpaths << " transition paths. Max. no. of iterations: " << my_kws.maxit << endl;
     } else { // simulating trajectories to obtain data for coarse-graining, read in info on number of trajs for each comm
-        ntrajsvec = Read_files::read_one_col<int>(my_kws.ntrajsfile);
-        if (ntrajsvec.size()!=my_kws.ncomms) throw exception();
+        ntrajsvec = Read_files::read_one_col<int>(my_kws.ntrajsfile,my_kws.ncomms);
         cout << "discotress> simulating trajectories of max time: " << my_kws.trajt << "   for dimensionality reduction" << endl;
     }
     vector<double> init_probs;
-    if (my_kws.initcond) init_probs = Read_files::read_one_col<double>(my_kws.initcondfile);
+    if (my_kws.initcond) init_probs = Read_files::read_one_col<double>(my_kws.initcondfile,my_kws.nB);
 
     // set up the Markov chain (Network) data structure
     cout << "discotress> setting up the Markovian network data object..." << endl;

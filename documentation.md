@@ -4,7 +4,7 @@
 
 Begin by downloading the latest version of the DISCOTRESS repository, which can be done from the command line:
 ```bash
-git checkout https://github.com/danieljsharpe/DISCOTRESS
+git clone https://github.com/danieljsharpe/DISCOTRESS
 ```
 
 Then navigate to the directory containing the source code with `cd DISCOTRESS/src` and compile using:

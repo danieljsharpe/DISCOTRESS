@@ -395,6 +395,7 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &conns, \
         cout << "network> error: total equilibrium probabilities of nodes is: " << tot_pi << " =/= 1." << endl;
         throw Network::Network_exception(); }
 
+    cout << "network> beginning setup of Markovian network topology" << endl;
     // network topology setup
     for (int i=0;i<ktn.n_edges;i++) {
         ktn.edges[2*i].edge_id = 2*i;
@@ -426,6 +427,7 @@ void Network::setup_network(Network& ktn, const vector<pair<int,int>> &conns, \
         ktn.edges[2*i].rev_edge = &ktn.edges[(2*i)+1];
         ktn.edges[(2*i)+1].rev_edge = &ktn.edges[2*i];
     }
+    cout << "network> finished setting up Markovian network topology" << endl;
 
     // set the transition probabilities and mean waiting times for a CTMC (if rates were provided)
     if (branchprobs) { ktn.get_tmtx_branch(); } // branching probabilities (non-uniform mean waiting times)
